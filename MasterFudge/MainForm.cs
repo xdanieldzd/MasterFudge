@@ -26,10 +26,11 @@ namespace MasterFudge
             romFile = @"D:\ROMs\SMS\Y's_-_The_Vanished_Omen_(UE)_[!].sms";
             romFile = @"D:\ROMs\SMS\VDPTEST.sms";
 
-            ms = new MasterSystem();
+            ms = new MasterSystem(false);
             ms.LoadCartridge(romFile);
+            ms.Run();
 
-            ShowRomInformation(ms, romFile);
+            //ShowRomInformation(ms, romFile);
         }
 
         private void ShowRomInformation(MasterSystem ms, string romFile)

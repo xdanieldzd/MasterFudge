@@ -5,9 +5,11 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 
-namespace MasterFudge.Emulation
+using MasterFudge.Emulation.Memory;
+
+namespace MasterFudge.Emulation.CPU
 {
-    public class Z80
+    public partial class Z80
     {
         [Flags]
         enum Flags : byte
@@ -40,9 +42,14 @@ namespace MasterFudge.Emulation
         ushort sp, pc;
 
         byte iff1, iff2, im;
+        bool halted;
 
-        public Z80()
+        MemoryMapper memoryMapper;
+
+        public Z80(MemoryMapper memMap)
         {
+            memoryMapper = memMap;
+
             af = bc = de = hl = new Register();
             afShadow = bcShadow = deShadow = hlShadow = new Register();
             ix = iy = new Register();
@@ -60,6 +67,33 @@ namespace MasterFudge.Emulation
             iff1 = iff2 = im = 0;
         }
 
+        public int Execute()
+        {
+            int cycles = 4;
+
+            if (!halted)
+            {
+                byte op = memoryMapper.Read8(pc++);
+
+                // TODO: rework cycle count stuff, its way too cumbersome right now
+
+                if (op == 0xCB)
+                    cycles = 4;
+                else if (op == 0xDD)
+                    cycles = 4;
+                else if (op == 0xED)
+                    cycles = cycleCountsED[memoryMapper.Read8(pc)];
+                else if (op == 0xFD)
+                    cycles = 4;
+                else
+                    cycles = cycleCountsMain[op];
+
+                opcodeTableMain[op](this);
+            }
+
+            return cycles;
+        }
+
         private void SetFlag(Flags flags)
         {
             af.Low |= (byte)flags;
@@ -73,6 +107,18 @@ namespace MasterFudge.Emulation
         private bool IsFlagSet(Flags flags)
         {
             return (((Flags)af.Low & flags) == flags);
+        }
+
+        private void Pop(ref Register register)
+        {
+            register.Low = memoryMapper.Read8(sp++);
+            register.High = memoryMapper.Read8(sp++);
+        }
+
+        private void Push(Register register)
+        {
+            memoryMapper.Write8(--sp, register.High);
+            memoryMapper.Write8(--sp, register.Low);
         }
     }
 }

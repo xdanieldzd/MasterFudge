@@ -46,6 +46,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Emulation\CPU\Z80.CycleCounts.cs" />
+    <Compile Include="Emulation\CPU\Z80.OpcodeTables.cs" />
     <Compile Include="Emulation\MasterSystem.cs" />
     <Compile Include="Emulation\Memory\MemoryAreaDescriptor.cs" />
     <Compile Include="Emulation\Memory\MemoryMapper.cs" />
@@ -54,7 +56,7 @@
     <Compile Include="Emulation\Memory\WRAM.cs" />
     <Compile Include="Emulation\Cartridges\RomHeader.cs" />
     <Compile Include="Emulation\Cartridges\BaseCartridge.cs" />
-    <Compile Include="Emulation\Z80.cs" />
+    <Compile Include="Emulation\CPU\Z80.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
