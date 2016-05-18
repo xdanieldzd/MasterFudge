@@ -14,14 +14,14 @@ namespace MasterFudge.Emulation.CPU
         [Flags]
         enum Flags : byte
         {
-            Carry = (1 << 0),
-            Subtract = (1 << 1),
-            Parity = (1 << 2),
-            UnusedBit3 = (1 << 3),
-            HalfCarry = (1 << 4),
-            UnusedBit5 = (1 << 5),
-            Zero = (1 << 6),
-            Sign = (1 << 7)
+            C = (1 << 0),   /* Carry */
+            N = (1 << 1),   /* Subtract */
+            PV = (1 << 2),  /* Parity or Overflow */
+            UB3 = (1 << 3), /* Unused bit 3 */
+            H = (1 << 4),   /* Half Carry */
+            UB5 = (1 << 5), /* Unused bit 5 */
+            Z = (1 << 6),   /* Zero */
+            S = (1 << 7),   /* Sign */
         }
 
         [StructLayout(LayoutKind.Explicit)]
@@ -43,6 +43,8 @@ namespace MasterFudge.Emulation.CPU
 
         byte iff1, iff2, im;
         bool halted;
+
+        int currentCycles;
 
         MemoryMapper memoryMapper;
 
@@ -69,29 +71,34 @@ namespace MasterFudge.Emulation.CPU
 
         public int Execute()
         {
-            int cycles = 4;
+            currentCycles = 0;
 
             if (!halted)
             {
                 byte op = memoryMapper.Read8(pc++);
-
-                // TODO: rework cycle count stuff, its way too cumbersome right now
-
-                if (op == 0xCB)
-                    cycles = 4;
-                else if (op == 0xDD)
-                    cycles = 4;
-                else if (op == 0xED)
-                    cycles = cycleCountsED[memoryMapper.Read8(pc)];
-                else if (op == 0xFD)
-                    cycles = 4;
-                else
-                    cycles = cycleCountsMain[op];
-
-                opcodeTableMain[op](this);
+                switch (op)
+                {
+                    case 0xCB: break;
+                    case 0xDD: break;
+                    case 0xED: ExecuteOpED(); break;
+                    case 0xFD: break;
+                    default:
+                        currentCycles += cycleCountsMain[op];
+                        opcodeTableMain[op](this);
+                        break;
+                }
             }
+            else
+                currentCycles += 4;
 
-            return cycles;
+            return currentCycles;
+        }
+
+        private void ExecuteOpED()
+        {
+            byte edOp = memoryMapper.Read8(pc++);
+            currentCycles += cycleCountsED[edOp];
+            opcodeTableED[edOp](this);
         }
 
         private void SetFlag(Flags flags)
@@ -104,10 +111,25 @@ namespace MasterFudge.Emulation.CPU
             af.Low ^= (byte)flags;
         }
 
+        private void SetClearFlagConditional(Flags flags, bool condition)
+        {
+            if (condition)
+                af.Low |= (byte)flags;
+            else
+                af.Low ^= (byte)flags;
+        }
+
         private bool IsFlagSet(Flags flags)
         {
             return (((Flags)af.Low & flags) == flags);
         }
+
+        private bool IsBitSet(byte value, int bit)
+        {
+            return ((value & (1 << bit)) != 0);
+        }
+
+        // TODO: verify naming of these functions, wrt addressing modes and shit
 
         private void Pop(ref Register register)
         {
@@ -119,6 +141,78 @@ namespace MasterFudge.Emulation.CPU
         {
             memoryMapper.Write8(--sp, register.High);
             memoryMapper.Write8(--sp, register.Low);
+        }
+
+        private void LoadRegisterImmediate8(ref byte register)
+        {
+            register = memoryMapper.Read8(pc);
+            pc++;
+        }
+
+        private void LoadRegisterImmediate16(ref ushort register)
+        {
+            register = memoryMapper.Read16(pc);
+            pc += 2;
+        }
+
+        private void LoadMemory8(ushort address, byte value)
+        {
+            memoryMapper.Write8(address, value);
+        }
+
+        private void LoadMemory16(ushort address, ushort value)
+        {
+            memoryMapper.Write16(address, value);
+        }
+
+        private void IncrementRegister8(ref byte register)
+        {
+            register++;
+
+            // todo: check flags
+            ClearFlag(Flags.N);
+            SetClearFlagConditional(Flags.PV, (register == 0x80));    // http://www.smspower.org/forums/1469-Z80INCInstructionsAndFlagAffection#6921
+            SetClearFlagConditional(Flags.H, ((register & 0x0F) == 0));
+            SetClearFlagConditional(Flags.Z, (register == 0));
+            SetClearFlagConditional(Flags.S, IsBitSet(register, 7));
+        }
+
+        private void IncrementRegister16(ref ushort register)
+        {
+            register++;
+        }
+
+        private void DecrementRegister8(ref byte register)
+        {
+            register--;
+
+            // todo: check flags
+            SetFlag(Flags.N);
+            SetClearFlagConditional(Flags.PV, (register == 0x7F));    // http://www.smspower.org/forums/1469-Z80INCInstructionsAndFlagAffection#6921
+            SetClearFlagConditional(Flags.H, ((register & 0x0F) == 0x0F));
+            SetClearFlagConditional(Flags.Z, (register == 0));
+            SetClearFlagConditional(Flags.S, IsBitSet(register, 7));
+        }
+
+        private void DecrementRegister16(ref ushort register)
+        {
+            register--;
+        }
+
+        private void JumpConditional8(bool condition)
+        {
+            if (condition)
+                pc += (ushort)((sbyte)memoryMapper.Read8(pc));
+            else
+                pc++;
+        }
+
+        private void JumpConditional16(bool condition)
+        {
+            if (condition)
+                pc = memoryMapper.Read16(pc);
+            else
+                pc += 2;
         }
     }
 }
