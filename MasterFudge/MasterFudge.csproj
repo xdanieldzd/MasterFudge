@@ -47,6 +47,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Emulation\CPU\Z80.CycleCounts.cs" />
+    <Compile Include="Emulation\CPU\Z80.Debugger.cs" />
     <Compile Include="Emulation\CPU\Z80.OpcodeTables.cs" />
     <Compile Include="Emulation\MasterSystem.cs" />
     <Compile Include="Emulation\Memory\MemoryAreaDescriptor.cs" />

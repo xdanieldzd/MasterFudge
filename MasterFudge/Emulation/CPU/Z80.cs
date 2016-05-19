@@ -73,6 +73,8 @@ namespace MasterFudge.Emulation.CPU
         {
             currentCycles = 0;
 
+            System.Diagnostics.Debug.Print(DisassembleOpcode(pc));
+
             if (!halted)
             {
                 byte op = memoryMapper.Read8(pc++);
@@ -84,7 +86,8 @@ namespace MasterFudge.Emulation.CPU
                     case 0xFD: break;
                     default:
                         currentCycles += cycleCountsMain[op];
-                        opcodeTableMain[op](this);
+                        //opcodeTableMain[op](this);
+                        ExecuteOp_BigSwitchThing(op);
                         break;
                 }
             }
@@ -98,7 +101,57 @@ namespace MasterFudge.Emulation.CPU
         {
             byte edOp = memoryMapper.Read8(pc++);
             currentCycles += cycleCountsED[edOp];
-            opcodeTableED[edOp](this);
+            //opcodeTableED[edOp](this);
+            ExecuteOpED_BigSwitchThing(edOp);
+        }
+
+        private void ExecuteOp_BigSwitchThing(byte op)
+        {
+            switch (op)
+            {
+                case 0x00: break;
+                case 0x01: LoadRegisterImmediate16(ref bc.Word); break;
+                case 0x02: LoadMemory8(bc.Word, af.High); break;
+                case 0x03: IncrementRegister16(ref bc.Word); break;
+                case 0x04: IncrementRegister8(ref bc.High); break;
+                case 0x05: DecrementRegister8(ref bc.High); break;
+                case 0x06: LoadRegisterImmediate8(ref bc.High); break;
+
+                case 0x0B: DecrementRegister16(ref bc.Word); break;
+                case 0x0C: IncrementRegister8(ref bc.Low); break;
+                case 0x0D: DecrementRegister8(ref bc.Low); break;
+                case 0x0E: LoadRegisterImmediate8(ref bc.Low); break;
+
+                case 0x11: LoadRegisterImmediate16(ref de.Word); break;
+                case 0x12: LoadMemory8(de.Word, af.High); break;
+                case 0x13: IncrementRegister16(ref de.Word); break;
+                case 0x14: IncrementRegister8(ref de.High); break;
+                case 0x15: DecrementRegister8(ref de.High); break;
+                case 0x16: LoadRegisterImmediate8(ref de.High); break;
+
+                case 0x1B: DecrementRegister16(ref de.Word); break;
+                case 0x1C: IncrementRegister8(ref de.Low); break;
+                case 0x1D: DecrementRegister8(ref de.Low); break;
+                case 0x1E: LoadRegisterImmediate8(ref de.Low); break;
+
+                case 0x31: LoadRegisterImmediate16(ref sp); break;
+                case 0xC3: JumpConditional16(true); break;
+                case 0xF5: Push(af); break;
+
+                default: throw new Exception(string.Format("Unimplemented opcode 0x{0:X2}", op));
+            }
+        }
+
+        private void ExecuteOpED_BigSwitchThing(byte op)
+        {
+            // TODO: everything
+            switch (op)
+            {
+                case 0x43: memoryMapper.Write16(memoryMapper.Read16(pc), bc.Word); pc += 2; break;
+                case 0x73: memoryMapper.Write16(memoryMapper.Read16(pc), sp); pc += 2; break;
+
+                default: throw new Exception(string.Format("Unimplemented ED opcode 0x{0:X2}", op));
+            }
         }
 
         private void SetFlag(Flags flags)

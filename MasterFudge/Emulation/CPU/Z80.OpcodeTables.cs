@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace MasterFudge.Emulation.CPU
 {
+    // TODO: uhhhh do this once switch-based stuff is working
+
+
     delegate void OpcodeDelegate(Z80 cpu);
 
     public partial class Z80
