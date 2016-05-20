@@ -73,7 +73,7 @@ namespace MasterFudge.Emulation.CPU
         {
             currentCycles = 0;
 
-            System.Diagnostics.Debug.Print(DisassembleOpcode(pc));
+            Program.Log.WriteEvent(DisassembleOpcode(pc));
 
             if (!halted)
             {
@@ -138,7 +138,7 @@ namespace MasterFudge.Emulation.CPU
                 case 0xC3: JumpConditional16(true); break;
                 case 0xF5: Push(af); break;
 
-                default: throw new Exception(string.Format("Unimplemented opcode 0x{0:X2}", op));
+                default: throw new Exception(MakeUnimplementedOpcodeString((ushort)(pc - 1)));
             }
         }
 
@@ -150,8 +150,14 @@ namespace MasterFudge.Emulation.CPU
                 case 0x43: memoryMapper.Write16(memoryMapper.Read16(pc), bc.Word); pc += 2; break;
                 case 0x73: memoryMapper.Write16(memoryMapper.Read16(pc), sp); pc += 2; break;
 
-                default: throw new Exception(string.Format("Unimplemented ED opcode 0x{0:X2}", op));
+                default: throw new Exception(MakeUnimplementedOpcodeString((ushort)(pc - 2)));
             }
+        }
+
+        private string MakeUnimplementedOpcodeString(ushort address)
+        {
+            byte[] opcode = DisassembleGetOpcodeBytes(address);
+            return string.Format("Unimplemented opcode {0} ({1})", DisassembleMakeByteString(opcode), DisassembleMakeMnemonicString(opcode));
         }
 
         private void SetFlag(Flags flags)

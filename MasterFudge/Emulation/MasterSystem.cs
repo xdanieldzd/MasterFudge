@@ -46,6 +46,7 @@ namespace MasterFudge.Emulation
         ~MasterSystem()
         {
             isStopped = true;
+            while (mainThread.ThreadState != ThreadState.Stopped) { }
         }
 
         public void LoadCartridge(string filename)
@@ -79,23 +80,31 @@ namespace MasterFudge.Emulation
 
         private void Execute()
         {
-            while (!isStopped)
+            try
             {
-                if (!isPaused)
+                while (!isStopped)
                 {
-                    int currentCycles = 0;
-                    while (currentCycles < cyclesPerFrame)
+                    if (!isPaused)
                     {
-                        currentCycles += cpu.Execute();
-                        //vdp
-                        //sound
-                        //irqs
+                        int currentCycles = 0;
+                        while (currentCycles < cyclesPerFrame)
+                        {
+                            currentCycles += cpu.Execute();
+                            //vdp
+                            //sound
+                            //irqs
+                        }
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.Print("paused");
                     }
                 }
-                else
-                {
-                    System.Diagnostics.Debug.Print("paused");
-                }
+            }
+            catch (Exception ex)
+            {
+                string message = string.Format("Exception occured: {0}\n\nEmulation thread has been stopped.", ex.Message);
+                System.Windows.Forms.MessageBox.Show(message);
             }
         }
     }

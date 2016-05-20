@@ -19,7 +19,54 @@ namespace MasterFudge
 
         public MainForm()
         {
+            if (false)
+            {
+                StringBuilder tmp = new StringBuilder();
+                for (int i = 0; i < 256; i++)
+                {
+                    if ((i % 8) == 0) tmp.Append("            ");
+                    tmp.AppendFormat("\".DB 0xED, 0x{0:X2}\",   ", i);
+                    if (((i + 1) % 8) == 0) tmp.AppendFormat("/* 0x{0:X2} */\n", i - 7);
+                }
+                Clipboard.SetText(tmp.ToString());
+            }
+
             InitializeComponent();
+
+            Text = Application.ProductName;
+
+            Program.Log.OnLogUpdate += new Logger.LogUpdateHandler((s, ev) =>
+            {
+                if (lbTempDisasm.IsHandleCreated)
+                    lbTempDisasm.Invoke(new Action(() => lbTempDisasm.Items.Add(ev.Message)));
+            });
+
+            Program.Log.OnLogCleared += new EventHandler((s, ev) =>
+            {
+                if (lbTempDisasm.IsHandleCreated)
+                    lbTempDisasm.Invoke(new Action(() => lbTempDisasm.Items.Clear()));
+            });
+        }
+
+        private void LogRomInformation(MasterSystem ms, string romFile)
+        {
+            RomHeader header = ms.GetCartridgeHeader();
+
+            Program.Log.WriteEvent("--- ROM INFORMATION ---");
+            Program.Log.WriteEvent("Filename: {0}", System.IO.Path.GetFileName(romFile));
+            Program.Log.WriteEvent("TMR SEGA string: '{0}'", header.TMRSEGAString);
+            Program.Log.WriteEvent("Reserved: [0x{0:X2}, 0x{1:X2}]", header.Reserved[0], header.Reserved[1]);
+            Program.Log.WriteEvent("Checksum: 0x{0:X4} (calculated 0x{1:X4}, {2})", header.Checksum, header.ChecksumCalculated, (header.Checksum == header.ChecksumCalculated ? "matches header" : "mismatch"));
+            Program.Log.WriteEvent("Product code: {0}", header.ProductCode);
+            Program.Log.WriteEvent("Version: {0}", header.Version);
+            Program.Log.WriteEvent("Region: {0}", header.GetRegionName());
+            Program.Log.WriteEvent("ROM size: {0} (file is {1} KB, {2})", header.GetRomSizeName(), (header.RomSizeCalculated / 1024), (header.IsRomSizeCorrect ? "matches header" : "mismatch"));
+            Program.Log.WriteEvent(string.Empty);
+        }
+
+        private void btnTempRun_Click(object sender, EventArgs e)
+        {
+            Program.Log.ClearEvents();
 
             string romFile = @"D:\ROMs\SMS\Hang-On_(UE)_[!].sms";
             romFile = @"D:\ROMs\SMS\Sonic_the_Hedgehog_(UE)_[!].sms";
@@ -28,25 +75,11 @@ namespace MasterFudge
 
             ms = new MasterSystem(false);
             ms.LoadCartridge(romFile);
+
+            LogRomInformation(ms, romFile);
+
+            Program.Log.WriteEvent("--- STARTING EMULATION ---");
             ms.Run();
-
-            //ShowRomInformation(ms, romFile);
-        }
-
-        private void ShowRomInformation(MasterSystem ms, string romFile)
-        {
-            RomHeader header = ms.GetCartridgeHeader();
-
-            StringBuilder sb = new StringBuilder();
-            sb.AppendFormat("{0}\n\n", System.IO.Path.GetFileName(romFile));
-            sb.AppendFormat("TMR SEGA string: '{0}'\n", header.TMRSEGAString);
-            sb.AppendFormat("Reserved: [0x{0:X2}, 0x{1:X2}]\n", header.Reserved[0], header.Reserved[1]);
-            sb.AppendFormat("Checksum: 0x{0:X4} (calculated 0x{1:X4}, {2})\n", header.Checksum, header.ChecksumCalculated, (header.Checksum == header.ChecksumCalculated ? "matches header" : "mismatch"));
-            sb.AppendFormat("Product code: {0}\n", header.ProductCode);
-            sb.AppendFormat("Version: {0}\n", header.Version);
-            sb.AppendFormat("Region: {0}\n", header.GetRegionName());
-            sb.AppendFormat("ROM size: {0} (file is {1} KB, {2})\n", header.GetRomSizeName(), (header.RomSizeCalculated / 1024), (header.IsRomSizeCorrect ? "matches header" : "mismatch"));
-            MessageBox.Show(sb.ToString(), "ROM Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
     }
 }
