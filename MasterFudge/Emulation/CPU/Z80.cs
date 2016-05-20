@@ -11,6 +11,11 @@ namespace MasterFudge.Emulation.CPU
 {
     public partial class Z80
     {
+        const int AddCyclesJumpCond8Taken = 5;
+        const int AddCyclesRetCondTaken = 6;
+        const int AddCyclesCallCondTaken = 7;
+        const int AddCyclesRepeatByteOps = 5;   // EDBx
+
         [Flags]
         enum Flags : byte
         {
@@ -139,43 +144,43 @@ namespace MasterFudge.Emulation.CPU
                 case 0x15: DecrementRegister8(ref de.High); break;
                 case 0x16: LoadRegisterImmediate8(ref de.High); break;
                 case 0x17: RotateLeftAccumulator(false); break;
-                case 0x18: JumpConditional8(true, 0); break;
+                case 0x18: Jump8(); break;
 
                 case 0x1B: DecrementRegister16(ref de.Word); break;
                 case 0x1C: IncrementRegister8(ref de.Low); break;
                 case 0x1D: DecrementRegister8(ref de.Low); break;
                 case 0x1E: LoadRegisterImmediate8(ref de.Low); break;
                 case 0x1F: RotateRightAccumulator(false); break;
-                case 0x20: JumpConditional8(!IsFlagSet(Flags.Z), cycleCountsMainConditionalAdd[op]); break;
+                case 0x20: JumpConditional8(!IsFlagSet(Flags.Z)); break;
 
                 case 0x27: DecimalAdjustAccumulator(); break;
-                case 0x28: JumpConditional8(IsFlagSet(Flags.Z), cycleCountsMainConditionalAdd[op]); break;
+                case 0x28: JumpConditional8(IsFlagSet(Flags.Z)); break;
 
-                case 0x30: JumpConditional8(!IsFlagSet(Flags.C), cycleCountsMainConditionalAdd[op]); break;
+                case 0x30: JumpConditional8(!IsFlagSet(Flags.C)); break;
                 case 0x31: LoadRegisterImmediate16(ref sp); break;
 
-                case 0x38: JumpConditional8(IsFlagSet(Flags.C), cycleCountsMainConditionalAdd[op]); break;
+                case 0x38: JumpConditional8(IsFlagSet(Flags.C)); break;
 
                 case 0x76: halted = true; break;
 
-                case 0xC0: ReturnConditional(!IsFlagSet(Flags.Z), cycleCountsMainConditionalAdd[op]); break;
+                case 0xC0: ReturnConditional(!IsFlagSet(Flags.Z)); break;
 
                 case 0xC3: JumpConditional16(true); break;
-                case 0xC4: CallConditional16(!IsFlagSet(Flags.Z), cycleCountsMainConditionalAdd[op]); break;
+                case 0xC4: CallConditional16(!IsFlagSet(Flags.Z)); break;
 
-                case 0xC8: ReturnConditional(IsFlagSet(Flags.Z), cycleCountsMainConditionalAdd[op]); break;
-                case 0xC9: ReturnConditional(true, 0); break;
+                case 0xC8: ReturnConditional(IsFlagSet(Flags.Z)); break;
+                case 0xC9: Return(); break;
 
-                case 0xCC: CallConditional16(IsFlagSet(Flags.Z), cycleCountsMainConditionalAdd[op]); break;
-                case 0xCD: CallConditional16(true, 0); break;
+                case 0xCC: CallConditional16(IsFlagSet(Flags.Z)); break;
+                case 0xCD: Call16(); break;
 
-                case 0xD0: ReturnConditional(!IsFlagSet(Flags.C), cycleCountsMainConditionalAdd[op]); break;
+                case 0xD0: ReturnConditional(!IsFlagSet(Flags.C)); break;
 
-                case 0xD4: CallConditional16(!IsFlagSet(Flags.C), cycleCountsMainConditionalAdd[op]); break;
+                case 0xD4: CallConditional16(!IsFlagSet(Flags.C)); break;
 
-                case 0xD8: ReturnConditional(IsFlagSet(Flags.C), cycleCountsMainConditionalAdd[op]); break;
+                case 0xD8: ReturnConditional(IsFlagSet(Flags.C)); break;
                 case 0xD9: ExchangeRegisters16(ref bc, ref bcShadow); ExchangeRegisters16(ref de, ref deShadow); ExchangeRegisters16(ref hl, ref hlShadow); break;
-                case 0xDC: CallConditional16(IsFlagSet(Flags.C), cycleCountsMainConditionalAdd[op]); break;
+                case 0xDC: CallConditional16(IsFlagSet(Flags.C)); break;
 
                 case 0xE3: ExchangeStackRegister16(ref hl); break;
 
@@ -393,12 +398,17 @@ namespace MasterFudge.Emulation.CPU
             register--;
         }
 
-        private void JumpConditional8(bool condition, int addCyclesIfTrue)
+        private void Jump8()
+        {
+            pc += (ushort)((sbyte)(memoryMapper.Read8(pc) + 1));
+        }
+
+        private void JumpConditional8(bool condition)
         {
             if (condition)
             {
-                pc += (ushort)((sbyte)(memoryMapper.Read8(pc) + 1));
-                currentCycles += addCyclesIfTrue;
+                Jump8();
+                currentCycles += AddCyclesJumpCond8Taken;
             }
             else
                 pc++;
@@ -412,26 +422,36 @@ namespace MasterFudge.Emulation.CPU
                 pc += 2;
         }
 
-        private void CallConditional16(bool condition, int addCyclesIfTrue)
+        private void Call16()
+        {
+            memoryMapper.Write8(--sp, (byte)((pc + 2) >> 8));
+            memoryMapper.Write8(--sp, (byte)((pc + 2) & 0xFF));
+            pc = memoryMapper.Read16(pc);
+        }
+
+        private void CallConditional16(bool condition)
         {
             if (condition)
             {
-                memoryMapper.Write8(--sp, (byte)((pc + 2) >> 8));
-                memoryMapper.Write8(--sp, (byte)((pc + 2) & 0xFF));
-                pc = memoryMapper.Read16(pc);
-                currentCycles += addCyclesIfTrue;
+                Call16();
+                currentCycles += AddCyclesCallCondTaken;
             }
             else
                 pc += 2;
         }
 
-        private void ReturnConditional(bool condition, int addCyclesIfTrue)
+        private void Return()
+        {
+            pc = memoryMapper.Read16(sp);
+            sp += 2;
+        }
+
+        private void ReturnConditional(bool condition)
         {
             if (condition)
             {
-                pc = memoryMapper.Read16(sp);
-                sp += 2;
-                currentCycles += addCyclesIfTrue;
+                Return();
+                currentCycles += AddCyclesRetCondTaken;
             }
         }
     }
