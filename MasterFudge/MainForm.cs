@@ -69,9 +69,10 @@ namespace MasterFudge
             Program.Log.ClearEvents();
 
             string romFile = @"D:\ROMs\SMS\Hang-On_(UE)_[!].sms";
-            romFile = @"D:\ROMs\SMS\Sonic_the_Hedgehog_(UE)_[!].sms";
-            romFile = @"D:\ROMs\SMS\Y's_-_The_Vanished_Omen_(UE)_[!].sms";
-            romFile = @"D:\ROMs\SMS\VDPTEST.sms";
+            //romFile = @"D:\ROMs\SMS\Sonic_the_Hedgehog_(UE)_[!].sms";
+            //romFile = @"D:\ROMs\SMS\Y's_-_The_Vanished_Omen_(UE)_[!].sms";
+            //romFile = @"D:\ROMs\SMS\VDPTEST.sms";
+            //romFile = @"D:\ROMs\SMS\[BIOS] Sega Master System (USA, Europe) (v1.3).sms";
 
             ms = new MasterSystem(false);
             ms.LoadCartridge(romFile);

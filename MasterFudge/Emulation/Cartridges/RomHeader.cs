@@ -109,7 +109,7 @@ namespace MasterFudge.Emulation.Cartridges
             for (int i = 0; i < (romData.Length < 0x8000 ? romData.Length - 0x10 : 0x7FF0); i++)
                 checksum += romData[i];
 
-            if (GetRomSizeValue() >= 0x10000)
+            if ((IsRomSizeCorrect ? GetRomSizeValue() : RomSizeCalculated) >= 0x10000)
                 for (int i = 0x8000; i < GetRomSizeValue(); i++)
                     checksum += romData[i];
 

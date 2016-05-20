@@ -41,8 +41,8 @@ namespace MasterFudge.Emulation.CPU
         byte i, r;
         ushort sp, pc;
 
-        byte iff1, iff2, im;
-        bool halted;
+        bool iff1, iff2, eiDelay, halted;
+        byte interruptMode;
 
         int currentCycles;
 
@@ -66,7 +66,8 @@ namespace MasterFudge.Emulation.CPU
             af.Word = sp = 0xFFFF;
 
             pc = 0;
-            iff1 = iff2 = im = 0;
+            iff1 = iff2 = eiDelay = halted = false;
+            interruptMode = 0;
         }
 
         public int Execute()
@@ -89,6 +90,12 @@ namespace MasterFudge.Emulation.CPU
                         //opcodeTableMain[op](this);
                         ExecuteOp_BigSwitchThing(op);
                         break;
+                }
+
+                if (op != 0xFB && eiDelay)
+                {
+                    eiDelay = false;
+                    iff1 = iff2 = true;
                 }
             }
             else
@@ -116,11 +123,14 @@ namespace MasterFudge.Emulation.CPU
                 case 0x04: IncrementRegister8(ref bc.High); break;
                 case 0x05: DecrementRegister8(ref bc.High); break;
                 case 0x06: LoadRegisterImmediate8(ref bc.High); break;
+                case 0x07: RotateLeftAccumulator(true); break;
+                case 0x08: ExchangeRegisters16(ref af, ref afShadow); break;
 
                 case 0x0B: DecrementRegister16(ref bc.Word); break;
                 case 0x0C: IncrementRegister8(ref bc.Low); break;
                 case 0x0D: DecrementRegister8(ref bc.Low); break;
                 case 0x0E: LoadRegisterImmediate8(ref bc.Low); break;
+                case 0x0F: RotateRightAccumulator(true); break;
 
                 case 0x11: LoadRegisterImmediate16(ref de.Word); break;
                 case 0x12: LoadMemory8(de.Word, af.High); break;
@@ -128,15 +138,39 @@ namespace MasterFudge.Emulation.CPU
                 case 0x14: IncrementRegister8(ref de.High); break;
                 case 0x15: DecrementRegister8(ref de.High); break;
                 case 0x16: LoadRegisterImmediate8(ref de.High); break;
+                case 0x17: RotateLeftAccumulator(false); break;
+                case 0x18: JumpConditional8(true); break;
 
                 case 0x1B: DecrementRegister16(ref de.Word); break;
                 case 0x1C: IncrementRegister8(ref de.Low); break;
                 case 0x1D: DecrementRegister8(ref de.Low); break;
                 case 0x1E: LoadRegisterImmediate8(ref de.Low); break;
+                case 0x1F: RotateRightAccumulator(false); break;
+                case 0x20: JumpConditional8(!IsFlagSet(Flags.Z)); break;
 
+                case 0x27: DecimalAdjustAccumulator(); break;
+                case 0x28: JumpConditional8(IsFlagSet(Flags.Z)); break;
+
+                case 0x30: JumpConditional8(!IsFlagSet(Flags.C)); break;
                 case 0x31: LoadRegisterImmediate16(ref sp); break;
+
+                case 0x38: JumpConditional8(IsFlagSet(Flags.C)); break;
+
+                case 0x76: halted = true; break;
+
                 case 0xC3: JumpConditional16(true); break;
+
+                case 0xD9: ExchangeRegisters16(ref bc, ref bcShadow); ExchangeRegisters16(ref de, ref deShadow); ExchangeRegisters16(ref hl, ref hlShadow); break;
+
+                case 0xE3: ExchangeStackRegister16(ref hl); break;
+
+                case 0xEB: ExchangeRegisters16(ref de, ref hl); break;
+
+                case 0xF3: iff1 = iff2 = false; break;
+
                 case 0xF5: Push(af); break;
+
+                case 0xFB: eiDelay = true; break;
 
                 default: throw new Exception(MakeUnimplementedOpcodeString((ushort)(pc - 1)));
             }
@@ -147,8 +181,17 @@ namespace MasterFudge.Emulation.CPU
             // TODO: everything
             switch (op)
             {
-                case 0x43: memoryMapper.Write16(memoryMapper.Read16(pc), bc.Word); pc += 2; break;
-                case 0x73: memoryMapper.Write16(memoryMapper.Read16(pc), sp); pc += 2; break;
+                case 0x43: LoadMemory16(memoryMapper.Read16(pc), bc.Word); pc += 2; break;
+
+                case 0x46: interruptMode = 0; break;
+
+                case 0x53: LoadMemory16(memoryMapper.Read16(pc), de.Word); pc += 2; break;
+
+                case 0x56: interruptMode = 1; break;
+
+                case 0x5E: interruptMode = 2; break;
+
+                case 0x73: LoadMemory16(memoryMapper.Read16(pc), sp); pc += 2; break;
 
                 default: throw new Exception(MakeUnimplementedOpcodeString((ushort)(pc - 2)));
             }
@@ -189,6 +232,7 @@ namespace MasterFudge.Emulation.CPU
         }
 
         // TODO: verify naming of these functions, wrt addressing modes and shit
+        // TODO: reorder however it makes sense
 
         private void Pop(ref Register register)
         {
@@ -200,6 +244,82 @@ namespace MasterFudge.Emulation.CPU
         {
             memoryMapper.Write8(--sp, register.High);
             memoryMapper.Write8(--sp, register.Low);
+        }
+
+        private void RotateLeftAccumulator(bool circular)
+        {
+            bool bit7Set = IsBitSet(af.High, 7);
+            if (!circular)
+            {
+                af.High <<= 1;
+                if (IsFlagSet(Flags.C)) af.High |= 0x01;
+            }
+            else
+            {
+                af.High = (byte)((af.High << 1) | (af.High >> 7));
+            }
+
+            SetClearFlagConditional(Flags.C, bit7Set);
+            ClearFlag(Flags.N | Flags.H);
+        }
+
+        private void RotateRightAccumulator(bool circular)
+        {
+            bool bit0Set = IsBitSet(af.High, 0);
+            if (!circular)
+            {
+                af.High >>= 1;
+                if (IsFlagSet(Flags.C)) af.High |= 0x80;
+            }
+            else
+            {
+                af.High = (byte)((af.High << 7) | (af.High >> 1));
+            }
+
+            SetClearFlagConditional(Flags.C, bit0Set);
+            ClearFlag(Flags.N | Flags.H);
+        }
+
+        private void DecimalAdjustAccumulator()
+        {
+            int value = af.High;
+
+            if (!IsFlagSet(Flags.N))
+            {
+                if (IsFlagSet(Flags.H) || ((value & 0x0F) > 9)) value += 6;
+                if (IsFlagSet(Flags.C) || value > 0x9F) value += 0x60;
+            }
+            else
+            {
+                if (IsFlagSet(Flags.H)) value = (value - 6) & 0xFF;
+                if (IsFlagSet(Flags.C)) value -= 0x60;
+            }
+
+            ClearFlag(Flags.H | Flags.Z);
+
+            SetClearFlagConditional(Flags.C, ((value & 0x100) != 0));
+            SetClearFlagConditional(Flags.Z, ((value & 0xFF) == 0));
+
+            af.High = (byte)value;
+        }
+
+        private void ExchangeRegisters16(ref Register reg1, ref Register reg2)
+        {
+            ushort tmp = reg1.Word;
+            reg1.Word = reg2.Word;
+            reg2.Word = tmp;
+        }
+
+        private void ExchangeStackRegister16(ref Register reg)
+        {
+            byte sl = memoryMapper.Read8(sp);
+            byte sh = memoryMapper.Read8((ushort)(sp + 1));
+
+            memoryMapper.Write8(sp, reg.Low);
+            memoryMapper.Write8((ushort)(sp + 1), reg.High);
+
+            reg.Low = sl;
+            reg.High = sh;
         }
 
         private void LoadRegisterImmediate8(ref byte register)
@@ -261,7 +381,7 @@ namespace MasterFudge.Emulation.CPU
         private void JumpConditional8(bool condition)
         {
             if (condition)
-                pc += (ushort)((sbyte)memoryMapper.Read8(pc));
+                pc += (ushort)((sbyte)(memoryMapper.Read8(pc) + 1));
             else
                 pc++;
         }
