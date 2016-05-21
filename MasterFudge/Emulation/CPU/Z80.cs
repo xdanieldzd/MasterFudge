@@ -161,7 +161,102 @@ namespace MasterFudge.Emulation.CPU
 
                 case 0x38: JumpConditional8(IsFlagSet(Flags.C)); break;
 
+                case 0x40: LoadRegister8(ref bc.High, bc.High); break;
+                case 0x41: LoadRegister8(ref bc.High, bc.Low); break;
+                case 0x42: LoadRegister8(ref bc.High, de.High); break;
+                case 0x43: LoadRegister8(ref bc.High, de.Low); break;
+                case 0x44: LoadRegister8(ref bc.High, hl.High); break;
+                case 0x45: LoadRegister8(ref bc.High, hl.Low); break;
+                case 0x46: bc.High = memoryMapper.Read8(hl.Word); break;
+                case 0x47: LoadRegister8(ref bc.High, af.High); break;
+                case 0x48: LoadRegister8(ref bc.Low, bc.High); break;
+                case 0x49: LoadRegister8(ref bc.Low, bc.Low); break;
+                case 0x4A: LoadRegister8(ref bc.Low, de.High); break;
+                case 0x4B: LoadRegister8(ref bc.Low, de.Low); break;
+                case 0x4C: LoadRegister8(ref bc.Low, hl.High); break;
+                case 0x4D: LoadRegister8(ref bc.Low, hl.Low); break;
+                case 0x4E: bc.Low = memoryMapper.Read8(hl.Word); break;
+                case 0x4F: LoadRegister8(ref bc.Low, af.High); break;
+                case 0x50: LoadRegister8(ref de.High, bc.High); break;
+                case 0x51: LoadRegister8(ref de.High, bc.Low); break;
+                case 0x52: LoadRegister8(ref de.High, de.High); break;
+                case 0x53: LoadRegister8(ref de.High, de.Low); break;
+                case 0x54: LoadRegister8(ref de.High, hl.High); break;
+                case 0x55: LoadRegister8(ref de.High, hl.Low); break;
+                case 0x56: de.High = memoryMapper.Read8(hl.Word); break;
+                case 0x57: LoadRegister8(ref de.High, af.High); break;
+                case 0x58: LoadRegister8(ref de.Low, bc.High); break;
+                case 0x59: LoadRegister8(ref de.Low, bc.Low); break;
+                case 0x5A: LoadRegister8(ref de.Low, de.High); break;
+                case 0x5B: LoadRegister8(ref de.Low, de.Low); break;
+                case 0x5C: LoadRegister8(ref de.Low, hl.High); break;
+                case 0x5D: LoadRegister8(ref de.Low, hl.Low); break;
+                case 0x5E: de.Low = memoryMapper.Read8(hl.Word); break;
+                case 0x5F: LoadRegister8(ref de.Low, af.High); break;
+                case 0x60: LoadRegister8(ref hl.High, bc.High); break;
+                case 0x61: LoadRegister8(ref hl.High, bc.Low); break;
+                case 0x62: LoadRegister8(ref hl.High, de.High); break;
+                case 0x63: LoadRegister8(ref hl.High, de.Low); break;
+                case 0x64: LoadRegister8(ref hl.High, hl.High); break;
+                case 0x65: LoadRegister8(ref hl.High, hl.Low); break;
+                case 0x66: hl.High = memoryMapper.Read8(hl.Word); break;
+                case 0x67: LoadRegister8(ref hl.High, af.High); break;
+                case 0x68: LoadRegister8(ref hl.Low, bc.High); break;
+                case 0x69: LoadRegister8(ref hl.Low, bc.Low); break;
+                case 0x6A: LoadRegister8(ref hl.Low, de.High); break;
+                case 0x6B: LoadRegister8(ref hl.Low, de.Low); break;
+                case 0x6C: LoadRegister8(ref hl.Low, hl.High); break;
+                case 0x6D: LoadRegister8(ref hl.Low, hl.Low); break;
+                case 0x6E: hl.Low = memoryMapper.Read8(hl.Word); break;
+                case 0x6F: LoadRegister8(ref hl.Low, af.High); break;
+                case 0x70: LoadMemory8(hl.Word, bc.High); break;
+                case 0x71: LoadMemory8(hl.Word, bc.Low); break;
+                case 0x72: LoadMemory8(hl.Word, de.High); break;
+                case 0x73: LoadMemory8(hl.Word, de.Low); break;
+                case 0x74: LoadMemory8(hl.Word, hl.High); break;
+                case 0x75: LoadMemory8(hl.Word, hl.Low); break;
                 case 0x76: halted = true; break;
+                case 0x77: LoadMemory8(hl.Word, af.High); break;
+                case 0x78: LoadRegister8(ref af.High, bc.High); break;
+                case 0x79: LoadRegister8(ref af.High, bc.Low); break;
+                case 0x7A: LoadRegister8(ref af.High, de.High); break;
+                case 0x7B: LoadRegister8(ref af.High, de.Low); break;
+                case 0x7C: LoadRegister8(ref af.High, hl.High); break;
+                case 0x7D: LoadRegister8(ref af.High, hl.Low); break;
+                case 0x7E: af.High = memoryMapper.Read8(hl.Word); break;
+                case 0x7F: LoadRegister8(ref af.High, af.High); break;
+                case 0x80: Add8(bc.High, false); break;
+                case 0x81: Add8(bc.Low, false); break;
+                case 0x82: Add8(de.High, false); break;
+                case 0x83: Add8(de.Low, false); break;
+                case 0x84: Add8(hl.High, false); break;
+                case 0x85: Add8(hl.Low, false); break;
+                case 0x86: Add8(memoryMapper.Read8(hl.Word), false); break;
+                case 0x87: Add8(af.High, false); break;
+                case 0x88: Add8(bc.High, true); break;
+                case 0x89: Add8(bc.Low, true); break;
+                case 0x8A: Add8(de.High, true); break;
+                case 0x8B: Add8(de.Low, true); break;
+                case 0x8C: Add8(hl.High, true); break;
+                case 0x8D: Add8(hl.Low, true); break;
+                case 0x8E: Add8(memoryMapper.Read8(hl.Word), true); break;
+                case 0x8F: Add8(af.High, true); break;
+                case 0x90: Subtract8(bc.High, false); break;
+                case 0x91: Subtract8(bc.Low, false); break;
+                case 0x92: Subtract8(de.High, false); break;
+                case 0x93: Subtract8(de.Low, false); break;
+                case 0x94: Subtract8(hl.High, false); break;
+                case 0x95: Subtract8(hl.Low, false); break;
+                case 0x96: Subtract8(memoryMapper.Read8(hl.Word), false); break;
+                case 0x97: Subtract8(af.High, false); break;
+                case 0x98: Subtract8(bc.High, true); break;
+                case 0x99: Subtract8(bc.Low, true); break;
+                case 0x9A: Subtract8(de.High, true); break;
+                case 0x9B: Subtract8(de.Low, true); break;
+                case 0x9C: Subtract8(hl.High, true); break;
+                case 0x9D: Subtract8(hl.Low, true); break;
+                case 0x9E: Subtract8(memoryMapper.Read8(hl.Word), true); break;
+                case 0x9F: Subtract8(af.High, true); break;
 
                 case 0xC0: ReturnConditional(!IsFlagSet(Flags.Z)); break;
 
@@ -340,6 +435,45 @@ namespace MasterFudge.Emulation.CPU
 
             reg.Low = sl;
             reg.High = sh;
+        }
+
+        private void Add8(byte operand, bool withCarry)
+        {
+            int result = (af.High + (sbyte)operand + (withCarry && IsFlagSet(Flags.C) ? 1 : 0));
+
+            ClearFlag(Flags.N);
+
+            // http://www.smspower.org/forums/14413-PVFlagAndSub#76353, TODO: confirm I did this right
+            SetClearFlagConditional(Flags.PV, ((((af.High ^ operand) & 0x80) == 0) && ((af.High ^ result) & 0x80) != 0));
+
+            SetClearFlagConditional(Flags.H, ((result & 0x0F) == 0));
+            SetClearFlagConditional(Flags.Z, ((result & 0xFF) == 0));
+            SetClearFlagConditional(Flags.S, IsBitSet((byte)result, 7));
+            SetClearFlagConditional(Flags.C, (result >= 0x100));
+
+            af.High = (byte)result;
+        }
+
+        private void Subtract8(byte operand, bool withCarry)
+        {
+            int result = (af.High - (sbyte)operand - (withCarry && IsFlagSet(Flags.C) ? 1 : 0));
+
+            ClearFlag(Flags.N);
+
+            // http://www.smspower.org/forums/14413-PVFlagAndSub#76353, TODO: confirm I did this right
+            SetClearFlagConditional(Flags.PV, ((((af.High ^ operand) & 0x80) != 0) && ((operand ^ result) & 0x80) == 0));
+
+            SetClearFlagConditional(Flags.H, ((result & 0x0F) == 0));
+            SetClearFlagConditional(Flags.Z, ((result & 0xFF) == 0));
+            SetClearFlagConditional(Flags.S, IsBitSet((byte)result, 7));
+            SetClearFlagConditional(Flags.C, (result >= 0x100));
+
+            af.High = (byte)result;
+        }
+
+        private void LoadRegister8(ref byte register, byte value)
+        {
+            register = value;
         }
 
         private void LoadRegisterImmediate8(ref byte register)
