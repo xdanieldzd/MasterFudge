@@ -257,6 +257,30 @@ namespace MasterFudge.Emulation.CPU
                 case 0x9D: Subtract8(hl.Low, true); break;
                 case 0x9E: Subtract8(memoryMapper.Read8(hl.Word), true); break;
                 case 0x9F: Subtract8(af.High, true); break;
+                case 0xA0: And8(bc.High); break;
+                case 0xA1: And8(bc.Low); break;
+                case 0xA2: And8(de.High); break;
+                case 0xA3: And8(de.Low); break;
+                case 0xA4: And8(hl.High); break;
+                case 0xA5: And8(hl.Low); break;
+                case 0xA6: And8(memoryMapper.Read8(hl.Word)); break;
+                case 0xA7: And8(af.High); break;
+                case 0xA8: Xor8(bc.High); break;
+                case 0xA9: Xor8(bc.Low); break;
+                case 0xAA: Xor8(de.High); break;
+                case 0xAB: Xor8(de.Low); break;
+                case 0xAC: Xor8(hl.High); break;
+                case 0xAD: Xor8(hl.Low); break;
+                case 0xAE: Xor8(memoryMapper.Read8(hl.Word)); break;
+                case 0xAF: Xor8(af.High); break;
+                case 0xB0: Or8(bc.High); break;
+                case 0xB1: Or8(bc.Low); break;
+                case 0xB2: Or8(de.High); break;
+                case 0xB3: Or8(de.Low); break;
+                case 0xB4: Or8(hl.High); break;
+                case 0xB5: Or8(hl.Low); break;
+                case 0xB6: Or8(memoryMapper.Read8(hl.Word)); break;
+                case 0xB7: Or8(af.High); break;
 
                 case 0xC0: ReturnConditional(!IsFlagSet(Flags.Z)); break;
 
@@ -339,6 +363,16 @@ namespace MasterFudge.Emulation.CPU
         private bool IsFlagSet(Flags flags)
         {
             return (((Flags)af.Low & flags) == flags);
+        }
+
+        private void CalculateAndSetParity(byte value)
+        {
+            int bitsSet = 0;
+            for (int i = 0; i < 8; i++)
+                if (IsBitSet(value, i))
+                    bitsSet++;
+
+            SetClearFlagConditional(Flags.PV, (bitsSet == 0 || (bitsSet % 2) == 0));
         }
 
         private bool IsBitSet(byte value, int bit)
@@ -469,6 +503,37 @@ namespace MasterFudge.Emulation.CPU
             SetClearFlagConditional(Flags.C, (result >= 0x100));
 
             af.High = (byte)result;
+        }
+
+        private void And8(byte operand)
+        {
+            af.High &= operand;
+
+            ClearFlag(Flags.C | Flags.N);
+            SetFlag(Flags.H);
+            SetClearFlagConditional(Flags.Z, (af.High == 0));
+            SetClearFlagConditional(Flags.S, IsBitSet(af.High, 7));
+            CalculateAndSetParity(af.High);
+        }
+
+        private void Xor8(byte operand)
+        {
+            af.High ^= operand;
+
+            ClearFlag(Flags.C | Flags.N | Flags.H);
+            SetClearFlagConditional(Flags.Z, (af.High == 0));
+            SetClearFlagConditional(Flags.S, IsBitSet(af.High, 7));
+            CalculateAndSetParity(af.High);
+        }
+
+        private void Or8(byte operand)
+        {
+            af.High |= operand;
+
+            ClearFlag(Flags.C | Flags.N | Flags.H);
+            SetClearFlagConditional(Flags.Z, (af.High == 0));
+            SetClearFlagConditional(Flags.S, IsBitSet(af.High, 7));
+            CalculateAndSetParity(af.High);
         }
 
         private void LoadRegister8(ref byte register, byte value)
