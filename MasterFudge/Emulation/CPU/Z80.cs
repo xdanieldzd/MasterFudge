@@ -11,6 +11,9 @@ namespace MasterFudge.Emulation.CPU
 {
     public partial class Z80
     {
+        public delegate byte IOPortReadDelegate(byte port);
+        public delegate void IOPortWriteDelegate(byte port, byte value);
+
         const int AddCyclesJumpCond8Taken = 5;
         const int AddCyclesRetCondTaken = 6;
         const int AddCyclesCallCondTaken = 7;
@@ -52,10 +55,14 @@ namespace MasterFudge.Emulation.CPU
         int currentCycles;
 
         MemoryMapper memoryMapper;
+        IOPortReadDelegate ioReadDelegate;
+        IOPortWriteDelegate ioWriteDelegate;
 
-        public Z80(MemoryMapper memMap)
+        public Z80(MemoryMapper memMap, IOPortReadDelegate ioRead, IOPortWriteDelegate ioWrite)
         {
             memoryMapper = memMap;
+            ioReadDelegate = ioRead;
+            ioWriteDelegate = ioWrite;
 
             af = bc = de = hl = new Register();
             afShadow = bcShadow = deShadow = hlShadow = new Register();
@@ -131,6 +138,7 @@ namespace MasterFudge.Emulation.CPU
                 case 0x07: RotateLeftAccumulator(true); break;
                 case 0x08: ExchangeRegisters16(ref af, ref afShadow); break;
 
+                case 0x0A: LoadRegisterFromMemory8(ref af.High, bc.Word); break;
                 case 0x0B: DecrementRegister16(ref bc.Word); break;
                 case 0x0C: IncrementRegister8(ref bc.Low); break;
                 case 0x0D: DecrementRegister8(ref bc.Low); break;
@@ -146,12 +154,14 @@ namespace MasterFudge.Emulation.CPU
                 case 0x17: RotateLeftAccumulator(false); break;
                 case 0x18: Jump8(); break;
 
+                case 0x1A: LoadRegisterFromMemory8(ref af.High, de.Word); break;
                 case 0x1B: DecrementRegister16(ref de.Word); break;
                 case 0x1C: IncrementRegister8(ref de.Low); break;
                 case 0x1D: DecrementRegister8(ref de.Low); break;
                 case 0x1E: LoadRegisterImmediate8(ref de.Low); break;
                 case 0x1F: RotateRightAccumulator(false); break;
                 case 0x20: JumpConditional8(!IsFlagSet(Flags.Z)); break;
+                case 0x21: LoadRegisterImmediate16(ref hl.Word); break;
 
                 case 0x27: DecimalAdjustAccumulator(); break;
                 case 0x28: JumpConditional8(IsFlagSet(Flags.Z)); break;
@@ -160,6 +170,10 @@ namespace MasterFudge.Emulation.CPU
                 case 0x31: LoadRegisterImmediate16(ref sp); break;
 
                 case 0x38: JumpConditional8(IsFlagSet(Flags.C)); break;
+
+                case 0x3A: LoadRegisterFromMemory8(ref af.High, memoryMapper.Read16(pc)); pc += 2; break;
+
+                case 0x3E: LoadRegisterImmediate8(ref af.High); break;
 
                 case 0x40: LoadRegister8(ref bc.High, bc.High); break;
                 case 0x41: LoadRegister8(ref bc.High, bc.Low); break;
@@ -295,6 +309,7 @@ namespace MasterFudge.Emulation.CPU
 
                 case 0xD0: ReturnConditional(!IsFlagSet(Flags.C)); break;
 
+                case 0xD3: ioWriteDelegate(memoryMapper.Read8(pc++), af.High); break;
                 case 0xD4: CallConditional16(!IsFlagSet(Flags.C)); break;
 
                 case 0xD8: ReturnConditional(IsFlagSet(Flags.C)); break;
@@ -320,17 +335,31 @@ namespace MasterFudge.Emulation.CPU
             // TODO: everything
             switch (op)
             {
+                case 0x41: ioWriteDelegate(bc.Low, bc.High); break;
+
                 case 0x43: LoadMemory16(memoryMapper.Read16(pc), bc.Word); pc += 2; break;
 
                 case 0x46: interruptMode = 0; break;
+
+                case 0x49: ioWriteDelegate(bc.Low, bc.Low); break;
+
+                case 0x51: ioWriteDelegate(bc.Low, de.High); break;
 
                 case 0x53: LoadMemory16(memoryMapper.Read16(pc), de.Word); pc += 2; break;
 
                 case 0x56: interruptMode = 1; break;
 
+                case 0x59: ioWriteDelegate(bc.Low, de.Low); break;
+
                 case 0x5E: interruptMode = 2; break;
 
+                case 0x61: ioWriteDelegate(bc.Low, hl.High); break;
+
+                case 0x69: ioWriteDelegate(bc.Low, hl.Low); break;
+
                 case 0x73: LoadMemory16(memoryMapper.Read16(pc), sp); pc += 2; break;
+
+                case 0x79: ioWriteDelegate(bc.Low, af.High); break;
 
                 default: throw new Exception(MakeUnimplementedOpcodeString((ushort)(pc - 2)));
             }
@@ -539,6 +568,11 @@ namespace MasterFudge.Emulation.CPU
         private void LoadRegister8(ref byte register, byte value)
         {
             register = value;
+        }
+
+        private void LoadRegisterFromMemory8(ref byte register, ushort address)
+        {
+            register = memoryMapper.Read8(address);
         }
 
         private void LoadRegisterImmediate8(ref byte register)

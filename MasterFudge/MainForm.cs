@@ -31,6 +31,17 @@ namespace MasterFudge
                 Clipboard.SetText(tmp.ToString());
             }
 
+            if (false)
+            {
+                StringBuilder tmp = new StringBuilder();
+                for (int i = 0; i < 256; i++)
+                {
+                    byte port = (byte)(i & 0xC1);
+                    tmp.AppendFormat("raw 0x{0:X2}, masked 0x{1:X2}\n", i, port);
+                }
+                Clipboard.SetText(tmp.ToString());
+            }
+
             InitializeComponent();
 
             Text = Application.ProductName;

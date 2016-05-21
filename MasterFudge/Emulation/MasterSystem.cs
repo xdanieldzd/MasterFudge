@@ -26,6 +26,8 @@ namespace MasterFudge.Emulation
         WRAM wram;
         BaseCartridge cartridge;
 
+        byte portMemoryControl, portIoControl;
+
         Thread mainThread;
         bool isPaused, isStopped;
 
@@ -34,13 +36,15 @@ namespace MasterFudge.Emulation
             memoryMapper = new MemoryMapper();
 
             cyclesPerFrame = (int)((isNtsc ? MasterClockNTSC : MasterClockPAL) / 15.0 / (isNtsc ? FramesPerSecNTSC : FramesPerSecPAL));
-            cpu = new Z80(memoryMapper);
+            cpu = new Z80(memoryMapper, ReadIOPort, WriteIOPort);
             wram = new WRAM();
 
             memoryMapper.AddMemoryArea(wram.GetMemoryAreaDescriptor());
 
             mainThread = new Thread(new ThreadStart(Execute)) { IsBackground = true, Name = "SMS" };
             isPaused = isStopped = true;
+
+            Reset();
         }
 
         ~MasterSystem()
@@ -78,6 +82,13 @@ namespace MasterFudge.Emulation
             isPaused = true;
         }
 
+        public void Reset()
+        {
+            // TODO: more resetti things
+            cpu.Reset();
+            portMemoryControl = portIoControl = 0;
+        }
+
         private void Execute()
         {
             try
@@ -105,6 +116,100 @@ namespace MasterFudge.Emulation
             {
                 string message = string.Format("Exception occured: {0}\n\nEmulation thread has been stopped.", ex.Message);
                 System.Windows.Forms.MessageBox.Show(message);
+            }
+        }
+
+        // TODO: all the IO port stuff
+
+        // 0xC1 mask via http://www.smspower.org/uploads/Development/smstech-20021112.txt, ch3 I/O - A7,A6,A0
+        private byte ReadIOPort(byte port)
+        {
+            port = (byte)(port & 0xC1);
+
+            switch (port & 0xF0)
+            {
+                case 0x00:
+                    // Uh, behave like SMS2 for now
+                    return 0xFF;
+
+                case 0x40:
+                    // Counters
+                    if ((port & 0x01) == 0)
+                    {
+                        // V counter
+                    }
+                    else
+                    {
+                        // H counter
+                    }
+                    break;
+
+                case 0x80:
+                    // VDP
+                    if ((port & 0x01) == 0)
+                    {
+                        // Data port
+                    }
+                    else
+                    {
+                        // Status flags
+                    }
+                    break;
+
+                case 0xC0:
+                    if ((port & 0x01) == 0)
+                    {
+                        // IO port A/B register
+                    }
+                    else
+                    {
+                        // IO port B/misc register
+                    }
+                    break;
+            }
+
+            return 0xAA;
+        }
+
+        private void WriteIOPort(byte port, byte value)
+        {
+            port = (byte)(port & 0xC1);
+
+            switch (port & 0xF0)
+            {
+                case 0x00:
+                    // System stuff
+                    if ((port & 0x01) == 0)
+                    {
+                        // Memory control
+                        portMemoryControl = value;
+                    }
+                    else
+                    {
+                        // I/O control
+                        portIoControl = value;
+                    }
+                    break;
+
+                case 0x40:
+                    // PSG
+                    break;
+
+                case 0x80:
+                    // VDP
+                    if ((port & 0x01) == 0)
+                    {
+                        // Data port
+                    }
+                    else
+                    {
+                        // Control port
+                    }
+                    break;
+
+                case 0xC0:
+                    // No effect
+                    break;
             }
         }
     }
