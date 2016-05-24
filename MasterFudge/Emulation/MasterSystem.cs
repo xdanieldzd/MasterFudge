@@ -28,8 +28,11 @@ namespace MasterFudge.Emulation
 
         byte portMemoryControl, portIoControl;
 
+        // TODO: uuhhhh threading shit is actually broken and just runs however the fuck it wants, fix maybe?
         Thread mainThread;
-        bool isPaused, isStopped;
+        static ManualResetEvent threadReset;
+
+        public bool IsPaused { get { return (mainThread?.ThreadState == ThreadState.Running || mainThread?.ThreadState == ThreadState.Background); } }
 
         public MasterSystem(bool isNtsc)
         {
@@ -42,14 +45,12 @@ namespace MasterFudge.Emulation
             memoryMapper.AddMemoryArea(wram.GetMemoryAreaDescriptor());
 
             mainThread = new Thread(new ThreadStart(Execute)) { IsBackground = true, Name = "SMS" };
-            isPaused = isStopped = true;
-
-            Reset();
+            threadReset = new ManualResetEvent(false);
         }
 
         ~MasterSystem()
         {
-            isStopped = true;
+            mainThread.Join();
             while (mainThread.ThreadState != ThreadState.Stopped) { }
         }
 
@@ -66,20 +67,18 @@ namespace MasterFudge.Emulation
 
         public void Run()
         {
-            if (mainThread.ThreadState == ThreadState.Running)
-            {
-                isPaused = false;
-            }
-            else
-            {
-                isPaused = isStopped = false;
-                mainThread.Start();
-            }
+            mainThread.Start();
+            threadReset.Set();
         }
 
         public void Pause()
         {
-            isPaused = true;
+            threadReset.Reset();
+        }
+
+        public void Resume()
+        {
+            threadReset.Set();
         }
 
         public void Reset()
@@ -93,23 +92,19 @@ namespace MasterFudge.Emulation
         {
             try
             {
-                while (!isStopped)
+                Reset();
+
+                while (true)
                 {
-                    if (!isPaused)
+                    int currentCycles = 0;
+                    while (currentCycles < cyclesPerFrame)
                     {
-                        int currentCycles = 0;
-                        while (currentCycles < cyclesPerFrame)
-                        {
-                            currentCycles += cpu.Execute();
-                            //vdp
-                            //sound
-                            //irqs
-                        }
+                        currentCycles += cpu.Execute();
+                        //vdp
+                        //sound
+                        //irqs
                     }
-                    else
-                    {
-                        System.Diagnostics.Debug.Print("paused");
-                    }
+                    threadReset.WaitOne();
                 }
             }
             catch (Exception ex)

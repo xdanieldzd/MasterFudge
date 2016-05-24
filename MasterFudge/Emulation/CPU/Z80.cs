@@ -11,6 +11,10 @@ namespace MasterFudge.Emulation.CPU
 {
     public partial class Z80
     {
+        /* http://clrhome.org/table/
+         * http://z80-heaven.wikidot.com/opcode-reference-chart
+         */
+
         public delegate byte IOPortReadDelegate(byte port);
         public delegate void IOPortWriteDelegate(byte port, byte value);
 
@@ -18,6 +22,8 @@ namespace MasterFudge.Emulation.CPU
         const int AddCyclesRetCondTaken = 6;
         const int AddCyclesCallCondTaken = 7;
         const int AddCyclesRepeatByteOps = 5;   // EDBx
+
+        // Flag notes http://stackoverflow.com/a/30411377
 
         [Flags]
         enum Flags : byte
@@ -82,6 +88,8 @@ namespace MasterFudge.Emulation.CPU
             interruptMode = 0;
         }
 
+        const bool DIE_ON_UNIMPLEMENTED_PREFIXES = false;
+
         public int Execute()
         {
             currentCycles = 0;
@@ -93,14 +101,13 @@ namespace MasterFudge.Emulation.CPU
                 byte op = memoryMapper.Read8(pc++);
                 switch (op)
                 {
-                    case 0xCB: break;
-                    case 0xDD: break;
+                    case 0xCB: if (DIE_ON_UNIMPLEMENTED_PREFIXES) throw new Exception(string.Format("Unimplemented opcode prefix 0xCB")); break;
+                    case 0xDD: if (DIE_ON_UNIMPLEMENTED_PREFIXES) throw new Exception(string.Format("Unimplemented opcode prefix 0xDD")); break;
                     case 0xED: ExecuteOpED(); break;
-                    case 0xFD: break;
+                    case 0xFD: if (DIE_ON_UNIMPLEMENTED_PREFIXES) throw new Exception(string.Format("Unimplemented opcode prefix 0xFD")); break;
                     default:
                         currentCycles += cycleCountsMain[op];
-                        //opcodeTableMain[op](this);
-                        ExecuteOp_BigSwitchThing(op);
+                        ExecuteOp(op);
                         break;
                 }
 
@@ -120,61 +127,75 @@ namespace MasterFudge.Emulation.CPU
         {
             byte edOp = memoryMapper.Read8(pc++);
             currentCycles += cycleCountsED[edOp];
-            //opcodeTableED[edOp](this);
-            ExecuteOpED_BigSwitchThing(edOp);
+            ExecuteOpED(edOp);
         }
 
-        private void ExecuteOp_BigSwitchThing(byte op)
+        private void ExecuteOp(byte op)
         {
             switch (op)
             {
                 case 0x00: break;
                 case 0x01: LoadRegisterImmediate16(ref bc.Word); break;
                 case 0x02: LoadMemory8(bc.Word, af.High); break;
-                case 0x03: IncrementRegister16(ref bc.Word); break;
-                case 0x04: IncrementRegister8(ref bc.High); break;
-                case 0x05: DecrementRegister8(ref bc.High); break;
+                case 0x03: Increment16(ref bc.Word); break;
+                case 0x04: Increment8(ref bc.High); break;
+                case 0x05: Decrement8(ref bc.High); break;
                 case 0x06: LoadRegisterImmediate8(ref bc.High); break;
                 case 0x07: RotateLeftAccumulator(true); break;
                 case 0x08: ExchangeRegisters16(ref af, ref afShadow); break;
-
+                case 0x09: Add16(ref hl, bc.Word, false); break;
                 case 0x0A: LoadRegisterFromMemory8(ref af.High, bc.Word); break;
-                case 0x0B: DecrementRegister16(ref bc.Word); break;
-                case 0x0C: IncrementRegister8(ref bc.Low); break;
-                case 0x0D: DecrementRegister8(ref bc.Low); break;
+                case 0x0B: Decrement16(ref bc.Word); break;
+                case 0x0C: Increment8(ref bc.Low); break;
+                case 0x0D: Decrement8(ref bc.Low); break;
                 case 0x0E: LoadRegisterImmediate8(ref bc.Low); break;
                 case 0x0F: RotateRightAccumulator(true); break;
-
+                case 0x10: DecrementJumpNonZero(); break;
                 case 0x11: LoadRegisterImmediate16(ref de.Word); break;
                 case 0x12: LoadMemory8(de.Word, af.High); break;
-                case 0x13: IncrementRegister16(ref de.Word); break;
-                case 0x14: IncrementRegister8(ref de.High); break;
-                case 0x15: DecrementRegister8(ref de.High); break;
+                case 0x13: Increment16(ref de.Word); break;
+                case 0x14: Increment8(ref de.High); break;
+                case 0x15: Decrement8(ref de.High); break;
                 case 0x16: LoadRegisterImmediate8(ref de.High); break;
                 case 0x17: RotateLeftAccumulator(false); break;
                 case 0x18: Jump8(); break;
-
+                case 0x19: Add16(ref hl, de.Word, false); break;
                 case 0x1A: LoadRegisterFromMemory8(ref af.High, de.Word); break;
-                case 0x1B: DecrementRegister16(ref de.Word); break;
-                case 0x1C: IncrementRegister8(ref de.Low); break;
-                case 0x1D: DecrementRegister8(ref de.Low); break;
+                case 0x1B: Decrement16(ref de.Word); break;
+                case 0x1C: Increment8(ref de.Low); break;
+                case 0x1D: Decrement8(ref de.Low); break;
                 case 0x1E: LoadRegisterImmediate8(ref de.Low); break;
                 case 0x1F: RotateRightAccumulator(false); break;
                 case 0x20: JumpConditional8(!IsFlagSet(Flags.Z)); break;
                 case 0x21: LoadRegisterImmediate16(ref hl.Word); break;
-
+                case 0x22: LoadMemory16(memoryMapper.Read16(pc), hl.Word); pc += 2; break;
+                case 0x23: Increment16(ref hl.Word); break;
+                case 0x24: Increment8(ref hl.High); break;
+                case 0x25: Decrement8(ref hl.High); break;
+                case 0x26: LoadRegisterImmediate8(ref hl.High); break;
                 case 0x27: DecimalAdjustAccumulator(); break;
                 case 0x28: JumpConditional8(IsFlagSet(Flags.Z)); break;
-
+                case 0x29: Add16(ref hl, hl.Word, false); break;
+                case 0x2A: LoadRegister16(ref hl.Word, memoryMapper.Read16(memoryMapper.Read16(pc))); pc += 2; break;
+                case 0x2B: Decrement16(ref hl.Word); break;
+                case 0x2C: Increment8(ref hl.Low); break;
+                case 0x2D: Decrement8(ref hl.Low); break;
+                case 0x2E: LoadRegisterImmediate8(ref hl.Low); break;
+                case 0x2F: af.High ^= 0xFF; SetFlag(Flags.N | Flags.H); break;
                 case 0x30: JumpConditional8(!IsFlagSet(Flags.C)); break;
                 case 0x31: LoadRegisterImmediate16(ref sp); break;
+                case 0x32: LoadMemory8(memoryMapper.Read16(pc), af.High); pc += 2; break;
+                case 0x33: Increment16(ref sp); break;
 
+                case 0x37: SetFlag(Flags.C); ClearFlag(Flags.N | Flags.H); break;
                 case 0x38: JumpConditional8(IsFlagSet(Flags.C)); break;
-
+                case 0x39: Add16(ref hl, sp, false); break;
                 case 0x3A: LoadRegisterFromMemory8(ref af.High, memoryMapper.Read16(pc)); pc += 2; break;
-
+                case 0x3B: Decrement16(ref sp); break;
+                case 0x3C: Increment8(ref af.High); break;
+                case 0x3D: Decrement8(ref af.High); break;
                 case 0x3E: LoadRegisterImmediate8(ref af.High); break;
-
+                case 0x3F: ClearFlag(Flags.N); SetClearFlagConditional(Flags.C, !IsFlagSet(Flags.C)); break;
                 case 0x40: LoadRegister8(ref bc.High, bc.High); break;
                 case 0x41: LoadRegister8(ref bc.High, bc.Low); break;
                 case 0x42: LoadRegister8(ref bc.High, de.High); break;
@@ -297,69 +318,111 @@ namespace MasterFudge.Emulation.CPU
                 case 0xB7: Or8(af.High); break;
 
                 case 0xC0: ReturnConditional(!IsFlagSet(Flags.Z)); break;
+                case 0xC1: Pop(ref bc); break;
 
                 case 0xC3: JumpConditional16(true); break;
                 case 0xC4: CallConditional16(!IsFlagSet(Flags.Z)); break;
-
+                case 0xC5: Push(bc); break;
+                case 0xC6: Add8(memoryMapper.Read8(pc++), false); break;
+                case 0xC7: Rst(0x0000); break;
                 case 0xC8: ReturnConditional(IsFlagSet(Flags.Z)); break;
                 case 0xC9: Return(); break;
 
                 case 0xCC: CallConditional16(IsFlagSet(Flags.Z)); break;
                 case 0xCD: Call16(); break;
-
+                case 0xCE: Add8(memoryMapper.Read8(pc++), true); break;
+                case 0xCF: Rst(0x0008); break;
                 case 0xD0: ReturnConditional(!IsFlagSet(Flags.C)); break;
+                case 0xD1: Pop(ref de); break;
 
                 case 0xD3: ioWriteDelegate(memoryMapper.Read8(pc++), af.High); break;
                 case 0xD4: CallConditional16(!IsFlagSet(Flags.C)); break;
-
+                case 0xD5: Push(de); break;
+                case 0xD6: Subtract8(memoryMapper.Read8(pc++), false); break;
+                case 0xD7: Rst(0x0010); break;
                 case 0xD8: ReturnConditional(IsFlagSet(Flags.C)); break;
                 case 0xD9: ExchangeRegisters16(ref bc, ref bcShadow); ExchangeRegisters16(ref de, ref deShadow); ExchangeRegisters16(ref hl, ref hlShadow); break;
+
+                case 0xDB: af.High = ioReadDelegate(memoryMapper.Read8(pc++)); break;
+
                 case 0xDC: CallConditional16(IsFlagSet(Flags.C)); break;
+
+                case 0xDE: Subtract8(memoryMapper.Read8(pc++), true); break;
+                case 0xDF: Rst(0x0018); break;
+
+                case 0xE1: Pop(ref hl); break;
 
                 case 0xE3: ExchangeStackRegister16(ref hl); break;
 
+                case 0xE5: Push(hl); break;
+                case 0xE6: And8(memoryMapper.Read8(pc++)); break;
+                case 0xE7: Rst(0x0020); break;
+
+                case 0xE9: pc = hl.Word; break;
+
                 case 0xEB: ExchangeRegisters16(ref de, ref hl); break;
+
+                case 0xEE: Xor8(memoryMapper.Read8(pc++)); break;
+                case 0xEF: Rst(0x0028); break;
+
+                case 0xF1: Pop(ref af); break;
 
                 case 0xF3: iff1 = iff2 = false; break;
 
                 case 0xF5: Push(af); break;
+                case 0xF6: Or8(memoryMapper.Read8(pc++)); break;
+                case 0xF7: Rst(0x0030); break;
 
                 case 0xFB: eiDelay = true; break;
+
+                case 0xFF: Rst(0x0038); break;
 
                 default: throw new Exception(MakeUnimplementedOpcodeString((ushort)(pc - 1)));
             }
         }
 
-        private void ExecuteOpED_BigSwitchThing(byte op)
+        private void ExecuteOpED(byte op)
         {
             // TODO: everything
             switch (op)
             {
+                case 0x40: PortRead(ref bc.High, bc.Low); break;
                 case 0x41: ioWriteDelegate(bc.Low, bc.High); break;
 
                 case 0x43: LoadMemory16(memoryMapper.Read16(pc), bc.Word); pc += 2; break;
 
                 case 0x46: interruptMode = 0; break;
-
+                case 0x47: i = af.High; break;
+                case 0x48: PortRead(ref bc.Low, bc.Low); break;
                 case 0x49: ioWriteDelegate(bc.Low, bc.Low); break;
+                case 0x4A: Add16(ref hl, bc.Word, true); break;
 
+                case 0x4F: r = af.High; break;
+                case 0x50: PortRead(ref de.High, bc.Low); break;
                 case 0x51: ioWriteDelegate(bc.Low, de.High); break;
 
                 case 0x53: LoadMemory16(memoryMapper.Read16(pc), de.Word); pc += 2; break;
 
                 case 0x56: interruptMode = 1; break;
-
+                case 0x57: LoadRegister8(ref af.High, i); break;
+                case 0x58: PortRead(ref de.Low, bc.Low); break;
                 case 0x59: ioWriteDelegate(bc.Low, de.Low); break;
+                case 0x5A: Add16(ref hl, de.Word, true); break;
 
                 case 0x5E: interruptMode = 2; break;
-
+                case 0x5F: LoadRegister8(ref af.High, r); break;
+                case 0x60: PortRead(ref hl.High, bc.Low); break;
                 case 0x61: ioWriteDelegate(bc.Low, hl.High); break;
 
+                case 0x68: PortRead(ref hl.Low, bc.Low); break;
                 case 0x69: ioWriteDelegate(bc.Low, hl.Low); break;
+                case 0x6A: Add16(ref hl, hl.Word, true); break;
 
                 case 0x73: LoadMemory16(memoryMapper.Read16(pc), sp); pc += 2; break;
 
+                case 0x78: PortRead(ref af.High, bc.Low); break;
                 case 0x79: ioWriteDelegate(bc.Low, af.High); break;
+                case 0x7A: Add16(ref hl, sp, true); break;
 
                 default: throw new Exception(MakeUnimplementedOpcodeString((ushort)(pc - 2)));
             }
@@ -422,6 +485,13 @@ namespace MasterFudge.Emulation.CPU
         {
             memoryMapper.Write8(--sp, register.High);
             memoryMapper.Write8(--sp, register.Low);
+        }
+
+        private void Rst(ushort address)
+        {
+            memoryMapper.Write8(--sp, (byte)((pc + 1) >> 8));
+            memoryMapper.Write8(--sp, (byte)((pc + 1) & 0xFF));
+            pc = address;
         }
 
         private void RotateLeftAccumulator(bool circular)
@@ -500,6 +570,22 @@ namespace MasterFudge.Emulation.CPU
             reg.High = sh;
         }
 
+        private void PortRead(ref byte dest, byte port)
+        {
+            dest = ioReadDelegate(port);
+
+            ClearFlag(Flags.N | Flags.H);
+            SetClearFlagConditional(Flags.Z, (dest == 0));
+            SetClearFlagConditional(Flags.S, IsBitSet(dest, 7));
+            CalculateAndSetParity(dest);
+        }
+
+        private void DecrementJumpNonZero()
+        {
+            bc.High--;
+            JumpConditional8(bc.High != 0);
+        }
+
         private void Add8(byte operand, bool withCarry)
         {
             int result = (af.High + (sbyte)operand + (withCarry && IsFlagSet(Flags.C) ? 1 : 0));
@@ -565,26 +651,48 @@ namespace MasterFudge.Emulation.CPU
             CalculateAndSetParity(af.High);
         }
 
+        private void Add16(ref Register dest, ushort operand, bool withCarry)
+        {
+            int result = (dest.Word + (short)operand + (withCarry && IsFlagSet(Flags.C) ? 1 : 0));
+
+            ClearFlag(Flags.N);
+            SetClearFlagConditional(Flags.H, ((result & 0x00FF) == 0));
+            SetClearFlagConditional(Flags.C, (result >= 0x10000));
+
+            if (withCarry)
+            {
+                SetClearFlagConditional(Flags.PV, ((((dest.Word ^ operand) & 0x8000) == 0) && ((dest.Word ^ result) & 0x8000) != 0));
+                SetClearFlagConditional(Flags.Z, ((result & 0xFFFF) == 0));
+                SetClearFlagConditional(Flags.S, IsBitSet((byte)result, 15));
+            }
+
+            dest.Word = (ushort)result;
+        }
+
+        private void LoadRegisterFromMemory8(ref byte register, ushort address)
+        {
+            LoadRegister8(ref register, memoryMapper.Read8(address));
+        }
+
+        private void LoadRegisterImmediate8(ref byte register)
+        {
+            LoadRegister8(ref register, memoryMapper.Read8(pc++));
+        }
+
         private void LoadRegister8(ref byte register, byte value)
         {
             register = value;
         }
 
-        private void LoadRegisterFromMemory8(ref byte register, ushort address)
-        {
-            register = memoryMapper.Read8(address);
-        }
-
-        private void LoadRegisterImmediate8(ref byte register)
-        {
-            register = memoryMapper.Read8(pc);
-            pc++;
-        }
-
         private void LoadRegisterImmediate16(ref ushort register)
         {
-            register = memoryMapper.Read16(pc);
+            LoadRegister16(ref register, memoryMapper.Read16(pc));
             pc += 2;
+        }
+
+        private void LoadRegister16(ref ushort register, ushort value)
+        {
+            register = value;
         }
 
         private void LoadMemory8(ushort address, byte value)
@@ -597,7 +705,7 @@ namespace MasterFudge.Emulation.CPU
             memoryMapper.Write16(address, value);
         }
 
-        private void IncrementRegister8(ref byte register)
+        private void Increment8(ref byte register)
         {
             register++;
 
@@ -609,12 +717,12 @@ namespace MasterFudge.Emulation.CPU
             SetClearFlagConditional(Flags.S, IsBitSet(register, 7));
         }
 
-        private void IncrementRegister16(ref ushort register)
+        private void Increment16(ref ushort register)
         {
             register++;
         }
 
-        private void DecrementRegister8(ref byte register)
+        private void Decrement8(ref byte register)
         {
             register--;
 
@@ -626,7 +734,7 @@ namespace MasterFudge.Emulation.CPU
             SetClearFlagConditional(Flags.S, IsBitSet(register, 7));
         }
 
-        private void DecrementRegister16(ref ushort register)
+        private void Decrement16(ref ushort register)
         {
             register--;
         }

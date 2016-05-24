@@ -49,7 +49,7 @@ namespace MasterFudge
             Program.Log.OnLogUpdate += new Logger.LogUpdateHandler((s, ev) =>
             {
                 if (lbTempDisasm.IsHandleCreated)
-                    lbTempDisasm.Invoke(new Action(() => lbTempDisasm.Items.Add(ev.Message)));
+                    lbTempDisasm.Invoke(new Action(() => { lbTempDisasm.Items.Add(ev.Message); lbTempDisasm.TopIndex = lbTempDisasm.Items.Count - 1; }));
             });
 
             Program.Log.OnLogCleared += new EventHandler((s, ev) =>
@@ -82,7 +82,7 @@ namespace MasterFudge
             string romFile = @"D:\ROMs\SMS\Hang-On_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\Sonic_the_Hedgehog_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\Y's_-_The_Vanished_Omen_(UE)_[!].sms";
-            //romFile = @"D:\ROMs\SMS\VDPTEST.sms";
+            romFile = @"D:\ROMs\SMS\VDPTEST.sms";
             //romFile = @"D:\ROMs\SMS\[BIOS] Sega Master System (USA, Europe) (v1.3).sms";
 
             ms = new MasterSystem(false);
@@ -92,6 +92,20 @@ namespace MasterFudge
 
             Program.Log.WriteEvent("--- STARTING EMULATION ---");
             ms.Run();
+        }
+
+        private void btnTempPause_Click(object sender, EventArgs e)
+        {
+            if (!ms.IsPaused)
+            {
+                ms.Pause();
+                (sender as Button).Text = "Resume";
+            }
+            else
+            {
+                ms.Resume();
+                (sender as Button).Text = "Pause";
+            }
         }
     }
 }
