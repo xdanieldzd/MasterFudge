@@ -1162,7 +1162,7 @@ namespace MasterFudge.Emulation.CPU
             if (bc.Word != 0)
             {
                 currentCycles += AddCyclesRepeatByteOps;
-                pc--;
+                pc -= 2;
             }
         }
 
@@ -1184,7 +1184,7 @@ namespace MasterFudge.Emulation.CPU
             if (bc.Word != 0)
             {
                 currentCycles += AddCyclesRepeatByteOps;
-                pc--;
+                pc -= 2;
             }
         }
 
@@ -1206,7 +1206,7 @@ namespace MasterFudge.Emulation.CPU
             if (bc.Word != 0 && !IsFlagSet(Flags.Z))
             {
                 currentCycles += AddCyclesRepeatByteOps;
-                pc--;
+                pc -= 2;
             }
         }
 
@@ -1228,7 +1228,7 @@ namespace MasterFudge.Emulation.CPU
             if (bc.Word != 0)
             {
                 currentCycles += AddCyclesRepeatByteOps;
-                pc--;
+                pc -= 2;
             }
         }
 
@@ -1248,7 +1248,7 @@ namespace MasterFudge.Emulation.CPU
             if (bc.High != 0)
             {
                 currentCycles += AddCyclesRepeatByteOps;
-                pc--;
+                pc -= 2;
             }
         }
 
@@ -1268,7 +1268,7 @@ namespace MasterFudge.Emulation.CPU
             if (bc.High != 0)
             {
                 currentCycles += AddCyclesRepeatByteOps;
-                pc--;
+                pc -= 2;
             }
         }
 
@@ -1288,7 +1288,7 @@ namespace MasterFudge.Emulation.CPU
             if (bc.High != 0)
             {
                 currentCycles += AddCyclesRepeatByteOps;
-                pc--;
+                pc -= 2;
             }
         }
 
@@ -1308,7 +1308,7 @@ namespace MasterFudge.Emulation.CPU
             if (bc.High != 0)
             {
                 currentCycles += AddCyclesRepeatByteOps;
-                pc--;
+                pc -= 2;
             }
         }
 
