@@ -103,7 +103,7 @@ namespace MasterFudge.Emulation.CPU
                 byte op = memoryMapper.Read8(pc++);
                 switch (op)
                 {
-                    case 0xCB: if (DIE_ON_UNIMPLEMENTED_PREFIXES) throw new Exception(string.Format("Unimplemented opcode prefix 0xCB")); break;
+                    case 0xCB: ExecuteOpCB(); break;
                     case 0xDD: if (DIE_ON_UNIMPLEMENTED_PREFIXES) throw new Exception(string.Format("Unimplemented opcode prefix 0xDD")); break;
                     case 0xED: ExecuteOpED(); break;
                     case 0xFD: if (DIE_ON_UNIMPLEMENTED_PREFIXES) throw new Exception(string.Format("Unimplemented opcode prefix 0xFD")); break;
@@ -130,6 +130,13 @@ namespace MasterFudge.Emulation.CPU
             byte edOp = memoryMapper.Read8(pc++);
             currentCycles += cycleCountsED[edOp];
             ExecuteOpED(edOp);
+        }
+
+        private void ExecuteOpCB()
+        {
+            byte cbOp = memoryMapper.Read8(pc++);
+            currentCycles += cycleCountsCB[cbOp];
+            ExecuteOpCB(cbOp);
         }
 
         private void ExecuteOp(byte op)
@@ -399,65 +406,352 @@ namespace MasterFudge.Emulation.CPU
 
         private void ExecuteOpED(byte op)
         {
-
             switch (op)
             {
+                //00-3F - nothing
                 case 0x40: PortRead(ref bc.High, bc.Low); break;
                 case 0x41: ioWriteDelegate(bc.Low, bc.High); break;
-
+                case 0x42: Subtract16(ref hl, bc.Word, true); break;
                 case 0x43: LoadMemory16(memoryMapper.Read16(pc), bc.Word); pc += 2; break;
-
+                case 0x44: Negate(); break;
+                case 0x45: iff1 = iff2; Return(); break;
                 case 0x46: interruptMode = 0; break;
                 case 0x47: i = af.High; break;
                 case 0x48: PortRead(ref bc.Low, bc.Low); break;
                 case 0x49: ioWriteDelegate(bc.Low, bc.Low); break;
                 case 0x4A: Add16(ref hl, bc.Word, true); break;
-
+                case 0x4B: LoadRegister16(ref bc.Word, memoryMapper.Read16(memoryMapper.Read16(pc))); pc += 2; break;
                 //4C - undocumented
-
+                case 0x4D: Return(); break; // TODO: really just a return for our purposes? no IFF1=IFF2?
                 //4E - undocumented
                 case 0x4F: r = af.High; break;
                 case 0x50: PortRead(ref de.High, bc.Low); break;
                 case 0x51: ioWriteDelegate(bc.Low, de.High); break;
-
+                case 0x52: Subtract16(ref hl, de.Word, true); break;
                 case 0x53: LoadMemory16(memoryMapper.Read16(pc), de.Word); pc += 2; break;
                 //54 - undocumented
-
+                //55 - undocumented
                 case 0x56: interruptMode = 1; break;
                 case 0x57: LoadRegister8(ref af.High, i); break;
                 case 0x58: PortRead(ref de.Low, bc.Low); break;
                 case 0x59: ioWriteDelegate(bc.Low, de.Low); break;
                 case 0x5A: Add16(ref hl, de.Word, true); break;
-
+                case 0x5B: LoadRegister16(ref de.Word, memoryMapper.Read16(memoryMapper.Read16(pc))); pc += 2; break;
                 //5C - undocumented
-
+                //5D - undocumented
                 case 0x5E: interruptMode = 2; break;
                 case 0x5F: LoadRegister8(ref af.High, r); break;
                 case 0x60: PortRead(ref hl.High, bc.Low); break;
                 case 0x61: ioWriteDelegate(bc.Low, hl.High); break;
-
-                //63 - undocumented
+                case 0x62: Subtract16(ref hl, hl.Word, true); break;
+                case 0x63: LoadMemory16(memoryMapper.Read16(pc), hl.Word); pc += 2; break;
                 //64 - undocumented
-
+                //65 - undocumented
+                //66 - undocumented
+                case 0x67: RotateRight4B(); break;
                 case 0x68: PortRead(ref hl.Low, bc.Low); break;
                 case 0x69: ioWriteDelegate(bc.Low, hl.Low); break;
                 case 0x6A: Add16(ref hl, hl.Word, true); break;
-                //6B - undocumented
+                case 0x6B: LoadRegister16(ref hl.Word, memoryMapper.Read16(memoryMapper.Read16(pc))); pc += 2; break;
                 //6C - undocumented
-
+                //6D - undocumented
                 //6E - undocumented
-
+                case 0x6F: RotateLeft4B(); break;
                 //70 - undocumented
                 //71 - undocumented
-
+                case 0x72: Subtract16(ref hl, sp, true); break;
                 case 0x73: LoadMemory16(memoryMapper.Read16(pc), sp); pc += 2; break;
                 //74 - undocumented
-
+                //75 - undocumented
+                //76 - undocumented
+                //77 - undocumented
                 case 0x78: PortRead(ref af.High, bc.Low); break;
                 case 0x79: ioWriteDelegate(bc.Low, af.High); break;
                 case 0x7A: Add16(ref hl, sp, true); break;
-
+                case 0x7B: LoadRegister16(ref sp, memoryMapper.Read16(memoryMapper.Read16(pc))); pc += 2; break;
                 //7C - undocumented
+                //7D - undocumented
+                //7E - undocumented
+                //7F - undocumented
+                //80-9F - nothing
+                case 0xA0: LoadIncrement(); break;
+                case 0xA1: CompareIncrement(); break;
+                case 0xA2: InputIncrement(); break;
+                case 0xA3: OutputIncrement(); break;
+                //A4-A7 - nothing
+                case 0xA8: LoadDecrement(); break;
+                case 0xA9: CompareDecrement(); break;
+                case 0xAA: InputDecrement(); break;
+                case 0xAB: OutputDecrement(); break;
+                //AC-AF - nothing
+                case 0xB0: LoadIncrementRepeat(); break;
+                case 0xB1: CompareIncrementRepeat(); break;
+                case 0xB2: InputIncrementRepeat(); break;
+                case 0xB3: OutputIncrementRepeat(); break;
+                //B4-B7 - nothing
+                case 0xB8: LoadDecrementRepeat(); break;
+                case 0xB9: CompareDecrementRepeat(); break;
+                case 0xBA: InputDecrementRepeat(); break;
+                case 0xBB: OutputDecrementRepeat(); break;
+                //BC-FF - nothing
+
+                default: throw new Exception(MakeUnimplementedOpcodeString((ushort)(pc - 2)));
+            }
+        }
+
+        private void ExecuteOpCB(byte op)
+        {
+            switch (op)
+            {
+                case 0x00: RotateLeftCircular(ref bc.High); break;
+                case 0x01: RotateLeftCircular(ref bc.Low); break;
+                case 0x02: RotateLeftCircular(ref de.High); break;
+                case 0x03: RotateLeftCircular(ref de.Low); break;
+                case 0x04: RotateLeftCircular(ref hl.High); break;
+                case 0x05: RotateLeftCircular(ref hl.Low); break;
+                case 0x06: RotateLeftCircular(hl.Word); break;
+                case 0x07: RotateLeftCircular(ref af.High); break;
+                case 0x08: RotateRightCircular(ref bc.High); break;
+                case 0x09: RotateRightCircular(ref bc.Low); break;
+                case 0x0A: RotateRightCircular(ref de.High); break;
+                case 0x0B: RotateRightCircular(ref de.Low); break;
+                case 0x0C: RotateRightCircular(ref hl.High); break;
+                case 0x0D: RotateRightCircular(ref hl.Low); break;
+                case 0x0E: RotateRightCircular(hl.Word); break;
+                case 0x0F: RotateRightCircular(ref af.High); break;
+                case 0x10: RotateLeft(ref bc.High); break;
+                case 0x11: RotateLeft(ref bc.Low); break;
+                case 0x12: RotateLeft(ref de.High); break;
+                case 0x13: RotateLeft(ref de.Low); break;
+                case 0x14: RotateLeft(ref hl.High); break;
+                case 0x15: RotateLeft(ref hl.Low); break;
+                case 0x16: RotateLeft(hl.Word); break;
+                case 0x17: RotateLeft(ref af.High); break;
+                case 0x18: RotateRight(ref bc.High); break;
+                case 0x19: RotateRight(ref bc.Low); break;
+                case 0x1A: RotateRight(ref de.High); break;
+                case 0x1B: RotateRight(ref de.Low); break;
+                case 0x1C: RotateRight(ref hl.High); break;
+                case 0x1D: RotateRight(ref hl.Low); break;
+                case 0x1E: RotateRight(hl.Word); break;
+                case 0x1F: RotateRight(ref af.High); break;
+                case 0x20: ShiftLeftArithmetic(ref bc.High); break;
+                case 0x21: ShiftLeftArithmetic(ref bc.Low); break;
+                case 0x22: ShiftLeftArithmetic(ref de.High); break;
+                case 0x23: ShiftLeftArithmetic(ref de.Low); break;
+                case 0x24: ShiftLeftArithmetic(ref hl.High); break;
+                case 0x25: ShiftLeftArithmetic(ref hl.Low); break;
+                case 0x26: ShiftLeftArithmetic(hl.Word); break;
+                case 0x27: ShiftLeftArithmetic(ref af.High); break;
+                case 0x28: ShiftRightArithmetic(ref bc.High); break;
+                case 0x29: ShiftRightArithmetic(ref bc.Low); break;
+                case 0x2A: ShiftRightArithmetic(ref de.High); break;
+                case 0x2B: ShiftRightArithmetic(ref de.Low); break;
+                case 0x2C: ShiftRightArithmetic(ref hl.High); break;
+                case 0x2D: ShiftRightArithmetic(ref hl.Low); break;
+                case 0x2E: ShiftRightArithmetic(hl.Word); break;
+                case 0x2F: ShiftRightArithmetic(ref af.High); break;
+                //30-37 - undocumented
+                case 0x38: ShiftRightLogical(ref bc.High); break;
+                case 0x39: ShiftRightLogical(ref bc.Low); break;
+                case 0x3A: ShiftRightLogical(ref de.High); break;
+                case 0x3B: ShiftRightLogical(ref de.Low); break;
+                case 0x3C: ShiftRightLogical(ref hl.High); break;
+                case 0x3D: ShiftRightLogical(ref hl.Low); break;
+                case 0x3E: ShiftRightLogical(hl.Word); break;
+                case 0x3F: ShiftRightLogical(ref af.High); break;
+                case 0x40: TestBit(bc.High, 0); break;
+                case 0x41: TestBit(bc.Low, 0); break;
+                case 0x42: TestBit(de.High, 0); break;
+                case 0x43: TestBit(de.Low, 0); break;
+                case 0x44: TestBit(hl.High, 0); break;
+                case 0x45: TestBit(hl.Low, 0); break;
+                case 0x46: TestBit(memoryMapper.Read8(hl.Word), 0); break;
+                case 0x47: TestBit(af.High, 0); break;
+                case 0x48: TestBit(bc.High, 1); break;
+                case 0x49: TestBit(bc.Low, 1); break;
+                case 0x4A: TestBit(de.High, 1); break;
+                case 0x4B: TestBit(de.Low, 1); break;
+                case 0x4C: TestBit(hl.High, 1); break;
+                case 0x4D: TestBit(hl.Low, 1); break;
+                case 0x4E: TestBit(memoryMapper.Read8(hl.Word), 1); break;
+                case 0x4F: TestBit(af.High, 1); break;
+                case 0x50: TestBit(bc.High, 2); break;
+                case 0x51: TestBit(bc.Low, 2); break;
+                case 0x52: TestBit(de.High, 2); break;
+                case 0x53: TestBit(de.Low, 2); break;
+                case 0x54: TestBit(hl.High, 2); break;
+                case 0x55: TestBit(hl.Low, 2); break;
+                case 0x56: TestBit(memoryMapper.Read8(hl.Word), 2); break;
+                case 0x57: TestBit(af.High, 2); break;
+                case 0x58: TestBit(bc.High, 3); break;
+                case 0x59: TestBit(bc.Low, 3); break;
+                case 0x5A: TestBit(de.High, 3); break;
+                case 0x5B: TestBit(de.Low, 3); break;
+                case 0x5C: TestBit(hl.High, 3); break;
+                case 0x5D: TestBit(hl.Low, 3); break;
+                case 0x5E: TestBit(memoryMapper.Read8(hl.Word), 3); break;
+                case 0x5F: TestBit(af.High, 3); break;
+                case 0x60: TestBit(bc.High, 4); break;
+                case 0x61: TestBit(bc.Low, 4); break;
+                case 0x62: TestBit(de.High, 4); break;
+                case 0x63: TestBit(de.Low, 4); break;
+                case 0x64: TestBit(hl.High, 4); break;
+                case 0x65: TestBit(hl.Low, 4); break;
+                case 0x66: TestBit(memoryMapper.Read8(hl.Word), 4); break;
+                case 0x67: TestBit(af.High, 4); break;
+                case 0x68: TestBit(bc.High, 5); break;
+                case 0x69: TestBit(bc.Low, 5); break;
+                case 0x6A: TestBit(de.High, 5); break;
+                case 0x6B: TestBit(de.Low, 5); break;
+                case 0x6C: TestBit(hl.High, 5); break;
+                case 0x6D: TestBit(hl.Low, 5); break;
+                case 0x6E: TestBit(memoryMapper.Read8(hl.Word), 5); break;
+                case 0x6F: TestBit(af.High, 5); break;
+                case 0x70: TestBit(bc.High, 6); break;
+                case 0x71: TestBit(bc.Low, 6); break;
+                case 0x72: TestBit(de.High, 6); break;
+                case 0x73: TestBit(de.Low, 6); break;
+                case 0x74: TestBit(hl.High, 6); break;
+                case 0x75: TestBit(hl.Low, 6); break;
+                case 0x76: TestBit(memoryMapper.Read8(hl.Word), 6); break;
+                case 0x77: TestBit(af.High, 6); break;
+                case 0x78: TestBit(bc.High, 7); break;
+                case 0x79: TestBit(bc.Low, 7); break;
+                case 0x7A: TestBit(de.High, 7); break;
+                case 0x7B: TestBit(de.Low, 7); break;
+                case 0x7C: TestBit(hl.High, 7); break;
+                case 0x7D: TestBit(hl.Low, 7); break;
+                case 0x7E: TestBit(memoryMapper.Read8(hl.Word), 7); break;
+                case 0x7F: TestBit(af.High, 7); break;
+                case 0x80: ResetBit(ref bc.High, 0); break;
+                case 0x81: ResetBit(ref bc.Low, 0); break;
+                case 0x82: ResetBit(ref de.High, 0); break;
+                case 0x83: ResetBit(ref de.Low, 0); break;
+                case 0x84: ResetBit(ref hl.High, 0); break;
+                case 0x85: ResetBit(ref hl.Low, 0); break;
+                case 0x86: ResetBit(hl.Word, 0); break;
+                case 0x87: ResetBit(ref af.High, 0); break;
+                case 0x88: ResetBit(ref bc.High, 1); break;
+                case 0x89: ResetBit(ref bc.Low, 1); break;
+                case 0x8A: ResetBit(ref de.High, 1); break;
+                case 0x8B: ResetBit(ref de.Low, 1); break;
+                case 0x8C: ResetBit(ref hl.High, 1); break;
+                case 0x8D: ResetBit(ref hl.Low, 1); break;
+                case 0x8E: ResetBit(hl.Word, 1); break;
+                case 0x8F: ResetBit(ref af.High, 1); break;
+                case 0x90: ResetBit(ref bc.High, 2); break;
+                case 0x91: ResetBit(ref bc.Low, 2); break;
+                case 0x92: ResetBit(ref de.High, 2); break;
+                case 0x93: ResetBit(ref de.Low, 2); break;
+                case 0x94: ResetBit(ref hl.High, 2); break;
+                case 0x95: ResetBit(ref hl.Low, 2); break;
+                case 0x96: ResetBit(hl.Word, 2); break;
+                case 0x97: ResetBit(ref af.High, 2); break;
+                case 0x98: ResetBit(ref bc.High, 3); break;
+                case 0x99: ResetBit(ref bc.Low, 3); break;
+                case 0x9A: ResetBit(ref de.High, 3); break;
+                case 0x9B: ResetBit(ref de.Low, 3); break;
+                case 0x9C: ResetBit(ref hl.High, 3); break;
+                case 0x9D: ResetBit(ref hl.Low, 3); break;
+                case 0x9E: ResetBit(hl.Word, 3); break;
+                case 0x9F: ResetBit(ref af.High, 3); break;
+                case 0xA0: ResetBit(ref bc.High, 4); break;
+                case 0xA1: ResetBit(ref bc.Low, 4); break;
+                case 0xA2: ResetBit(ref de.High, 4); break;
+                case 0xA3: ResetBit(ref de.Low, 4); break;
+                case 0xA4: ResetBit(ref hl.High, 4); break;
+                case 0xA5: ResetBit(ref hl.Low, 4); break;
+                case 0xA6: ResetBit(hl.Word, 4); break;
+                case 0xA7: ResetBit(ref af.High, 4); break;
+                case 0xA8: ResetBit(ref bc.High, 5); break;
+                case 0xA9: ResetBit(ref bc.Low, 5); break;
+                case 0xAA: ResetBit(ref de.High, 5); break;
+                case 0xAB: ResetBit(ref de.Low, 5); break;
+                case 0xAC: ResetBit(ref hl.High, 5); break;
+                case 0xAD: ResetBit(ref hl.Low, 5); break;
+                case 0xAE: ResetBit(hl.Word, 5); break;
+                case 0xAF: ResetBit(ref af.High, 5); break;
+                case 0xB0: ResetBit(ref bc.High, 6); break;
+                case 0xB1: ResetBit(ref bc.Low, 6); break;
+                case 0xB2: ResetBit(ref de.High, 6); break;
+                case 0xB3: ResetBit(ref de.Low, 6); break;
+                case 0xB4: ResetBit(ref hl.High, 6); break;
+                case 0xB5: ResetBit(ref hl.Low, 6); break;
+                case 0xB6: ResetBit(hl.Word, 6); break;
+                case 0xB7: ResetBit(ref af.High, 6); break;
+                case 0xB8: ResetBit(ref bc.High, 7); break;
+                case 0xB9: ResetBit(ref bc.Low, 7); break;
+                case 0xBA: ResetBit(ref de.High, 7); break;
+                case 0xBB: ResetBit(ref de.Low, 7); break;
+                case 0xBC: ResetBit(ref hl.High, 7); break;
+                case 0xBD: ResetBit(ref hl.Low, 7); break;
+                case 0xBE: ResetBit(hl.Word, 7); break;
+                case 0xBF: ResetBit(ref af.High, 7); break;
+                case 0xC0: SetBit(ref bc.High, 0); break;
+                case 0xC1: SetBit(ref bc.Low, 0); break;
+                case 0xC2: SetBit(ref de.High, 0); break;
+                case 0xC3: SetBit(ref de.Low, 0); break;
+                case 0xC4: SetBit(ref hl.High, 0); break;
+                case 0xC5: SetBit(ref hl.Low, 0); break;
+                case 0xC6: SetBit(hl.Word, 0); break;
+                case 0xC7: SetBit(ref af.High, 0); break;
+                case 0xC8: SetBit(ref bc.High, 1); break;
+                case 0xC9: SetBit(ref bc.Low, 1); break;
+                case 0xCA: SetBit(ref de.High, 1); break;
+                case 0xCB: SetBit(ref de.Low, 1); break;
+                case 0xCC: SetBit(ref hl.High, 1); break;
+                case 0xCD: SetBit(ref hl.Low, 1); break;
+                case 0xCE: SetBit(hl.Word, 1); break;
+                case 0xCF: SetBit(ref af.High, 1); break;
+                case 0xD0: SetBit(ref bc.High, 2); break;
+                case 0xD1: SetBit(ref bc.Low, 2); break;
+                case 0xD2: SetBit(ref de.High, 2); break;
+                case 0xD3: SetBit(ref de.Low, 2); break;
+                case 0xD4: SetBit(ref hl.High, 2); break;
+                case 0xD5: SetBit(ref hl.Low, 2); break;
+                case 0xD6: SetBit(hl.Word, 2); break;
+                case 0xD7: SetBit(ref af.High, 2); break;
+                case 0xD8: SetBit(ref bc.High, 3); break;
+                case 0xD9: SetBit(ref bc.Low, 3); break;
+                case 0xDA: SetBit(ref de.High, 3); break;
+                case 0xDB: SetBit(ref de.Low, 3); break;
+                case 0xDC: SetBit(ref hl.High, 3); break;
+                case 0xDD: SetBit(ref hl.Low, 3); break;
+                case 0xDE: SetBit(hl.Word, 3); break;
+                case 0xDF: SetBit(ref af.High, 3); break;
+                case 0xE0: SetBit(ref bc.High, 4); break;
+                case 0xE1: SetBit(ref bc.Low, 4); break;
+                case 0xE2: SetBit(ref de.High, 4); break;
+                case 0xE3: SetBit(ref de.Low, 4); break;
+                case 0xE4: SetBit(ref hl.High, 4); break;
+                case 0xE5: SetBit(ref hl.Low, 4); break;
+                case 0xE6: SetBit(hl.Word, 4); break;
+                case 0xE7: SetBit(ref af.High, 4); break;
+                case 0xE8: SetBit(ref bc.High, 5); break;
+                case 0xE9: SetBit(ref bc.Low, 5); break;
+                case 0xEA: SetBit(ref de.High, 5); break;
+                case 0xEB: SetBit(ref de.Low, 5); break;
+                case 0xEC: SetBit(ref hl.High, 5); break;
+                case 0xED: SetBit(ref hl.Low, 5); break;
+                case 0xEE: SetBit(hl.Word, 5); break;
+                case 0xEF: SetBit(ref af.High, 5); break;
+                case 0xF0: SetBit(ref bc.High, 6); break;
+                case 0xF1: SetBit(ref bc.Low, 6); break;
+                case 0xF2: SetBit(ref de.High, 6); break;
+                case 0xF3: SetBit(ref de.Low, 6); break;
+                case 0xF4: SetBit(ref hl.High, 6); break;
+                case 0xF5: SetBit(ref hl.Low, 6); break;
+                case 0xF6: SetBit(hl.Word, 6); break;
+                case 0xF7: SetBit(ref af.High, 6); break;
+                case 0xF8: SetBit(ref bc.High, 7); break;
+                case 0xF9: SetBit(ref bc.Low, 7); break;
+                case 0xFA: SetBit(ref de.High, 7); break;
+                case 0xFB: SetBit(ref de.Low, 7); break;
+                case 0xFC: SetBit(ref hl.High, 7); break;
+                case 0xFD: SetBit(ref hl.Low, 7); break;
+                case 0xFE: SetBit(hl.Word, 7); break;
+                case 0xFF: SetBit(ref af.High, 7); break;
 
                 default: throw new Exception(MakeUnimplementedOpcodeString((ushort)(pc - 2)));
             }
@@ -510,6 +804,184 @@ namespace MasterFudge.Emulation.CPU
         // TODO: verify naming of these functions, wrt addressing modes and shit
         // TODO: reorder however it makes sense
 
+        private void RotateLeft(ref byte value)
+        {
+            bool isCarrySet = IsFlagSet(Flags.C);
+            bool isMsbSet = IsBitSet(value, 7);
+            value <<= 1;
+            if (isCarrySet) SetBit(ref value, 0);
+
+            SetClearFlagConditional(Flags.C, isMsbSet);
+
+            ClearFlag(Flags.N | Flags.H);
+            SetClearFlagConditional(Flags.Z, (value == 0));
+            SetClearFlagConditional(Flags.S, IsBitSet(value, 7));
+            CalculateAndSetParity(value);
+        }
+
+        private void RotateLeft(ushort address)
+        {
+            byte value = memoryMapper.Read8(address);
+            RotateLeft(ref value);
+            memoryMapper.Write8(address, value);
+        }
+
+        private void RotateLeftCircular(ref byte value)
+        {
+            bool isMsbSet = IsBitSet(value, 7);
+            value <<= 1;
+            if (isMsbSet) SetBit(ref value, 0);
+
+            SetClearFlagConditional(Flags.C, isMsbSet);
+
+            ClearFlag(Flags.N | Flags.H);
+            SetClearFlagConditional(Flags.Z, (value == 0));
+            SetClearFlagConditional(Flags.S, IsBitSet(value, 7));
+            CalculateAndSetParity(value);
+        }
+
+        private void RotateLeftCircular(ushort address)
+        {
+            byte value = memoryMapper.Read8(address);
+            RotateLeftCircular(ref value);
+            memoryMapper.Write8(address, value);
+        }
+
+        private void RotateRight(ref byte value)
+        {
+            bool isCarrySet = IsFlagSet(Flags.C);
+            bool isLsbSet = IsBitSet(value, 0);
+            value >>= 1;
+            if (isCarrySet) SetBit(ref value, 7);
+
+            SetClearFlagConditional(Flags.C, isLsbSet);
+
+            ClearFlag(Flags.N | Flags.H);
+            SetClearFlagConditional(Flags.Z, (value == 0));
+            SetClearFlagConditional(Flags.S, IsBitSet(value, 7));
+            CalculateAndSetParity(value);
+        }
+
+        private void RotateRight(ushort address)
+        {
+            byte value = memoryMapper.Read8(address);
+            RotateRight(ref value);
+            memoryMapper.Write8(address, value);
+        }
+
+        private void RotateRightCircular(ref byte value)
+        {
+            bool isLsbSet = IsBitSet(value, 0);
+            value >>= 1;
+            if (isLsbSet) SetBit(ref value, 7);
+
+            SetClearFlagConditional(Flags.C, isLsbSet);
+
+            ClearFlag(Flags.N | Flags.H);
+            SetClearFlagConditional(Flags.Z, (value == 0));
+            SetClearFlagConditional(Flags.S, IsBitSet(value, 7));
+            CalculateAndSetParity(value);
+        }
+
+        private void RotateRightCircular(ushort address)
+        {
+            byte value = memoryMapper.Read8(address);
+            RotateRightCircular(ref value);
+            memoryMapper.Write8(address, value);
+        }
+
+        private void ShiftLeftArithmetic(ref byte value)
+        {
+            bool isMsbSet = IsBitSet(value, 7);
+            value <<= 1;
+
+            SetClearFlagConditional(Flags.C, isMsbSet);
+
+            ClearFlag(Flags.N | Flags.H);
+            SetClearFlagConditional(Flags.Z, (value == 0));
+            SetClearFlagConditional(Flags.S, IsBitSet(value, 7));
+            CalculateAndSetParity(value);
+        }
+
+        private void ShiftLeftArithmetic(ushort address)
+        {
+            byte value = memoryMapper.Read8(address);
+            ShiftLeftArithmetic(ref value);
+            memoryMapper.Write8(address, value);
+        }
+
+        private void ShiftRightArithmetic(ref byte value)
+        {
+            bool isLsbSet = IsBitSet(value, 0);
+            bool isMsbSet = IsBitSet(value, 7);
+            value >>= 1;
+            if (isMsbSet) SetBit(ref value, 7);
+
+            SetClearFlagConditional(Flags.C, isLsbSet);
+
+            ClearFlag(Flags.N | Flags.H);
+            SetClearFlagConditional(Flags.Z, (value == 0));
+            SetClearFlagConditional(Flags.S, IsBitSet(value, 7));
+            CalculateAndSetParity(value);
+        }
+
+        private void ShiftRightArithmetic(ushort address)
+        {
+            byte value = memoryMapper.Read8(address);
+            ShiftRightArithmetic(ref value);
+            memoryMapper.Write8(address, value);
+        }
+
+        private void ShiftRightLogical(ref byte value)
+        {
+            bool isLsbSet = IsBitSet(value, 0);
+            value >>= 1;
+
+            SetClearFlagConditional(Flags.C, isLsbSet);
+
+            ClearFlag(Flags.N | Flags.H | Flags.S);
+            SetClearFlagConditional(Flags.Z, (value == 0));
+            CalculateAndSetParity(value);
+        }
+
+        private void ShiftRightLogical(ushort address)
+        {
+            byte value = memoryMapper.Read8(address);
+            ShiftRightLogical(ref value);
+            memoryMapper.Write8(address, value);
+        }
+
+        private void TestBit(byte value, int bit)
+        {
+            SetClearFlagConditional(Flags.Z, !IsBitSet(value, bit));
+            ClearFlag(Flags.N);
+            SetFlag(Flags.H);
+        }
+
+        private void ResetBit(ref byte value, int bit)
+        {
+            value ^= (byte)(1 << bit);
+        }
+
+        private void ResetBit(ushort address, int bit)
+        {
+            byte value = memoryMapper.Read8(address);
+            ResetBit(ref value, bit);
+            memoryMapper.Write8(address, value);
+        }
+
+        private void SetBit(ref byte value, int bit)
+        {
+            value |= (byte)(1 << bit);
+        }
+
+        private void SetBit(ushort address, int bit)
+        {
+            byte value = memoryMapper.Read8(address);
+            SetBit(ref value, bit);
+            memoryMapper.Write8(address, value);
+        }
+
         private void Pop(ref Register register)
         {
             register.Low = memoryMapper.Read8(sp++);
@@ -561,6 +1033,50 @@ namespace MasterFudge.Emulation.CPU
 
             SetClearFlagConditional(Flags.C, bit0Set);
             ClearFlag(Flags.N | Flags.H);
+        }
+
+        private void RotateRight4B()
+        {
+            byte hlValue = memoryMapper.Read8(hl.Word);
+
+            // A=WX  (HL)=YZ
+            // A=WZ  (HL)=XY
+            byte a1 = (byte)(af.High >> 4);     //W
+            byte a2 = (byte)(af.High & 0xF);    //X
+            byte hl1 = (byte)(hlValue >> 4);    //Y
+            byte hl2 = (byte)(hlValue & 0xF);   //Z
+
+            af.High = (byte)((a1 << 4) | hl2);
+            hlValue = (byte)((a2 << 4) | hl1);
+
+            memoryMapper.Write8(hl.Word, hlValue);
+
+            ClearFlag(Flags.N | Flags.H);
+            SetClearFlagConditional(Flags.Z, (af.High == 0));
+            SetClearFlagConditional(Flags.S, IsBitSet(af.High, 7));
+            CalculateAndSetParity(af.High);
+        }
+
+        private void RotateLeft4B()
+        {
+            byte hlValue = memoryMapper.Read8(hl.Word);
+
+            // A=WX  (HL)=YZ
+            // A=WY  (HL)=ZX
+            byte a1 = (byte)(af.High >> 4);     //W
+            byte a2 = (byte)(af.High & 0xF);    //X
+            byte hl1 = (byte)(hlValue >> 4);    //Y
+            byte hl2 = (byte)(hlValue & 0xF);   //Z
+
+            af.High = (byte)((a1 << 4) | hl1);
+            hlValue = (byte)((hl2 << 4) | a2);
+
+            memoryMapper.Write8(hl.Word, hlValue);
+
+            ClearFlag(Flags.N | Flags.H);
+            SetClearFlagConditional(Flags.Z, (af.High == 0));
+            SetClearFlagConditional(Flags.S, IsBitSet(af.High, 7));
+            CalculateAndSetParity(af.High);
         }
 
         private void DecimalAdjustAccumulator()
@@ -619,6 +1135,168 @@ namespace MasterFudge.Emulation.CPU
         {
             bc.High--;
             JumpConditional8(bc.High != 0);
+        }
+
+        private void LoadIncrement()
+        {
+            byte hlValue = memoryMapper.Read8(hl.Word);
+            memoryMapper.Write8(de.Word, hlValue);
+            Increment16(ref de.Word);
+            Increment16(ref hl.Word);
+            Decrement16(ref bc.Word);
+
+            ClearFlag(Flags.N | Flags.H);
+            SetClearFlagConditional(Flags.PV, (bc.Word != 0));
+        }
+
+        private void LoadIncrementRepeat()
+        {
+            LoadIncrement();
+            if (bc.Word != 0)
+            {
+                currentCycles += AddCyclesRepeatByteOps;
+                pc--;
+            }
+        }
+
+        private void LoadDecrement()
+        {
+            byte hlValue = memoryMapper.Read8(hl.Word);
+            memoryMapper.Write8(de.Word, hlValue);
+            Decrement16(ref de.Word);
+            Decrement16(ref hl.Word);
+            Decrement16(ref bc.Word);
+
+            ClearFlag(Flags.N | Flags.H);
+            SetClearFlagConditional(Flags.PV, (bc.Word != 0));
+        }
+
+        private void LoadDecrementRepeat()
+        {
+            LoadDecrement();
+            if (bc.Word != 0)
+            {
+                currentCycles += AddCyclesRepeatByteOps;
+                pc--;
+            }
+        }
+
+        private void CompareIncrement()
+        {
+            Cp8(memoryMapper.Read8(hl.Word));
+            Increment16(ref hl.Word);
+            Decrement16(ref bc.Word);
+
+            SetFlag(Flags.N);
+        }
+
+        private void CompareIncrementRepeat()
+        {
+            CompareIncrement();
+            if (bc.Word != 0 && !IsFlagSet(Flags.Z))
+            {
+                currentCycles += AddCyclesRepeatByteOps;
+                pc--;
+            }
+        }
+
+        private void CompareDecrement()
+        {
+            Cp8(memoryMapper.Read8(hl.Word));
+            Decrement16(ref hl.Word);
+            Decrement16(ref bc.Word);
+
+            SetFlag(Flags.N);
+        }
+
+        private void CompareDecrementRepeat()
+        {
+            CompareDecrement();
+            if (bc.Word != 0)
+            {
+                currentCycles += AddCyclesRepeatByteOps;
+                pc--;
+            }
+        }
+
+        private void InputIncrement()
+        {
+            memoryMapper.Write8(hl.Word, ioReadDelegate(bc.Low));
+            Increment16(ref hl.Word);
+            Decrement8(ref bc.High);
+
+            ClearFlag(Flags.N);
+            SetClearFlagConditional(Flags.Z, (bc.High == 0));
+        }
+
+        private void InputIncrementRepeat()
+        {
+            InputIncrement();
+            if (bc.High != 0)
+            {
+                currentCycles += AddCyclesRepeatByteOps;
+                pc--;
+            }
+        }
+
+        private void InputDecrement()
+        {
+            memoryMapper.Write8(hl.Word, ioReadDelegate(bc.Low));
+            Decrement16(ref hl.Word);
+            Decrement8(ref bc.High);
+
+            SetFlag(Flags.N);
+            SetClearFlagConditional(Flags.Z, (bc.High == 0));
+        }
+
+        private void InputDecrementRepeat()
+        {
+            InputDecrement();
+            if (bc.High != 0)
+            {
+                currentCycles += AddCyclesRepeatByteOps;
+                pc--;
+            }
+        }
+
+        private void OutputIncrement()
+        {
+            ioWriteDelegate(bc.Low, memoryMapper.Read8(hl.Word));
+            Increment16(ref hl.Word);
+            Decrement8(ref bc.High);
+
+            ClearFlag(Flags.N);
+            SetClearFlagConditional(Flags.Z, (bc.High == 0));
+        }
+
+        private void OutputIncrementRepeat()
+        {
+            OutputIncrement();
+            if (bc.High != 0)
+            {
+                currentCycles += AddCyclesRepeatByteOps;
+                pc--;
+            }
+        }
+
+        private void OutputDecrement()
+        {
+            ioWriteDelegate(bc.Low, memoryMapper.Read8(hl.Word));
+            Decrement16(ref hl.Word);
+            Decrement8(ref bc.High);
+
+            SetFlag(Flags.N);
+            SetClearFlagConditional(Flags.Z, (bc.High == 0));
+        }
+
+        private void OutputDecrementRepeat()
+        {
+            OutputDecrement();
+            if (bc.High != 0)
+            {
+                currentCycles += AddCyclesRepeatByteOps;
+                pc--;
+            }
         }
 
         private void Add8(byte operand, bool withCarry)
@@ -714,6 +1392,34 @@ namespace MasterFudge.Emulation.CPU
             }
 
             dest.Word = (ushort)result;
+        }
+
+        private void Subtract16(ref Register dest, ushort operand, bool withCarry)
+        {
+            int result = (dest.High - (sbyte)operand - (withCarry && IsFlagSet(Flags.C) ? 1 : 0));
+
+            ClearFlag(Flags.N);
+            SetClearFlagConditional(Flags.PV, ((((dest.Word ^ operand) & 0x8000) == 0) && ((dest.Word ^ result) & 0x8000) != 0));
+            SetClearFlagConditional(Flags.H, ((result & 0x00FF) == 0));
+            SetClearFlagConditional(Flags.Z, ((result & 0xFFFF) == 0));
+            SetClearFlagConditional(Flags.S, IsBitSet((byte)result, 15));
+            SetClearFlagConditional(Flags.C, (result >= 0x10000));
+
+            dest.High = (byte)result;
+        }
+
+        private void Negate()
+        {
+            int result = (0 - af.High);
+
+            ClearFlag(Flags.N);
+            SetClearFlagConditional(Flags.PV, ((((af.High ^ 0) & 0x80) != 0) && ((0 ^ result) & 0x80) == 0));   // TODO: ?????
+            SetClearFlagConditional(Flags.H, ((result & 0x0F) == 0));
+            SetClearFlagConditional(Flags.Z, ((result & 0xFF) == 0));
+            SetClearFlagConditional(Flags.S, IsBitSet((byte)result, 7));
+            SetClearFlagConditional(Flags.C, (result >= 0x100));
+
+            af.High = (byte)result;
         }
 
         private void LoadRegisterFromMemory8(ref byte register, ushort address)
