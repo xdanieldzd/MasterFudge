@@ -14,6 +14,8 @@ namespace MasterFudge
 
         public event EventHandler OnLogCleared;
 
+        const int maxEventCount = 2048;
+
         List<LogEvent> loggedEvents;
 
         public Logger()
@@ -30,6 +32,9 @@ namespace MasterFudge
         {
             LogEvent newEvent = new LogEvent(DateTime.Now, message);
             loggedEvents.Add(newEvent);
+
+            if (loggedEvents.Count >= maxEventCount)
+                loggedEvents.RemoveAt(0);
 
             OnLogUpdate?.Invoke(this, new LogEventArgs(newEvent.EventTime, newEvent.Message));
         }
