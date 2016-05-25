@@ -65,6 +65,15 @@ namespace MasterFudge.Emulation
             return cartridge.Header;
         }
 
+        public byte[] DumpWRAM()
+        {
+            int wramSize = wram.GetEndAddress() - wram.GetStartAddress();
+            byte[] dump = new byte[wramSize];
+            for (int i = 0; i < wramSize; i++)
+                dump[i] = wram.Read8((ushort)i);
+            return dump;
+        }
+
         public void Run()
         {
             mainThread.Start();
