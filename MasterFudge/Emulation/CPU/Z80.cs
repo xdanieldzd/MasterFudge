@@ -186,7 +186,9 @@ namespace MasterFudge.Emulation.CPU
                 case 0x31: LoadRegisterImmediate16(ref sp); break;
                 case 0x32: LoadMemory8(memoryMapper.Read16(pc), af.High); pc += 2; break;
                 case 0x33: Increment16(ref sp); break;
-
+                case 0x34: IncrementMemory8(hl.Word); break;
+                case 0x35: DecrementMemory8(hl.Word); break;
+                case 0x36: LoadMemory8(hl.Word, memoryMapper.Read8(pc++)); break;
                 case 0x37: SetFlag(Flags.C); ClearFlag(Flags.N | Flags.H); break;
                 case 0x38: JumpConditional8(IsFlagSet(Flags.C)); break;
                 case 0x39: Add16(ref hl, sp, false); break;
@@ -316,10 +318,17 @@ namespace MasterFudge.Emulation.CPU
                 case 0xB5: Or8(hl.Low); break;
                 case 0xB6: Or8(memoryMapper.Read8(hl.Word)); break;
                 case 0xB7: Or8(af.High); break;
-
+                case 0xB8: Cp8(bc.High); break;
+                case 0xB9: Cp8(bc.Low); break;
+                case 0xBA: Cp8(de.High); break;
+                case 0xBB: Cp8(de.Low); break;
+                case 0xBC: Cp8(hl.High); break;
+                case 0xBD: Cp8(hl.Low); break;
+                case 0xBE: Cp8(memoryMapper.Read8(hl.Word)); break;
+                case 0xBF: Cp8(af.High); break;
                 case 0xC0: ReturnConditional(!IsFlagSet(Flags.Z)); break;
                 case 0xC1: Pop(ref bc); break;
-
+                case 0xC2: JumpConditional16(!IsFlagSet(Flags.Z)); break;
                 case 0xC3: JumpConditional16(true); break;
                 case 0xC4: CallConditional16(!IsFlagSet(Flags.Z)); break;
                 case 0xC5: Push(bc); break;
@@ -327,14 +336,15 @@ namespace MasterFudge.Emulation.CPU
                 case 0xC7: Rst(0x0000); break;
                 case 0xC8: ReturnConditional(IsFlagSet(Flags.Z)); break;
                 case 0xC9: Return(); break;
-
+                case 0xCA: JumpConditional16(IsFlagSet(Flags.Z)); break;
+                // CB
                 case 0xCC: CallConditional16(IsFlagSet(Flags.Z)); break;
                 case 0xCD: Call16(); break;
                 case 0xCE: Add8(memoryMapper.Read8(pc++), true); break;
                 case 0xCF: Rst(0x0008); break;
                 case 0xD0: ReturnConditional(!IsFlagSet(Flags.C)); break;
                 case 0xD1: Pop(ref de); break;
-
+                case 0xD2: JumpConditional16(!IsFlagSet(Flags.C)); break;
                 case 0xD3: ioWriteDelegate(memoryMapper.Read8(pc++), af.High); break;
                 case 0xD4: CallConditional16(!IsFlagSet(Flags.C)); break;
                 case 0xD5: Push(de); break;
@@ -342,39 +352,43 @@ namespace MasterFudge.Emulation.CPU
                 case 0xD7: Rst(0x0010); break;
                 case 0xD8: ReturnConditional(IsFlagSet(Flags.C)); break;
                 case 0xD9: ExchangeRegisters16(ref bc, ref bcShadow); ExchangeRegisters16(ref de, ref deShadow); ExchangeRegisters16(ref hl, ref hlShadow); break;
-
+                case 0xDA: JumpConditional16(IsFlagSet(Flags.C)); break;
                 case 0xDB: af.High = ioReadDelegate(memoryMapper.Read8(pc++)); break;
-
                 case 0xDC: CallConditional16(IsFlagSet(Flags.C)); break;
-
+                // DD
                 case 0xDE: Subtract8(memoryMapper.Read8(pc++), true); break;
                 case 0xDF: Rst(0x0018); break;
-
+                case 0xE0: ReturnConditional(!IsFlagSet(Flags.PV)); break;
                 case 0xE1: Pop(ref hl); break;
-
+                case 0xE2: JumpConditional16(!IsFlagSet(Flags.PV)); break;
                 case 0xE3: ExchangeStackRegister16(ref hl); break;
-
+                case 0xE4: CallConditional16(!IsFlagSet(Flags.PV)); break;
                 case 0xE5: Push(hl); break;
                 case 0xE6: And8(memoryMapper.Read8(pc++)); break;
                 case 0xE7: Rst(0x0020); break;
-
+                case 0xE8: ReturnConditional(IsFlagSet(Flags.PV)); break;
                 case 0xE9: pc = hl.Word; break;
-
+                case 0xEA: JumpConditional16(IsFlagSet(Flags.PV)); break;
                 case 0xEB: ExchangeRegisters16(ref de, ref hl); break;
-
+                case 0xEC: CallConditional16(IsFlagSet(Flags.PV)); break;
+                // ED
                 case 0xEE: Xor8(memoryMapper.Read8(pc++)); break;
                 case 0xEF: Rst(0x0028); break;
-
+                case 0xF0: ReturnConditional(!IsFlagSet(Flags.S)); break;
                 case 0xF1: Pop(ref af); break;
-
+                case 0xF2: JumpConditional16(!IsFlagSet(Flags.S)); break;
                 case 0xF3: iff1 = iff2 = false; break;
-
+                case 0xF4: CallConditional16(!IsFlagSet(Flags.S)); break;
                 case 0xF5: Push(af); break;
                 case 0xF6: Or8(memoryMapper.Read8(pc++)); break;
                 case 0xF7: Rst(0x0030); break;
-
+                case 0xF8: ReturnConditional(IsFlagSet(Flags.S)); break;
+                case 0xF9: sp = hl.Word; break;
+                case 0xFA: JumpConditional16(IsFlagSet(Flags.S)); break;
                 case 0xFB: eiDelay = true; break;
-
+                case 0xFC: CallConditional16(IsFlagSet(Flags.S)); break;
+                // FD
+                case 0xFE: Cp8(memoryMapper.Read8(pc++)); break;
                 case 0xFF: Rst(0x0038); break;
 
                 default: throw new Exception(MakeUnimplementedOpcodeString((ushort)(pc - 1)));
@@ -651,6 +665,18 @@ namespace MasterFudge.Emulation.CPU
             CalculateAndSetParity(af.High);
         }
 
+        private void Cp8(byte operand)
+        {
+            int result = (af.High - operand);
+
+            ClearFlag(Flags.N);
+            SetClearFlagConditional(Flags.PV, ((((af.High ^ operand) & 0x80) != 0) && ((operand ^ result) & 0x80) == 0));
+            SetClearFlagConditional(Flags.H, ((result & 0x0F) == 0));
+            SetClearFlagConditional(Flags.Z, ((result & 0xFF) == 0));
+            SetClearFlagConditional(Flags.S, IsBitSet((byte)result, 7));
+            SetClearFlagConditional(Flags.C, (result >= 0x100));
+        }
+
         private void Add16(ref Register dest, ushort operand, bool withCarry)
         {
             int result = (dest.Word + (short)operand + (withCarry && IsFlagSet(Flags.C) ? 1 : 0));
@@ -722,6 +748,13 @@ namespace MasterFudge.Emulation.CPU
             register++;
         }
 
+        private void IncrementMemory8(ushort address)
+        {
+            byte value = memoryMapper.Read8(address);
+            Increment8(ref value);
+            memoryMapper.Write8(address, value);
+        }
+
         private void Decrement8(ref byte register)
         {
             register--;
@@ -737,6 +770,13 @@ namespace MasterFudge.Emulation.CPU
         private void Decrement16(ref ushort register)
         {
             register--;
+        }
+
+        private void DecrementMemory8(ushort address)
+        {
+            byte value = memoryMapper.Read8(address);
+            Decrement8(ref value);
+            memoryMapper.Write8(address, value);
         }
 
         private void Jump8()
