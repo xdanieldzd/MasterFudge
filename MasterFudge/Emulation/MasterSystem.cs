@@ -8,10 +8,11 @@ using System.Threading;
 using MasterFudge.Emulation.Memory;
 using MasterFudge.Emulation.CPU;
 using MasterFudge.Emulation.Cartridges;
+using MasterFudge.Emulation.Graphics;
 
 namespace MasterFudge.Emulation
 {
-    public class MasterSystem
+    public partial class MasterSystem
     {
         public const double MasterClockPAL = 53203424;
         public const double MasterClockNTSC = 53693175;
@@ -24,6 +25,7 @@ namespace MasterFudge.Emulation
 
         Z80 cpu;
         WRAM wram;
+        VDP vdp;
         BaseCartridge cartridge;
 
         byte portMemoryControl, portIoControl;
@@ -41,6 +43,7 @@ namespace MasterFudge.Emulation
             cyclesPerFrame = (int)((isNtsc ? MasterClockNTSC : MasterClockPAL) / 15.0 / (isNtsc ? FramesPerSecNTSC : FramesPerSecPAL));
             cpu = new Z80(memoryMapper, ReadIOPort, WriteIOPort);
             wram = new WRAM();
+            vdp = new VDP();
 
             memoryMapper.AddMemoryArea(wram.GetMemoryAreaDescriptor());
 
@@ -54,6 +57,11 @@ namespace MasterFudge.Emulation
             while (mainThread.ThreadState != ThreadState.Stopped) { }
         }
 
+        public static bool IsBitSet(byte value, int bit)
+        {
+            return ((value & (1 << bit)) != 0);
+        }
+
         public void LoadCartridge(string filename)
         {
             cartridge = BaseCartridge.LoadCartridge<BaseCartridge>(filename);
@@ -63,15 +71,6 @@ namespace MasterFudge.Emulation
         public RomHeader GetCartridgeHeader()
         {
             return cartridge.Header;
-        }
-
-        public byte[] DumpWRAM()
-        {
-            int wramSize = wram.GetEndAddress() - wram.GetStartAddress();
-            byte[] dump = new byte[wramSize];
-            for (int i = 0; i < wramSize; i++)
-                dump[i] = wram.Read8((ushort)i);
-            return dump;
         }
 
         public void Run()
@@ -109,9 +108,11 @@ namespace MasterFudge.Emulation
                     while (currentCycles < cyclesPerFrame)
                     {
                         currentCycles += cpu.Execute();
-                        //vdp
+                        vdp.Execute(currentCycles);
                         //sound
                         //irqs
+
+                        HandleInterrupts();
                     }
                     threadReset.WaitOne();
                 }
@@ -121,6 +122,14 @@ namespace MasterFudge.Emulation
                 string message = string.Format("Exception occured: {0}\n\nEmulation thread has been stopped.", ex.Message);
                 System.Windows.Forms.MessageBox.Show(message);
             }
+        }
+
+        private void HandleInterrupts()
+        {
+            // TODO: pause button NMI
+
+            if (vdp.InterruptPending && cpu.IFF1 && cpu.InterruptMode == 0x01)
+                cpu.ServiceInterrupt(0x0038);
         }
 
         // TODO: all the IO port stuff
@@ -151,14 +160,9 @@ namespace MasterFudge.Emulation
                 case 0x80:
                     // VDP
                     if ((port & 0x01) == 0)
-                    {
-                        // Data port
-                    }
+                        return vdp.ReadDataPort();      // Data port
                     else
-                    {
-                        // Status flags
-                    }
-                    break;
+                        return vdp.ReadControlPort();   // Status flags
 
                 case 0xC0:
                     if ((port & 0x01) == 0)
@@ -184,15 +188,9 @@ namespace MasterFudge.Emulation
                 case 0x00:
                     // System stuff
                     if ((port & 0x01) == 0)
-                    {
-                        // Memory control
-                        portMemoryControl = value;
-                    }
+                        portMemoryControl = value;      // Memory control
                     else
-                    {
-                        // I/O control
-                        portIoControl = value;
-                    }
+                        portIoControl = value;          // I/O control
                     break;
 
                 case 0x40:
@@ -202,13 +200,9 @@ namespace MasterFudge.Emulation
                 case 0x80:
                     // VDP
                     if ((port & 0x01) == 0)
-                    {
-                        // Data port
-                    }
+                        vdp.WriteDataPort(value);       // Data port
                     else
-                    {
-                        // Control port
-                    }
+                        vdp.WriteControlPort(value);    // Control port
                     break;
 
                 case 0xC0:

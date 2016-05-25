@@ -49,6 +49,7 @@
     <Compile Include="Emulation\CPU\Z80.CycleCounts.cs" />
     <Compile Include="Emulation\CPU\Z80.Debugger.cs" />
     <Compile Include="Emulation\MasterSystem.cs" />
+    <Compile Include="Emulation\MasterSystem.Debugger.cs" />
     <Compile Include="Emulation\Memory\MemoryAreaDescriptor.cs" />
     <Compile Include="Emulation\Memory\MemoryMapper.cs" />
     <Compile Include="Emulation\Cartridges\Sega32kCartridge.cs" />

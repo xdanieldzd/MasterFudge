@@ -34,5 +34,10 @@ namespace MasterFudge.Emulation.Memory
         {
             workRam[address & 0x1FFF] = value;
         }
+
+        public byte[] DumpWorkRam()
+        {
+            return workRam;
+        }
     }
 }

@@ -51,7 +51,9 @@ namespace MasterFudge
             FormClosing += ((s, ev) =>
             {
                 writer.Close();
-                System.IO.File.WriteAllBytes(@"E:\temp\sms\dump.sms", ms.DumpWRAM());
+                System.IO.File.WriteAllBytes(@"E:\temp\sms\wram.bin", ms.DumpMemory(DebugMemoryRegion.WorkRam));
+                System.IO.File.WriteAllBytes(@"E:\temp\sms\vram.sms", ms.DumpMemory(DebugMemoryRegion.VideoRam));
+                System.IO.File.WriteAllBytes(@"E:\temp\sms\cram.bin", ms.DumpMemory(DebugMemoryRegion.ColorRam));
             });
 
             Program.Log.OnLogUpdate += new Logger.LogUpdateHandler((s, ev) =>
