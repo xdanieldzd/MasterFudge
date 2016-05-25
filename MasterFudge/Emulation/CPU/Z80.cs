@@ -90,6 +90,8 @@ namespace MasterFudge.Emulation.CPU
 
         const bool DIE_ON_UNIMPLEMENTED_PREFIXES = false;
 
+        // TODO: undocumented opcodes (ugh)
+
         public int Execute()
         {
             currentCycles = 0;
@@ -397,7 +399,7 @@ namespace MasterFudge.Emulation.CPU
 
         private void ExecuteOpED(byte op)
         {
-            // TODO: everything
+
             switch (op)
             {
                 case 0x40: PortRead(ref bc.High, bc.Low); break;
@@ -411,11 +413,15 @@ namespace MasterFudge.Emulation.CPU
                 case 0x49: ioWriteDelegate(bc.Low, bc.Low); break;
                 case 0x4A: Add16(ref hl, bc.Word, true); break;
 
+                //4C - undocumented
+
+                //4E - undocumented
                 case 0x4F: r = af.High; break;
                 case 0x50: PortRead(ref de.High, bc.Low); break;
                 case 0x51: ioWriteDelegate(bc.Low, de.High); break;
 
                 case 0x53: LoadMemory16(memoryMapper.Read16(pc), de.Word); pc += 2; break;
+                //54 - undocumented
 
                 case 0x56: interruptMode = 1; break;
                 case 0x57: LoadRegister8(ref af.High, i); break;
@@ -423,20 +429,35 @@ namespace MasterFudge.Emulation.CPU
                 case 0x59: ioWriteDelegate(bc.Low, de.Low); break;
                 case 0x5A: Add16(ref hl, de.Word, true); break;
 
+                //5C - undocumented
+
                 case 0x5E: interruptMode = 2; break;
                 case 0x5F: LoadRegister8(ref af.High, r); break;
                 case 0x60: PortRead(ref hl.High, bc.Low); break;
                 case 0x61: ioWriteDelegate(bc.Low, hl.High); break;
 
+                //63 - undocumented
+                //64 - undocumented
+
                 case 0x68: PortRead(ref hl.Low, bc.Low); break;
                 case 0x69: ioWriteDelegate(bc.Low, hl.Low); break;
                 case 0x6A: Add16(ref hl, hl.Word, true); break;
+                //6B - undocumented
+                //6C - undocumented
+
+                //6E - undocumented
+
+                //70 - undocumented
+                //71 - undocumented
 
                 case 0x73: LoadMemory16(memoryMapper.Read16(pc), sp); pc += 2; break;
+                //74 - undocumented
 
                 case 0x78: PortRead(ref af.High, bc.Low); break;
                 case 0x79: ioWriteDelegate(bc.Low, af.High); break;
                 case 0x7A: Add16(ref hl, sp, true); break;
+
+                //7C - undocumented
 
                 default: throw new Exception(MakeUnimplementedOpcodeString((ushort)(pc - 2)));
             }
