@@ -46,16 +46,31 @@ namespace MasterFudge
 
             Text = Application.ProductName;
 
+            // TODO: remove eventually, or fix up somehow; cross-thread stuff is iffy (especially when exiting program?)
+            System.IO.TextWriter writer = new System.IO.StreamWriter(@"E:\temp\sms\log.txt");
+            FormClosing += ((s, ev) =>
+            {
+                writer.Close();
+                System.IO.File.WriteAllBytes(@"E:\temp\sms\dump.sms", ms.DumpWRAM());
+            });
+
             Program.Log.OnLogUpdate += new Logger.LogUpdateHandler((s, ev) =>
             {
-                if (lbTempDisasm.IsHandleCreated)
-                    lbTempDisasm.Invoke(new Action(() => { lbTempDisasm.Items.Add(ev.Message); lbTempDisasm.TopIndex = lbTempDisasm.Items.Count - 1; }));
+                //if (lbTempDisasm.IsHandleCreated)
+                //lbTempDisasm.Invoke(new Action(() => { lbTempDisasm.Items.Add(ev.Message); lbTempDisasm.TopIndex = lbTempDisasm.Items.Count - 1; }));
+                if (IsHandleCreated)
+                {
+                    if (InvokeRequired)
+                        Invoke(new Action(() => { writer.WriteLine(ev.Message); }));
+                    else
+                        writer.WriteLine(ev.Message);
+                }
             });
 
             Program.Log.OnLogCleared += new EventHandler((s, ev) =>
             {
-                if (lbTempDisasm.IsHandleCreated)
-                    lbTempDisasm.Invoke(new Action(() => lbTempDisasm.Items.Clear()));
+                //if (lbTempDisasm.IsHandleCreated)
+                //lbTempDisasm.Invoke(new Action(() => lbTempDisasm.Items.Clear()));
             });
         }
 

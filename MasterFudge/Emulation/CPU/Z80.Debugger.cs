@@ -14,7 +14,7 @@ namespace MasterFudge.Emulation.CPU
         {
             "NOP",              "LD BC, 0x{0:X4}",  "LD (BC), A",       "INC BC",           "INC B",            "DEC B",            "LD B, 0x{0:X2}",   "RLCA",             /* 0x00 */
             "EX AF, AF'",       "ADD HL, BC",       "LD A, (BC)",       "DEC BC",           "INC C",            "DEC C",            "LD C, 0x{0:X2}",   "RRCA",             /* 0x08 */
-            "DJNZ",             "LD DE, 0x{0:X4}",  "LD (DE), A",       "INC DE",           "INC D",            "DEC D",            "LD D, 0x{0:X2}",   "RLA",              /* 0x10 */
+            "DJNZ 0x{0:X2}",    "LD DE, 0x{0:X4}",  "LD (DE), A",       "INC DE",           "INC D",            "DEC D",            "LD D, 0x{0:X2}",   "RLA",              /* 0x10 */
             "JR 0x{0:X2}",      "ADD HL, DE",       "LD A, (DE)",       "DEC DE",           "INC E",            "DEC E",            "LD E, 0x{0:X2}",   "RRA",              /* 0x18 */
             "JR NZ, 0x{0:X2}",  "LD HL, 0x{0:X4}",  "LD (0x{0:X4}), HL","INC HL",           "INC H",            "DEC H",            "LD H, 0x{0:X2}",   "DAA",              /* 0x20 */
             "JR Z, 0x{0:X2}",   "ADD HL, HL",       "LD HL, (0x{0:X4})","DEC HL",           "INC L",            "DEC L",            "LD L, 0x{0:X2}",   "CPL",              /* 0x28 */
@@ -178,6 +178,24 @@ namespace MasterFudge.Emulation.CPU
             2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
         };
 
+        private string PrintRegisters()
+        {
+            return string.Format("AF:{0:X4} BC:{1:X4} DE:{2:X4} HL:{3:X4} IX:{4:X4} IY:{5:X4} SP:{6:X4}", af.Word, bc.Word, de.Word, hl.Word, ix.Word, iy.Word, sp);
+        }
+
+        private string PrintFlags()
+        {
+            return string.Format("[{7}{6}{5}{4}{3}{2}{1}{0}]",
+                IsFlagSet(Flags.C) ? "C" : "-",
+                IsFlagSet(Flags.N) ? "N" : "-",
+                IsFlagSet(Flags.PV) ? "P" : "-",
+                IsFlagSet(Flags.UB3) ? "3" : "-",
+                IsFlagSet(Flags.H) ? "H" : "-",
+                IsFlagSet(Flags.UB5) ? "5" : "-",
+                IsFlagSet(Flags.Z) ? "Z" : "-",
+                IsFlagSet(Flags.S) ? "S" : "-");
+        }
+
         private string DisassembleOpcode(ushort address)
         {
             // TODO: make nicer?
@@ -230,7 +248,7 @@ namespace MasterFudge.Emulation.CPU
                 case 0xFD: start = 1; mnemonics = null; break;
             }
 
-            if (mnemonics == null) return string.Empty;
+            if (mnemonics == null) return "(unimplemented)";
 
             switch (len - start)
             {

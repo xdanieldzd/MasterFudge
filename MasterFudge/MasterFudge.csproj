@@ -57,6 +57,7 @@
     <Compile Include="Emulation\Cartridges\RomHeader.cs" />
     <Compile Include="Emulation\Cartridges\BaseCartridge.cs" />
     <Compile Include="Emulation\CPU\Z80.cs" />
+    <Compile Include="Emulation\Graphics\VDP.cs" />
     <Compile Include="Logger.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>

@@ -81,7 +81,8 @@ namespace MasterFudge.Emulation.CPU
 
         public void Reset()
         {
-            af.Word = sp = 0xFFFF;
+            // crude refresh register random number thingy
+            r = (byte)(GetHashCode() >> 10);
 
             pc = 0;
             iff1 = iff2 = eiDelay = halted = false;
@@ -96,10 +97,13 @@ namespace MasterFudge.Emulation.CPU
         {
             currentCycles = 0;
 
-            Program.Log.WriteEvent(DisassembleOpcode(pc));
+            Program.Log.WriteEvent(string.Format("{0} | {1} | {2}", DisassembleOpcode(pc).PadRight(48), PrintRegisters(), PrintFlags()));
 
             if (!halted)
             {
+                // more crude refresh reg stuff
+                r = (byte)((r + 1) & 0x7F);
+
                 byte op = memoryMapper.Read8(pc++);
                 switch (op)
                 {
@@ -149,15 +153,15 @@ namespace MasterFudge.Emulation.CPU
                 case 0x03: Increment16(ref bc.Word); break;
                 case 0x04: Increment8(ref bc.High); break;
                 case 0x05: Decrement8(ref bc.High); break;
-                case 0x06: LoadRegisterImmediate8(ref bc.High); break;
+                case 0x06: LoadRegisterImmediate8(ref bc.High, false); break;
                 case 0x07: RotateLeftAccumulator(true); break;
                 case 0x08: ExchangeRegisters16(ref af, ref afShadow); break;
                 case 0x09: Add16(ref hl, bc.Word, false); break;
-                case 0x0A: LoadRegisterFromMemory8(ref af.High, bc.Word); break;
+                case 0x0A: LoadRegisterFromMemory8(ref af.High, bc.Word, false); break;
                 case 0x0B: Decrement16(ref bc.Word); break;
                 case 0x0C: Increment8(ref bc.Low); break;
                 case 0x0D: Decrement8(ref bc.Low); break;
-                case 0x0E: LoadRegisterImmediate8(ref bc.Low); break;
+                case 0x0E: LoadRegisterImmediate8(ref bc.Low, false); break;
                 case 0x0F: RotateRightAccumulator(true); break;
                 case 0x10: DecrementJumpNonZero(); break;
                 case 0x11: LoadRegisterImmediate16(ref de.Word); break;
@@ -165,15 +169,15 @@ namespace MasterFudge.Emulation.CPU
                 case 0x13: Increment16(ref de.Word); break;
                 case 0x14: Increment8(ref de.High); break;
                 case 0x15: Decrement8(ref de.High); break;
-                case 0x16: LoadRegisterImmediate8(ref de.High); break;
+                case 0x16: LoadRegisterImmediate8(ref de.High, false); break;
                 case 0x17: RotateLeftAccumulator(false); break;
                 case 0x18: Jump8(); break;
                 case 0x19: Add16(ref hl, de.Word, false); break;
-                case 0x1A: LoadRegisterFromMemory8(ref af.High, de.Word); break;
+                case 0x1A: LoadRegisterFromMemory8(ref af.High, de.Word, false); break;
                 case 0x1B: Decrement16(ref de.Word); break;
                 case 0x1C: Increment8(ref de.Low); break;
                 case 0x1D: Decrement8(ref de.Low); break;
-                case 0x1E: LoadRegisterImmediate8(ref de.Low); break;
+                case 0x1E: LoadRegisterImmediate8(ref de.Low, false); break;
                 case 0x1F: RotateRightAccumulator(false); break;
                 case 0x20: JumpConditional8(!IsFlagSet(Flags.Z)); break;
                 case 0x21: LoadRegisterImmediate16(ref hl.Word); break;
@@ -181,7 +185,7 @@ namespace MasterFudge.Emulation.CPU
                 case 0x23: Increment16(ref hl.Word); break;
                 case 0x24: Increment8(ref hl.High); break;
                 case 0x25: Decrement8(ref hl.High); break;
-                case 0x26: LoadRegisterImmediate8(ref hl.High); break;
+                case 0x26: LoadRegisterImmediate8(ref hl.High, false); break;
                 case 0x27: DecimalAdjustAccumulator(); break;
                 case 0x28: JumpConditional8(IsFlagSet(Flags.Z)); break;
                 case 0x29: Add16(ref hl, hl.Word, false); break;
@@ -189,7 +193,7 @@ namespace MasterFudge.Emulation.CPU
                 case 0x2B: Decrement16(ref hl.Word); break;
                 case 0x2C: Increment8(ref hl.Low); break;
                 case 0x2D: Decrement8(ref hl.Low); break;
-                case 0x2E: LoadRegisterImmediate8(ref hl.Low); break;
+                case 0x2E: LoadRegisterImmediate8(ref hl.Low, false); break;
                 case 0x2F: af.High ^= 0xFF; SetFlag(Flags.N | Flags.H); break;
                 case 0x30: JumpConditional8(!IsFlagSet(Flags.C)); break;
                 case 0x31: LoadRegisterImmediate16(ref sp); break;
@@ -201,60 +205,60 @@ namespace MasterFudge.Emulation.CPU
                 case 0x37: SetFlag(Flags.C); ClearFlag(Flags.N | Flags.H); break;
                 case 0x38: JumpConditional8(IsFlagSet(Flags.C)); break;
                 case 0x39: Add16(ref hl, sp, false); break;
-                case 0x3A: LoadRegisterFromMemory8(ref af.High, memoryMapper.Read16(pc)); pc += 2; break;
+                case 0x3A: LoadRegisterFromMemory8(ref af.High, memoryMapper.Read16(pc), false); pc += 2; break;
                 case 0x3B: Decrement16(ref sp); break;
                 case 0x3C: Increment8(ref af.High); break;
                 case 0x3D: Decrement8(ref af.High); break;
-                case 0x3E: LoadRegisterImmediate8(ref af.High); break;
+                case 0x3E: LoadRegisterImmediate8(ref af.High, false); break;
                 case 0x3F: ClearFlag(Flags.N); SetClearFlagConditional(Flags.C, !IsFlagSet(Flags.C)); break;
-                case 0x40: LoadRegister8(ref bc.High, bc.High); break;
-                case 0x41: LoadRegister8(ref bc.High, bc.Low); break;
-                case 0x42: LoadRegister8(ref bc.High, de.High); break;
-                case 0x43: LoadRegister8(ref bc.High, de.Low); break;
-                case 0x44: LoadRegister8(ref bc.High, hl.High); break;
-                case 0x45: LoadRegister8(ref bc.High, hl.Low); break;
+                case 0x40: LoadRegister8(ref bc.High, bc.High, false); break;
+                case 0x41: LoadRegister8(ref bc.High, bc.Low, false); break;
+                case 0x42: LoadRegister8(ref bc.High, de.High, false); break;
+                case 0x43: LoadRegister8(ref bc.High, de.Low, false); break;
+                case 0x44: LoadRegister8(ref bc.High, hl.High, false); break;
+                case 0x45: LoadRegister8(ref bc.High, hl.Low, false); break;
                 case 0x46: bc.High = memoryMapper.Read8(hl.Word); break;
-                case 0x47: LoadRegister8(ref bc.High, af.High); break;
-                case 0x48: LoadRegister8(ref bc.Low, bc.High); break;
-                case 0x49: LoadRegister8(ref bc.Low, bc.Low); break;
-                case 0x4A: LoadRegister8(ref bc.Low, de.High); break;
-                case 0x4B: LoadRegister8(ref bc.Low, de.Low); break;
-                case 0x4C: LoadRegister8(ref bc.Low, hl.High); break;
-                case 0x4D: LoadRegister8(ref bc.Low, hl.Low); break;
+                case 0x47: LoadRegister8(ref bc.High, af.High, false); break;
+                case 0x48: LoadRegister8(ref bc.Low, bc.High, false); break;
+                case 0x49: LoadRegister8(ref bc.Low, bc.Low, false); break;
+                case 0x4A: LoadRegister8(ref bc.Low, de.High, false); break;
+                case 0x4B: LoadRegister8(ref bc.Low, de.Low, false); break;
+                case 0x4C: LoadRegister8(ref bc.Low, hl.High, false); break;
+                case 0x4D: LoadRegister8(ref bc.Low, hl.Low, false); break;
                 case 0x4E: bc.Low = memoryMapper.Read8(hl.Word); break;
-                case 0x4F: LoadRegister8(ref bc.Low, af.High); break;
-                case 0x50: LoadRegister8(ref de.High, bc.High); break;
-                case 0x51: LoadRegister8(ref de.High, bc.Low); break;
-                case 0x52: LoadRegister8(ref de.High, de.High); break;
-                case 0x53: LoadRegister8(ref de.High, de.Low); break;
-                case 0x54: LoadRegister8(ref de.High, hl.High); break;
-                case 0x55: LoadRegister8(ref de.High, hl.Low); break;
+                case 0x4F: LoadRegister8(ref bc.Low, af.High, false); break;
+                case 0x50: LoadRegister8(ref de.High, bc.High, false); break;
+                case 0x51: LoadRegister8(ref de.High, bc.Low, false); break;
+                case 0x52: LoadRegister8(ref de.High, de.High, false); break;
+                case 0x53: LoadRegister8(ref de.High, de.Low, false); break;
+                case 0x54: LoadRegister8(ref de.High, hl.High, false); break;
+                case 0x55: LoadRegister8(ref de.High, hl.Low, false); break;
                 case 0x56: de.High = memoryMapper.Read8(hl.Word); break;
-                case 0x57: LoadRegister8(ref de.High, af.High); break;
-                case 0x58: LoadRegister8(ref de.Low, bc.High); break;
-                case 0x59: LoadRegister8(ref de.Low, bc.Low); break;
-                case 0x5A: LoadRegister8(ref de.Low, de.High); break;
-                case 0x5B: LoadRegister8(ref de.Low, de.Low); break;
-                case 0x5C: LoadRegister8(ref de.Low, hl.High); break;
-                case 0x5D: LoadRegister8(ref de.Low, hl.Low); break;
+                case 0x57: LoadRegister8(ref de.High, af.High, false); break;
+                case 0x58: LoadRegister8(ref de.Low, bc.High, false); break;
+                case 0x59: LoadRegister8(ref de.Low, bc.Low, false); break;
+                case 0x5A: LoadRegister8(ref de.Low, de.High, false); break;
+                case 0x5B: LoadRegister8(ref de.Low, de.Low, false); break;
+                case 0x5C: LoadRegister8(ref de.Low, hl.High, false); break;
+                case 0x5D: LoadRegister8(ref de.Low, hl.Low, false); break;
                 case 0x5E: de.Low = memoryMapper.Read8(hl.Word); break;
-                case 0x5F: LoadRegister8(ref de.Low, af.High); break;
-                case 0x60: LoadRegister8(ref hl.High, bc.High); break;
-                case 0x61: LoadRegister8(ref hl.High, bc.Low); break;
-                case 0x62: LoadRegister8(ref hl.High, de.High); break;
-                case 0x63: LoadRegister8(ref hl.High, de.Low); break;
-                case 0x64: LoadRegister8(ref hl.High, hl.High); break;
-                case 0x65: LoadRegister8(ref hl.High, hl.Low); break;
+                case 0x5F: LoadRegister8(ref de.Low, af.High, false); break;
+                case 0x60: LoadRegister8(ref hl.High, bc.High, false); break;
+                case 0x61: LoadRegister8(ref hl.High, bc.Low, false); break;
+                case 0x62: LoadRegister8(ref hl.High, de.High, false); break;
+                case 0x63: LoadRegister8(ref hl.High, de.Low, false); break;
+                case 0x64: LoadRegister8(ref hl.High, hl.High, false); break;
+                case 0x65: LoadRegister8(ref hl.High, hl.Low, false); break;
                 case 0x66: hl.High = memoryMapper.Read8(hl.Word); break;
-                case 0x67: LoadRegister8(ref hl.High, af.High); break;
-                case 0x68: LoadRegister8(ref hl.Low, bc.High); break;
-                case 0x69: LoadRegister8(ref hl.Low, bc.Low); break;
-                case 0x6A: LoadRegister8(ref hl.Low, de.High); break;
-                case 0x6B: LoadRegister8(ref hl.Low, de.Low); break;
-                case 0x6C: LoadRegister8(ref hl.Low, hl.High); break;
-                case 0x6D: LoadRegister8(ref hl.Low, hl.Low); break;
+                case 0x67: LoadRegister8(ref hl.High, af.High, false); break;
+                case 0x68: LoadRegister8(ref hl.Low, bc.High, false); break;
+                case 0x69: LoadRegister8(ref hl.Low, bc.Low, false); break;
+                case 0x6A: LoadRegister8(ref hl.Low, de.High, false); break;
+                case 0x6B: LoadRegister8(ref hl.Low, de.Low, false); break;
+                case 0x6C: LoadRegister8(ref hl.Low, hl.High, false); break;
+                case 0x6D: LoadRegister8(ref hl.Low, hl.Low, false); break;
                 case 0x6E: hl.Low = memoryMapper.Read8(hl.Word); break;
-                case 0x6F: LoadRegister8(ref hl.Low, af.High); break;
+                case 0x6F: LoadRegister8(ref hl.Low, af.High, false); break;
                 case 0x70: LoadMemory8(hl.Word, bc.High); break;
                 case 0x71: LoadMemory8(hl.Word, bc.Low); break;
                 case 0x72: LoadMemory8(hl.Word, de.High); break;
@@ -263,14 +267,14 @@ namespace MasterFudge.Emulation.CPU
                 case 0x75: LoadMemory8(hl.Word, hl.Low); break;
                 case 0x76: halted = true; break;
                 case 0x77: LoadMemory8(hl.Word, af.High); break;
-                case 0x78: LoadRegister8(ref af.High, bc.High); break;
-                case 0x79: LoadRegister8(ref af.High, bc.Low); break;
-                case 0x7A: LoadRegister8(ref af.High, de.High); break;
-                case 0x7B: LoadRegister8(ref af.High, de.Low); break;
-                case 0x7C: LoadRegister8(ref af.High, hl.High); break;
-                case 0x7D: LoadRegister8(ref af.High, hl.Low); break;
+                case 0x78: LoadRegister8(ref af.High, bc.High, false); break;
+                case 0x79: LoadRegister8(ref af.High, bc.Low, false); break;
+                case 0x7A: LoadRegister8(ref af.High, de.High, false); break;
+                case 0x7B: LoadRegister8(ref af.High, de.Low, false); break;
+                case 0x7C: LoadRegister8(ref af.High, hl.High, false); break;
+                case 0x7D: LoadRegister8(ref af.High, hl.Low, false); break;
                 case 0x7E: af.High = memoryMapper.Read8(hl.Word); break;
-                case 0x7F: LoadRegister8(ref af.High, af.High); break;
+                case 0x7F: LoadRegister8(ref af.High, af.High, false); break;
                 case 0x80: Add8(bc.High, false); break;
                 case 0x81: Add8(bc.Low, false); break;
                 case 0x82: Add8(de.High, false); break;
@@ -432,7 +436,7 @@ namespace MasterFudge.Emulation.CPU
                 //54 - undocumented
                 //55 - undocumented
                 case 0x56: interruptMode = 1; break;
-                case 0x57: LoadRegister8(ref af.High, i); break;
+                case 0x57: LoadRegister8(ref af.High, i, true); break;
                 case 0x58: PortRead(ref de.Low, bc.Low); break;
                 case 0x59: ioWriteDelegate(bc.Low, de.Low); break;
                 case 0x5A: Add16(ref hl, de.Word, true); break;
@@ -440,7 +444,7 @@ namespace MasterFudge.Emulation.CPU
                 //5C - undocumented
                 //5D - undocumented
                 case 0x5E: interruptMode = 2; break;
-                case 0x5F: LoadRegister8(ref af.High, r); break;
+                case 0x5F: LoadRegister8(ref af.High, r, true); break;
                 case 0x60: PortRead(ref hl.High, bc.Low); break;
                 case 0x61: ioWriteDelegate(bc.Low, hl.High); break;
                 case 0x62: Subtract16(ref hl, hl.Word, true); break;
@@ -1183,11 +1187,14 @@ namespace MasterFudge.Emulation.CPU
 
         private void CompareIncrement()
         {
+            bool carry = IsFlagSet(Flags.C);
+
             Cp8(memoryMapper.Read8(hl.Word));
             Increment16(ref hl.Word);
             Decrement16(ref bc.Word);
 
             SetFlag(Flags.N);
+            SetClearFlagConditional(Flags.C, carry);
         }
 
         private void CompareIncrementRepeat()
@@ -1202,11 +1209,14 @@ namespace MasterFudge.Emulation.CPU
 
         private void CompareDecrement()
         {
+            bool carry = IsFlagSet(Flags.C);
+
             Cp8(memoryMapper.Read8(hl.Word));
             Decrement16(ref hl.Word);
             Decrement16(ref bc.Word);
 
             SetFlag(Flags.N);
+            SetClearFlagConditional(Flags.C, carry);
         }
 
         private void CompareDecrementRepeat()
@@ -1422,19 +1432,28 @@ namespace MasterFudge.Emulation.CPU
             af.High = (byte)result;
         }
 
-        private void LoadRegisterFromMemory8(ref byte register, ushort address)
+        private void LoadRegisterFromMemory8(ref byte register, ushort address, bool specialRegs)
         {
-            LoadRegister8(ref register, memoryMapper.Read8(address));
+            LoadRegister8(ref register, memoryMapper.Read8(address), specialRegs);
         }
 
-        private void LoadRegisterImmediate8(ref byte register)
+        private void LoadRegisterImmediate8(ref byte register, bool specialRegs)
         {
-            LoadRegister8(ref register, memoryMapper.Read8(pc++));
+            LoadRegister8(ref register, memoryMapper.Read8(pc++), specialRegs);
         }
 
-        private void LoadRegister8(ref byte register, byte value)
+        private void LoadRegister8(ref byte register, byte value, bool specialRegs)
         {
             register = value;
+
+            if (specialRegs)
+            {
+                // I or R
+                ClearFlag(Flags.N | Flags.H);
+                SetClearFlagConditional(Flags.PV, (iff1)); // TODO: set if interrupts enabled, correct?
+                SetClearFlagConditional(Flags.Z, (register == 0));
+                SetClearFlagConditional(Flags.S, IsBitSet(register, 7));
+            }
         }
 
         private void LoadRegisterImmediate16(ref ushort register)
