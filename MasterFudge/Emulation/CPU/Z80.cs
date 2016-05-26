@@ -22,6 +22,7 @@ namespace MasterFudge.Emulation.CPU
         const int AddCyclesRetCondTaken = 6;
         const int AddCyclesCallCondTaken = 7;
         const int AddCyclesRepeatByteOps = 5;   // EDBx
+        const int AddCyclesDDFDCBOps = 8;
 
         // Flag notes http://stackoverflow.com/a/30411377
 
@@ -102,8 +103,6 @@ namespace MasterFudge.Emulation.CPU
             halted = false;
         }
 
-        const bool DIE_ON_UNIMPLEMENTED_PREFIXES = false;
-
         // TODO: undocumented opcodes (ugh)
 
         public int Execute()
@@ -122,9 +121,9 @@ namespace MasterFudge.Emulation.CPU
                 switch (op)
                 {
                     case 0xCB: ExecuteOpCB(); break;
-                    case 0xDD: if (DIE_ON_UNIMPLEMENTED_PREFIXES) throw new Exception(string.Format("Unimplemented opcode prefix 0xDD")); break;
+                    case 0xDD: ExecuteOpDD(); break;
                     case 0xED: ExecuteOpED(); break;
-                    case 0xFD: if (DIE_ON_UNIMPLEMENTED_PREFIXES) throw new Exception(string.Format("Unimplemented opcode prefix 0xFD")); break;
+                    case 0xFD: ExecuteOpFD(); break;
                     default:
                         currentCycles += cycleCountsMain[op];
                         ExecuteOp(op);
@@ -155,6 +154,20 @@ namespace MasterFudge.Emulation.CPU
             byte cbOp = memoryMapper.Read8(pc++);
             currentCycles += cycleCountsCB[cbOp];
             ExecuteOpCB(cbOp);
+        }
+
+        private void ExecuteOpDD()
+        {
+            byte ddOp = memoryMapper.Read8(pc++);
+            currentCycles += cycleCountsDDFD[ddOp];
+            ExecuteOpDDFD(ddOp, ref ix);
+        }
+
+        private void ExecuteOpFD()
+        {
+            byte fdOp = memoryMapper.Read8(pc++);
+            currentCycles += cycleCountsDDFD[fdOp];
+            ExecuteOpDDFD(fdOp, ref iy);
         }
 
         private void ExecuteOp(byte op)
@@ -772,6 +785,118 @@ namespace MasterFudge.Emulation.CPU
                 case 0xFF: SetBit(ref af.High, 7); break;
 
                 default: throw new Exception(MakeUnimplementedOpcodeString((ushort)(pc - 2)));
+            }
+        }
+
+        private void ExecuteOpDDFD(byte op, ref Register register)
+        {
+            ushort calcAddress = (ushort)(register.Word + (sbyte)memoryMapper.Read8(pc++));
+
+            switch (op)
+            {
+                case 0x09: Add16(ref register, bc.Word, false); break;
+
+                case 0x19: Add16(ref register, de.Word, false); break;
+
+                case 0x21: LoadRegisterImmediate16(ref register.Word); break;
+                case 0x22: LoadMemory16(memoryMapper.Read16(pc), register.Word); pc += 2; break;
+                case 0x23: Increment16(ref register.Word); break;
+                case 0x29: Add16(ref register, register.Word, false); break;
+                case 0x2A: LoadRegister16(ref register.Word, memoryMapper.Read16(memoryMapper.Read16(pc))); pc += 2; break;
+                case 0x2B: Decrement16(ref register.Word); break;
+
+                case 0x34: IncrementMemory8(calcAddress); break;
+                case 0x35: DecrementMemory8(calcAddress); break;
+                case 0x36: LoadMemory8(calcAddress, memoryMapper.Read8(pc++)); break;
+                case 0x39: Add16(ref register, sp, false); break;
+
+                case 0x46: bc.High = memoryMapper.Read8(calcAddress); break;
+                case 0x4E: bc.Low = memoryMapper.Read8(calcAddress); break;
+
+                case 0x56: de.High = memoryMapper.Read8(calcAddress); break;
+                case 0x5E: de.Low = memoryMapper.Read8(calcAddress); break;
+
+                case 0x66: hl.High = memoryMapper.Read8(calcAddress); break;
+                case 0x6E: hl.Low = memoryMapper.Read8(calcAddress); break;
+
+                case 0x70: LoadMemory8(calcAddress, bc.High); break;
+                case 0x71: LoadMemory8(calcAddress, bc.Low); break;
+                case 0x72: LoadMemory8(calcAddress, de.High); break;
+                case 0x73: LoadMemory8(calcAddress, de.Low); break;
+                case 0x74: LoadMemory8(calcAddress, hl.High); break;
+                case 0x75: LoadMemory8(calcAddress, hl.Low); break;
+                case 0x77: LoadMemory8(calcAddress, af.High); break;
+                case 0x7E: af.High = memoryMapper.Read8(calcAddress); break;
+
+                case 0x86: Add8(memoryMapper.Read8(calcAddress), false); break;
+                case 0x8E: Add8(memoryMapper.Read8(calcAddress), true); break;
+
+                case 0x96: Subtract8(memoryMapper.Read8(calcAddress), false); break;
+                case 0x9E: Subtract8(memoryMapper.Read8(calcAddress), true); break;
+
+                case 0xA6: And8(memoryMapper.Read8(calcAddress)); break;
+                case 0xAE: Xor8(memoryMapper.Read8(calcAddress)); break;
+
+                case 0xB6: Or8(memoryMapper.Read8(calcAddress)); break;
+                case 0xBE: Cp8(memoryMapper.Read8(calcAddress)); break;
+
+                case 0xCB: ExecuteOpDDFDCB(memoryMapper.Read8(pc++), ref register); break;
+
+                case 0xE1: Pop(ref register); break;
+                case 0xE3: ExchangeStackRegister16(ref register); break;
+                case 0xE5: Push(register); break;
+                case 0xE9: pc = register.Word; break;
+
+                case 0xF9: sp = register.Word; break;
+
+                default: throw new Exception(MakeUnimplementedOpcodeString((ushort)(pc - 3)));
+            }
+        }
+
+        private void ExecuteOpDDFDCB(byte op, ref Register register)
+        {
+            currentCycles += (cycleCountsCB[op] + AddCyclesDDFDCBOps);
+
+            sbyte operand = (sbyte)memoryMapper.Read8((ushort)(pc - 2));
+            ushort address = (ushort)(register.Word + operand);
+
+            switch (op)
+            {
+                //x0-x5,x7-xD,xF - undocumented
+
+                case 0x06: RotateLeftCircular(address); break;
+                case 0x0E: RotateRightCircular(address); break;
+                case 0x16: RotateLeft(address); break;
+                case 0x1E: RotateRight(address); break;
+                case 0x26: ShiftLeftArithmetic(address); break;
+                case 0x2E: ShiftRightArithmetic(address); break;
+                case 0x3E: ShiftRightLogical(address); break;
+                case 0x46: TestBit(memoryMapper.Read8(address), 0); break;
+                case 0x4E: TestBit(memoryMapper.Read8(address), 1); break;
+                case 0x56: TestBit(memoryMapper.Read8(address), 2); break;
+                case 0x5E: TestBit(memoryMapper.Read8(address), 3); break;
+                case 0x66: TestBit(memoryMapper.Read8(address), 4); break;
+                case 0x6E: TestBit(memoryMapper.Read8(address), 5); break;
+                case 0x76: TestBit(memoryMapper.Read8(address), 6); break;
+                case 0x7E: TestBit(memoryMapper.Read8(address), 7); break;
+                case 0x86: ResetBit(address, 0); break;
+                case 0x8E: ResetBit(address, 1); break;
+                case 0x96: ResetBit(address, 2); break;
+                case 0x9E: ResetBit(address, 3); break;
+                case 0xA6: ResetBit(address, 4); break;
+                case 0xAE: ResetBit(address, 5); break;
+                case 0xB6: ResetBit(address, 6); break;
+                case 0xBE: ResetBit(address, 7); break;
+                case 0xC6: SetBit(address, 0); break;
+                case 0xCE: SetBit(address, 1); break;
+                case 0xD6: SetBit(address, 2); break;
+                case 0xDE: SetBit(address, 3); break;
+                case 0xE6: SetBit(address, 4); break;
+                case 0xEE: SetBit(address, 5); break;
+                case 0xF6: SetBit(address, 6); break;
+                case 0xFE: SetBit(address, 7); break;
+
+                default: throw new Exception(MakeUnimplementedOpcodeString((ushort)(pc - 4)));
             }
         }
 
