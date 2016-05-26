@@ -7,6 +7,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
 
 using MasterFudge.Emulation;
 using MasterFudge.Emulation.Cartridges;
@@ -15,7 +17,10 @@ namespace MasterFudge
 {
     public partial class MainForm : Form
     {
+        // TODO: lots of kludges & debug crap, fix or remove once unneccesary! also fix threading and related shit! sooo much to do beyond just the emulation...
+
         MasterSystem ms;
+        Bitmap screenBitmap, paletteBitmap;
 
         public MainForm()
         {
@@ -50,16 +55,21 @@ namespace MasterFudge
             System.IO.TextWriter writer = new System.IO.StreamWriter(@"E:\temp\sms\log.txt");
             FormClosing += ((s, ev) =>
             {
-                writer.Close();
-                System.IO.File.WriteAllBytes(@"E:\temp\sms\wram.bin", ms.DumpMemory(DebugMemoryRegion.WorkRam));
-                System.IO.File.WriteAllBytes(@"E:\temp\sms\vram.sms", ms.DumpMemory(DebugMemoryRegion.VideoRam));
-                System.IO.File.WriteAllBytes(@"E:\temp\sms\cram.bin", ms.DumpMemory(DebugMemoryRegion.ColorRam));
+                writer?.Close();
+                if (ms != null)
+                {
+                    System.IO.File.WriteAllBytes(@"E:\temp\sms\wram.bin", ms.DumpMemory(DebugMemoryRegion.WorkRam));
+                    System.IO.File.WriteAllBytes(@"E:\temp\sms\vram.sms", ms.DumpMemory(DebugMemoryRegion.VideoRam));
+                    System.IO.File.WriteAllBytes(@"E:\temp\sms\cram.bin", ms.DumpMemory(DebugMemoryRegion.ColorRam));
+                }
             });
+
+            Application.Idle += ((s, ev) => { pbTempDisplay.Invalidate(); pbTempPalette.Invalidate(); });
+            pbTempDisplay.Paint += ((s, ev) => { if (screenBitmap != null) ev.Graphics.DrawImageUnscaled(screenBitmap, 0, 0); });
+            pbTempPalette.Paint += ((s, ev) => { if (paletteBitmap != null) ev.Graphics.DrawImageUnscaled(paletteBitmap, 0, 0); });
 
             Program.Log.OnLogUpdate += new Logger.LogUpdateHandler((s, ev) =>
             {
-                //if (lbTempDisasm.IsHandleCreated)
-                //lbTempDisasm.Invoke(new Action(() => { lbTempDisasm.Items.Add(ev.Message); lbTempDisasm.TopIndex = lbTempDisasm.Items.Count - 1; }));
                 if (IsHandleCreated)
                 {
                     if (InvokeRequired)
@@ -68,12 +78,7 @@ namespace MasterFudge
                         writer.WriteLine(ev.Message);
                 }
             });
-
-            Program.Log.OnLogCleared += new EventHandler((s, ev) =>
-            {
-                //if (lbTempDisasm.IsHandleCreated)
-                //lbTempDisasm.Invoke(new Action(() => lbTempDisasm.Items.Clear()));
-            });
+            Program.Log.OnLogCleared += new EventHandler((s, ev) => { writer?.Flush(); });
         }
 
         private void LogRomInformation(MasterSystem ms, string romFile)
@@ -102,13 +107,44 @@ namespace MasterFudge
             //romFile = @"D:\ROMs\SMS\VDPTEST.sms";
             //romFile = @"D:\ROMs\SMS\[BIOS] Sega Master System (USA, Europe) (v1.3).sms";
 
-            ms = new MasterSystem(false);
+            ms = new MasterSystem(false, Emulation_OnRenderScreen);
             ms.LoadCartridge(romFile);
 
             LogRomInformation(ms, romFile);
 
             Program.Log.WriteEvent("--- STARTING EMULATION ---");
             ms.Run();
+        }
+
+        private void Emulation_OnRenderScreen(object sender, RenderEventArgs e)
+        {
+            // TODO: make this much more safe
+
+            if (screenBitmap == null || screenBitmap.Width != e.FrameWidth || screenBitmap.Height != e.FrameHeight)
+            {
+                screenBitmap?.Dispose();
+                screenBitmap = new Bitmap(e.FrameWidth, e.FrameHeight, PixelFormat.Format32bppArgb);
+            }
+
+            BitmapData bmpData = screenBitmap.LockBits(new Rectangle(0, 0, screenBitmap.Width, screenBitmap.Height), ImageLockMode.WriteOnly, screenBitmap.PixelFormat);
+            Marshal.Copy(e.FrameData, 0, bmpData.Scan0, e.FrameData.Length);
+            screenBitmap.UnlockBits(bmpData);
+
+            if (paletteBitmap == null) paletteBitmap = new Bitmap(128, 256);
+
+            using (Graphics g = Graphics.FromImage(paletteBitmap))
+            {
+                for (int p = 0; p < 2; p++)
+                {
+                    for (int c = 0; c < 16; c++)
+                    {
+                        using (SolidBrush brush = new SolidBrush(ms.GetPaletteColorDebug(p, c)))
+                        {
+                            g.FillRectangle(brush, p * 64, c * 16, 64, 16);
+                        }
+                    }
+                }
+            }
         }
 
         private void btnTempPause_Click(object sender, EventArgs e)

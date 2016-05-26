@@ -28,26 +28,13 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.lbTempDisasm = new System.Windows.Forms.ListBox();
             this.btnTempRun = new System.Windows.Forms.Button();
             this.btnTempPause = new System.Windows.Forms.Button();
+            this.pbTempDisplay = new System.Windows.Forms.PictureBox();
+            this.pbTempPalette = new System.Windows.Forms.PictureBox();
+            ((System.ComponentModel.ISupportInitialize)(this.pbTempDisplay)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pbTempPalette)).BeginInit();
             this.SuspendLayout();
-            // 
-            // lbTempDisasm
-            // 
-            this.lbTempDisasm.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.lbTempDisasm.Font = new System.Drawing.Font("DejaVu Sans Mono", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lbTempDisasm.FormattingEnabled = true;
-            this.lbTempDisasm.IntegralHeight = false;
-            this.lbTempDisasm.ItemHeight = 14;
-            this.lbTempDisasm.Location = new System.Drawing.Point(12, 41);
-            this.lbTempDisasm.Name = "lbTempDisasm";
-            this.lbTempDisasm.ScrollAlwaysVisible = true;
-            this.lbTempDisasm.SelectionMode = System.Windows.Forms.SelectionMode.None;
-            this.lbTempDisasm.Size = new System.Drawing.Size(560, 509);
-            this.lbTempDisasm.TabIndex = 0;
             // 
             // btnTempRun
             // 
@@ -69,24 +56,46 @@
             this.btnTempPause.UseVisualStyleBackColor = true;
             this.btnTempPause.Click += new System.EventHandler(this.btnTempPause_Click);
             // 
+            // pbTempDisplay
+            // 
+            this.pbTempDisplay.BackColor = System.Drawing.Color.LightGray;
+            this.pbTempDisplay.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.pbTempDisplay.Location = new System.Drawing.Point(12, 41);
+            this.pbTempDisplay.Name = "pbTempDisplay";
+            this.pbTempDisplay.Size = new System.Drawing.Size(300, 300);
+            this.pbTempDisplay.TabIndex = 3;
+            this.pbTempDisplay.TabStop = false;
+            // 
+            // pbTempPalette
+            // 
+            this.pbTempPalette.BackColor = System.Drawing.Color.LightGray;
+            this.pbTempPalette.Location = new System.Drawing.Point(318, 41);
+            this.pbTempPalette.Name = "pbTempPalette";
+            this.pbTempPalette.Size = new System.Drawing.Size(128, 256);
+            this.pbTempPalette.TabIndex = 4;
+            this.pbTempPalette.TabStop = false;
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(584, 562);
+            this.Controls.Add(this.pbTempPalette);
+            this.Controls.Add(this.pbTempDisplay);
             this.Controls.Add(this.btnTempPause);
             this.Controls.Add(this.btnTempRun);
-            this.Controls.Add(this.lbTempDisasm);
             this.Name = "MainForm";
+            ((System.ComponentModel.ISupportInitialize)(this.pbTempDisplay)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pbTempPalette)).EndInit();
             this.ResumeLayout(false);
 
         }
 
         #endregion
-
-        private System.Windows.Forms.ListBox lbTempDisasm;
         private System.Windows.Forms.Button btnTempRun;
         private System.Windows.Forms.Button btnTempPause;
+        private System.Windows.Forms.PictureBox pbTempDisplay;
+        private System.Windows.Forms.PictureBox pbTempPalette;
     }
 }
 

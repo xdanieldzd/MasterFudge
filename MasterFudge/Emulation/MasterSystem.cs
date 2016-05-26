@@ -12,14 +12,18 @@ using MasterFudge.Emulation.Graphics;
 
 namespace MasterFudge.Emulation
 {
+    public delegate void RenderScreenHandler(object sender, RenderEventArgs e);
+
     public partial class MasterSystem
     {
+        public event RenderScreenHandler OnRenderScreen;
+
         public const double MasterClockPAL = 53203424;
         public const double MasterClockNTSC = 53693175;
         public const double FramesPerSecPAL = 49.701459;
         public const double FramesPerSecNTSC = 59.922743;
 
-        int cyclesPerFrame;
+        int cyclesPerFrame, numScanlines;
 
         MemoryMapper memoryMapper;
 
@@ -36,14 +40,18 @@ namespace MasterFudge.Emulation
 
         public bool IsPaused { get { return (mainThread?.ThreadState == ThreadState.Running || mainThread?.ThreadState == ThreadState.Background); } }
 
-        public MasterSystem(bool isNtsc)
+        public MasterSystem(bool isNtsc, RenderScreenHandler onRenderScreen)
         {
-            memoryMapper = new MemoryMapper();
+            OnRenderScreen = onRenderScreen;
 
             cyclesPerFrame = (int)((isNtsc ? MasterClockNTSC : MasterClockPAL) / 15.0 / (isNtsc ? FramesPerSecNTSC : FramesPerSecPAL));
+            numScanlines = (int)(isNtsc ? VDP.NumScanlinesNTSC : VDP.NumScanlinesPAL);
+
+            memoryMapper = new MemoryMapper();
+
             cpu = new Z80(memoryMapper, ReadIOPort, WriteIOPort);
             wram = new WRAM();
-            vdp = new VDP();
+            vdp = new VDP(onRenderScreen);
 
             memoryMapper.AddMemoryArea(wram.GetMemoryAreaDescriptor());
 
@@ -93,7 +101,15 @@ namespace MasterFudge.Emulation
         {
             // TODO: more resetti things
             cpu.Reset();
+            vdp.Reset();
             portMemoryControl = portIoControl = 0;
+        }
+
+        // BAH, JUNK, REMOVE AGAIN ASAP
+        [Obsolete]
+        public System.Drawing.Color GetPaletteColorDebug(int palette, int color)
+        {
+            return System.Drawing.Color.FromArgb(BitConverter.ToInt32(vdp.GetColorAsArgb8888(palette, color), 0));
         }
 
         private void Execute()
@@ -104,15 +120,18 @@ namespace MasterFudge.Emulation
 
                 while (true)
                 {
-                    int currentCycles = 0;
-                    while (currentCycles < cyclesPerFrame)
+                    int totalCycles = 0;
+                    while (totalCycles < cyclesPerFrame)
                     {
-                        currentCycles += cpu.Execute();
-                        vdp.Execute(currentCycles);
+                        int currentCycles = cpu.Execute();
+
+                        vdp.Execute(currentCycles, cyclesPerFrame, numScanlines);
                         //sound
                         //irqs
 
                         HandleInterrupts();
+
+                        totalCycles += currentCycles;
                     }
                     threadReset.WaitOne();
                 }
@@ -148,13 +167,9 @@ namespace MasterFudge.Emulation
                 case 0x40:
                     // Counters
                     if ((port & 0x01) == 0)
-                    {
-                        // V counter
-                    }
+                        return vdp.ReadVCounter();      // V counter
                     else
-                    {
-                        // H counter
-                    }
+                        return vdp.ReadHCounter();      // H counter
                     break;
 
                 case 0x80:
@@ -209,6 +224,20 @@ namespace MasterFudge.Emulation
                     // No effect
                     break;
             }
+        }
+    }
+
+    public class RenderEventArgs : EventArgs
+    {
+        public int FrameWidth { get; private set; }
+        public int FrameHeight { get; private set; }
+        public byte[] FrameData { get; private set; }
+
+        public RenderEventArgs(int width, int height, byte[] data)
+        {
+            FrameWidth = width;
+            FrameHeight = height;
+            FrameData = data;
         }
     }
 }

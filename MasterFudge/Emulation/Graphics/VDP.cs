@@ -8,6 +8,17 @@ namespace MasterFudge.Emulation.Graphics
 {
     public class VDP
     {
+        public const double NumScanlinesPAL = 313.0;
+        public const double NumScanlinesNTSC = 262.0;
+
+        public const double NumVisibleLinesLow = 192.0;
+        public const double NumVisibleLinesMed = 224.0;
+        public const double NumVisibleLinesHigh = 240.0;
+
+        public const double NumPixelsPerLine = 256.0;
+
+        RenderScreenHandler renderScreen;
+
         byte[] registers, vram, cram;
 
         bool isSecondControlWrite;
@@ -22,9 +33,12 @@ namespace MasterFudge.Emulation.Graphics
         }
 
         public bool InterruptPending { get; private set; }
+        int currentScanline, hCounter, screenHeight;
 
-        public VDP()
+        public VDP(RenderScreenHandler onRenderScreen)
         {
+            renderScreen = onRenderScreen;
+
             registers = new byte[0x10];
             vram = new byte[0x4000];
             cram = new byte[0x20];
@@ -32,13 +46,51 @@ namespace MasterFudge.Emulation.Graphics
 
         public void Reset()
         {
+            isSecondControlWrite = false;
             controlWord = 0x0000;
             readBuffer = statusFlags = 0;
+
+            currentScanline = hCounter = 0;
+            screenHeight = (int)NumVisibleLinesLow;
         }
 
-        public void Execute(int currentCycles)
+        public void Execute(int currentCycles, int cyclesPerFrame, int numScanlines)
         {
-            // TODO: everything obviously
+            int cyclesPerLine = ((cyclesPerFrame / numScanlines) * 3);
+
+            if (MasterSystem.IsBitSet(statusFlags, 7) && MasterSystem.IsBitSet(registers[0x01], 5))
+                InterruptPending = true;
+
+            if ((hCounter + currentCycles) > cyclesPerLine)
+            {
+                currentScanline++;
+                hCounter = 0;
+
+                if (currentScanline == screenHeight)
+                {
+                    //
+                }
+                else if (currentScanline == numScanlines)
+                {
+                    currentScanline = 0;
+                    Render();
+                }
+            }
+
+            // TODO: probably wrong...?
+            hCounter = ((hCounter + currentCycles) % cyclesPerLine);
+        }
+
+        private void Render()
+        {
+            // TODO: actually render shit instead of an empty screen
+
+            byte[] frameBuffer = new byte[(int)NumPixelsPerLine * screenHeight * 4];
+
+            for (int i = 0; i < frameBuffer.Length; i += 4)
+                Buffer.BlockCopy(GetColorAsArgb8888(0, 8), 0, frameBuffer, i, 4);
+
+            renderScreen?.Invoke(this, new RenderEventArgs((int)NumPixelsPerLine, screenHeight, frameBuffer));
         }
 
         public byte[] DumpVideoRam()
@@ -49,6 +101,30 @@ namespace MasterFudge.Emulation.Graphics
         public byte[] DumpColorRam()
         {
             return cram;
+        }
+
+        public byte[] GetColorAsArgb8888(int palette, int color)
+        {
+            int offset = ((palette * 16) + color);
+
+            byte r = (byte)(cram[offset] & 0x3);
+            r |= (byte)((r << 6) | (r << 4) | (r << 2));
+            byte g = (byte)((cram[offset] >> 2) & 0x3);
+            g |= (byte)((g << 6) | (g << 4) | (g << 2));
+            byte b = (byte)((cram[offset] >> 4) & 0x3);
+            b |= (byte)((b << 6) | (b << 4) | (b << 2));
+
+            return new byte[] { b, g, r, 0xFF };
+        }
+
+        public byte ReadVCounter()
+        {
+            return (byte)currentScanline;
+        }
+
+        public byte ReadHCounter()
+        {
+            return (byte)(hCounter >> 1);
         }
 
         public byte ReadControlPort()
