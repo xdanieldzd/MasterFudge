@@ -65,7 +65,12 @@ namespace MasterFudge.Emulation.CPU
         IOPortReadDelegate ioReadDelegate;
         IOPortWriteDelegate ioWriteDelegate;
 
-        public Z80(MemoryMapper memMap, IOPortReadDelegate ioRead, IOPortWriteDelegate ioWrite)
+        protected Z80()
+        {
+            DebugLogOpcodes = false;
+        }
+
+        public Z80(MemoryMapper memMap, IOPortReadDelegate ioRead, IOPortWriteDelegate ioWrite) : this()
         {
             memoryMapper = memMap;
             ioReadDelegate = ioRead;
@@ -105,7 +110,8 @@ namespace MasterFudge.Emulation.CPU
         {
             currentCycles = 0;
 
-            Program.Log.WriteEvent(string.Format("{0} | {1} | {2}", DisassembleOpcode(pc).PadRight(48), PrintRegisters(), PrintFlags()));
+            if (DebugLogOpcodes)
+                Program.Log.WriteEvent(string.Format("{0} | {1} | {2}", DisassembleOpcode(pc).PadRight(48), PrintRegisters(), PrintFlags()));
 
             if (!halted)
             {
@@ -1369,8 +1375,6 @@ namespace MasterFudge.Emulation.CPU
 
         private void Or8(byte operand)
         {
-            if (pc >= 0x06A0 && pc <= 0x06A8) { bool tmp = false; }
-
             af.High |= operand;
 
             ClearFlag(Flags.C | Flags.N | Flags.H);

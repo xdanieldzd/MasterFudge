@@ -118,6 +118,14 @@ namespace MasterFudge
 
         private void Emulation_OnRenderScreen(object sender, RenderEventArgs e)
         {
+            if (InvokeRequired)
+                Invoke(new Action<RenderEventArgs>(RenderScreen), e);
+            else
+                RenderScreen(e);
+        }
+
+        private void RenderScreen(RenderEventArgs e)
+        {
             // TODO: make this much more safe
 
             if (screenBitmap == null || screenBitmap.Width != e.FrameWidth || screenBitmap.Height != e.FrameHeight)

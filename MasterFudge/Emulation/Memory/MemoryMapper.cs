@@ -31,6 +31,8 @@ namespace MasterFudge.Emulation.Memory
 
         public void AddMemoryArea(MemoryAreaDescriptor area)
         {
+            if (area == null) return;
+
             memoryAreas.Add(area);
             for (int i = area.StartAddress; i <= area.EndAddress; i++)
             {
@@ -46,6 +48,8 @@ namespace MasterFudge.Emulation.Memory
 
         public void RemoveMemoryArea(MemoryAreaDescriptor area)
         {
+            if (area == null) return;
+
             for (int i = area.StartAddress; i <= area.EndAddress; i++)
             {
                 readMap[i] = null;

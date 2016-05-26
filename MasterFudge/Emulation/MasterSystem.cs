@@ -50,6 +50,7 @@ namespace MasterFudge.Emulation
             memoryMapper = new MemoryMapper();
 
             cpu = new Z80(memoryMapper, ReadIOPort, WriteIOPort);
+            //cpu.DebugLogOpcodes = true;
             wram = new WRAM();
             vdp = new VDP(onRenderScreen);
 
@@ -74,6 +75,7 @@ namespace MasterFudge.Emulation
         {
             cartridge = BaseCartridge.LoadCartridge<BaseCartridge>(filename);
             memoryMapper.AddMemoryArea(cartridge.GetMemoryAreaDescriptor());
+            memoryMapper.AddMemoryArea(cartridge.GetMappingRegisterAreaDescriptor());
         }
 
         public RomHeader GetCartridgeHeader()

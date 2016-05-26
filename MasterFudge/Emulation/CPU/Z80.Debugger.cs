@@ -8,6 +8,8 @@ namespace MasterFudge.Emulation.CPU
 {
     public partial class Z80
     {
+        public bool DebugLogOpcodes { get; set; }
+
         // TODO: verify again, also add all the other crap (CB/DD/FD/etc)
 
         static readonly string[] opcodeMnemonic_Main = new string[]

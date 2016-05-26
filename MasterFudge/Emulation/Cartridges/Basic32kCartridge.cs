@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace MasterFudge.Emulation.Cartridges
 {
-    public class Sega32kCartridge : BaseCartridge
+    public class Basic32kCartridge : BaseCartridge
     {
-        public Sega32kCartridge(byte[] romData) : base(romData) { }
+        public Basic32kCartridge(byte[] romData) : base(romData) { }
 
         public override ushort GetStartAddress()
         {
