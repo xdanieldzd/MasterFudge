@@ -89,6 +89,12 @@ namespace MasterFudge.Emulation
             threadReset.Set();
         }
 
+        public void Stop()
+        {
+            mainThread.Abort();
+            threadReset.Reset();
+        }
+
         public void Pause()
         {
             threadReset.Reset();
@@ -138,6 +144,7 @@ namespace MasterFudge.Emulation
                     threadReset.WaitOne();
                 }
             }
+            catch (ThreadAbortException) { /* probably not good practice, but what do I care */ }
             catch (Exception ex)
             {
                 string message = string.Format("Exception occured: {0}\n\nEmulation thread has been stopped.", ex.Message);

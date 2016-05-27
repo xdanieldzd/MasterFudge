@@ -32,6 +32,7 @@
             this.btnTempPause = new System.Windows.Forms.Button();
             this.pbTempDisplay = new System.Windows.Forms.PictureBox();
             this.pbTempPalette = new System.Windows.Forms.PictureBox();
+            this.ofdOpenRom = new System.Windows.Forms.OpenFileDialog();
             ((System.ComponentModel.ISupportInitialize)(this.pbTempDisplay)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pbTempPalette)).BeginInit();
             this.SuspendLayout();
@@ -75,6 +76,10 @@
             this.pbTempPalette.TabIndex = 4;
             this.pbTempPalette.TabStop = false;
             // 
+            // ofdOpenRom
+            // 
+            this.ofdOpenRom.Filter = "SMS ROMs (*.sms)|*.sms|All Files (*.*)|*.*";
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -96,6 +101,7 @@
         private System.Windows.Forms.Button btnTempPause;
         private System.Windows.Forms.PictureBox pbTempDisplay;
         private System.Windows.Forms.PictureBox pbTempPalette;
+        private System.Windows.Forms.OpenFileDialog ofdOpenRom;
     }
 }
 

@@ -44,16 +44,16 @@ namespace MasterFudge.Emulation.Cartridges
                     if ((address & 0x0FFF) < 0x400)
                         return romData[address & 0x0FFF];
                     else
-                        return romData[((pagingRegisters[1] << 14) | (address & 0x3FFF))];
+                        return romData[(((pagingRegisters[1] & 0x0F) << 14) | (address & 0x3FFF))];
 
                 case 0x4000:
-                    return romData[((pagingRegisters[2] << 14) | (address & 0x3FFF))];
+                    return romData[(((pagingRegisters[2] & 0x0F) << 14) | (address & 0x3FFF))];
 
                 case 0x8000:
                     if (MasterSystem.IsBitSet(pagingRegisters[0], 3))
                         return ramData[((pagingRegisters[0] >> 2) & 0x01)][(address & 0x3FFF)];
                     else
-                        return romData[((pagingRegisters[3] << 14) | (address & 0x3FFF))];
+                        return romData[(((pagingRegisters[3] & 0x0F) << 14) | (address & 0x3FFF))];
 
                 default:
                     throw new Exception(string.Format("Cannot read from cartridge address 0x{0:X4}", address));
@@ -62,10 +62,14 @@ namespace MasterFudge.Emulation.Cartridges
 
         public override void Write8(ushort address, byte value)
         {
-            if ((address & 0xC000) == 0x8000)
+            if ((address & 0xC000) == 0x8000 && MasterSystem.IsBitSet(pagingRegisters[0], 3))
             {
-                if (MasterSystem.IsBitSet(pagingRegisters[0], 3))
-                    ramData[((pagingRegisters[0] >> 2) & 0x01)][(address & 0x3FFF)] = value;
+                // Cartridge RAM
+                ramData[((pagingRegisters[0] >> 2) & 0x01)][(address & 0x3FFF)] = value;
+            }
+            else if (MasterSystem.IsBitSet(pagingRegisters[0], 7))
+            {
+                // ROM write enabled...?
             }
             else
                 throw new Exception(string.Format("Cannot write to cartridge address 0x{0:X4}", address));

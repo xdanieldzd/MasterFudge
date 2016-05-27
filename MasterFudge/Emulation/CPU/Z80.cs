@@ -1134,8 +1134,8 @@ namespace MasterFudge.Emulation.CPU
 
         private void Rst(ushort address)
         {
-            memoryMapper.Write8(--sp, (byte)((pc + 1) >> 8));
-            memoryMapper.Write8(--sp, (byte)((pc + 1) & 0xFF));
+            memoryMapper.Write8(--sp, (byte)(pc >> 8));
+            memoryMapper.Write8(--sp, (byte)(pc & 0xFF));
             pc = address;
         }
 
@@ -1464,7 +1464,7 @@ namespace MasterFudge.Emulation.CPU
         {
             int result = (af.High - (sbyte)operand - (withCarry && IsFlagSet(Flags.C) ? 1 : 0));
 
-            ClearFlag(Flags.N);
+            SetFlag(Flags.N);
 
             // http://www.smspower.org/forums/14413-PVFlagAndSub#76353, TODO: confirm I did this right
             SetClearFlagConditional(Flags.PV, ((((af.High ^ operand) & 0x80) != 0) && ((operand ^ result) & 0x80) == 0));
@@ -1512,7 +1512,7 @@ namespace MasterFudge.Emulation.CPU
         {
             int result = (af.High - operand);
 
-            ClearFlag(Flags.N);
+            SetFlag(Flags.N);
             SetClearFlagConditional(Flags.PV, ((((af.High ^ operand) & 0x80) != 0) && ((operand ^ result) & 0x80) == 0));
             SetClearFlagConditional(Flags.H, ((result & 0x0F) == 0));
             SetClearFlagConditional(Flags.Z, ((result & 0xFF) == 0));
@@ -1542,7 +1542,7 @@ namespace MasterFudge.Emulation.CPU
         {
             int result = (dest.High - (sbyte)operand - (withCarry && IsFlagSet(Flags.C) ? 1 : 0));
 
-            ClearFlag(Flags.N);
+            SetFlag(Flags.N);
             SetClearFlagConditional(Flags.PV, ((((dest.Word ^ operand) & 0x8000) == 0) && ((dest.Word ^ result) & 0x8000) != 0));
             SetClearFlagConditional(Flags.H, ((result & 0x00FF) == 0));
             SetClearFlagConditional(Flags.Z, ((result & 0xFFFF) == 0));

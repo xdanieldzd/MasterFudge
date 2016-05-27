@@ -24,38 +24,24 @@ namespace MasterFudge
 
         public MainForm()
         {
-            if (false)
-            {
-                StringBuilder tmp = new StringBuilder();
-                for (int i = 0; i < 256; i++)
-                {
-                    if ((i % 8) == 0) tmp.Append("            ");
-                    tmp.AppendFormat("\".DB 0xED, 0x{0:X2}\",   ", i);
-                    if (((i + 1) % 8) == 0) tmp.AppendFormat("/* 0x{0:X2} */\n", i - 7);
-                }
-                Clipboard.SetText(tmp.ToString());
-            }
-
-            if (false)
-            {
-                StringBuilder tmp = new StringBuilder();
-                for (int i = 0; i < 256; i++)
-                {
-                    byte port = (byte)(i & 0xC1);
-                    tmp.AppendFormat("raw 0x{0:X2}, masked 0x{1:X2}\n", i, port);
-                }
-                Clipboard.SetText(tmp.ToString());
-            }
-
             InitializeComponent();
 
             Text = Application.ProductName;
 
-            // TODO: remove eventually, or fix up somehow; cross-thread stuff is iffy (especially when exiting program?)
+            // TODO: remove eventually, or fix up somehow
             System.IO.TextWriter writer = new System.IO.StreamWriter(@"E:\temp\sms\log.txt");
             FormClosing += ((s, ev) =>
             {
-                writer?.Close();
+                ms?.Stop();
+
+                if (IsHandleCreated && !Disposing)
+                {
+                    if (InvokeRequired)
+                        Invoke(new Action(() => { writer?.Close(); }));
+                    else
+                        writer?.Close();
+                }
+
                 if (ms != null)
                 {
                     System.IO.File.WriteAllBytes(@"E:\temp\sms\wram.bin", ms.DumpMemory(DebugMemoryRegion.WorkRam));
@@ -70,7 +56,7 @@ namespace MasterFudge
 
             Program.Log.OnLogUpdate += new Logger.LogUpdateHandler((s, ev) =>
             {
-                if (IsHandleCreated)
+                if (IsHandleCreated && !Disposing)
                 {
                     if (InvokeRequired)
                         Invoke(new Action(() => { writer.WriteLine(ev.Message); }));
@@ -99,29 +85,38 @@ namespace MasterFudge
 
         private void btnTempRun_Click(object sender, EventArgs e)
         {
-            Program.Log.ClearEvents();
-
             string romFile = @"D:\ROMs\SMS\Hang-On_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\Sonic_the_Hedgehog_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\Y's_-_The_Vanished_Omen_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\VDPTEST.sms";
             //romFile = @"D:\ROMs\SMS\[BIOS] Sega Master System (USA, Europe) (v1.3).sms";
 
-            ms = new MasterSystem(false, Emulation_OnRenderScreen);
-            ms.LoadCartridge(romFile);
+            ofdOpenRom.InitialDirectory = System.IO.Path.GetDirectoryName(romFile);
+            ofdOpenRom.FileName = System.IO.Path.GetFileName(romFile);
 
-            LogRomInformation(ms, romFile);
+            if (ofdOpenRom.ShowDialog() == DialogResult.OK)
+            {
+                Program.Log.ClearEvents();
 
-            Program.Log.WriteEvent("--- STARTING EMULATION ---");
-            ms.Run();
+                ms = new MasterSystem(false, Emulation_OnRenderScreen);
+                ms.LoadCartridge(ofdOpenRom.FileName);
+
+                LogRomInformation(ms, ofdOpenRom.FileName);
+
+                Program.Log.WriteEvent("--- STARTING EMULATION ---");
+                ms.Run();
+            }
         }
 
         private void Emulation_OnRenderScreen(object sender, RenderEventArgs e)
         {
-            if (InvokeRequired)
-                Invoke(new Action<RenderEventArgs>(RenderScreen), e);
-            else
-                RenderScreen(e);
+            if (IsHandleCreated && !Disposing)
+            {
+                if (InvokeRequired)
+                    Invoke(new Action<RenderEventArgs>(RenderScreen), e);
+                else
+                    RenderScreen(e);
+            }
         }
 
         private void RenderScreen(RenderEventArgs e)
