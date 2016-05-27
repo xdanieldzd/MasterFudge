@@ -6,6 +6,6 @@
 * __VDP__: Very basic background rendering; much is missing, what's there is kinda broken
 * __Memory__: Working, I guess; nothing fancy here
 * __Cartridges__: Basic Sega mapper support (ROM and RAM), probably buggy
-* __Input__: Not yet! 
+* __Input__: P1 joypad should work, I think
 * __Sound__: No sir, neither PSG nor FM!
 * __Misc__: If it's not listed above, it's probably not there (yet)
