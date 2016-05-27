@@ -90,7 +90,10 @@
             this.Controls.Add(this.pbTempDisplay);
             this.Controls.Add(this.btnTempPause);
             this.Controls.Add(this.btnTempRun);
+            this.KeyPreview = true;
             this.Name = "MainForm";
+            this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.MainForm_KeyDown);
+            this.KeyUp += new System.Windows.Forms.KeyEventHandler(this.MainForm_KeyUp);
             ((System.ComponentModel.ISupportInitialize)(this.pbTempDisplay)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pbTempPalette)).EndInit();
             this.ResumeLayout(false);

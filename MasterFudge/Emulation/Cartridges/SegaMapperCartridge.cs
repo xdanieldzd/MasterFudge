@@ -38,6 +38,8 @@ namespace MasterFudge.Emulation.Cartridges
 
         public override byte Read8(ushort address)
         {
+            // TODO: ensure this is actually correct
+
             switch (address & 0xC000)
             {
                 case 0x0000:

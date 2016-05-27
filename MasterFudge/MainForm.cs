@@ -21,12 +21,15 @@ namespace MasterFudge
 
         MasterSystem ms;
         Bitmap screenBitmap, paletteBitmap;
+        bool[] keysDown;
 
         public MainForm()
         {
             InitializeComponent();
 
             Text = Application.ProductName;
+
+            keysDown = new bool[0x1000];
 
             // TODO: remove eventually, or fix up somehow
             System.IO.TextWriter writer = new System.IO.StreamWriter(@"E:\temp\sms\log.txt");
@@ -54,7 +57,21 @@ namespace MasterFudge
                 }
             });
 
-            Application.Idle += ((s, ev) => { pbTempDisplay.Invalidate(); pbTempPalette.Invalidate(); });
+            Application.Idle += ((s, ev) =>
+            {
+                JoypadInput p1 = JoypadInput.None;
+                if (keysDown[(int)Keys.Up]) p1 |= JoypadInput.Up;
+                if (keysDown[(int)Keys.Down]) p1 |= JoypadInput.Down;
+                if (keysDown[(int)Keys.Left]) p1 |= JoypadInput.Left;
+                if (keysDown[(int)Keys.Right]) p1 |= JoypadInput.Right;
+                if (keysDown[(int)Keys.B]) p1 |= JoypadInput.Button1;
+                if (keysDown[(int)Keys.A]) p1 |= JoypadInput.Button2;
+                if (keysDown[(int)Keys.Back]) p1 |= JoypadInput.ResetButton;
+                ms?.SetJoypadInput(p1, JoypadInput.None);
+                
+                pbTempDisplay.Invalidate();
+                pbTempPalette.Invalidate();
+            });
             pbTempDisplay.Paint += ((s, ev) => { if (screenBitmap != null) ev.Graphics.DrawImageUnscaled(screenBitmap, 0, 0); });
             pbTempPalette.Paint += ((s, ev) => { if (paletteBitmap != null) ev.Graphics.DrawImageUnscaled(paletteBitmap, 0, 0); });
 
@@ -155,6 +172,16 @@ namespace MasterFudge
                     }
                 }
             }
+        }
+
+        private void MainForm_KeyDown(object sender, KeyEventArgs e)
+        {
+            keysDown[e.KeyValue] = true;
+        }
+
+        private void MainForm_KeyUp(object sender, KeyEventArgs e)
+        {
+            keysDown[e.KeyValue] = false;
         }
 
         private void btnTempPause_Click(object sender, EventArgs e)

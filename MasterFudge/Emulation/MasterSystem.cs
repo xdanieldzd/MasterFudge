@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Diagnostics;
 
 using MasterFudge.Emulation.Memory;
 using MasterFudge.Emulation.CPU;
@@ -14,6 +15,19 @@ namespace MasterFudge.Emulation
 {
     public delegate void RenderScreenHandler(object sender, RenderEventArgs e);
 
+    [Flags]
+    public enum JoypadInput
+    {
+        None = 0,
+        Up = (1 << 0),
+        Down = (1 << 1),
+        Left = (1 << 2),
+        Right = (1 << 3),
+        Button1 = (1 << 4),
+        Button2 = (1 << 5),
+        ResetButton = (1 << 6)
+    }
+
     public partial class MasterSystem
     {
         public event RenderScreenHandler OnRenderScreen;
@@ -23,6 +37,7 @@ namespace MasterFudge.Emulation
         public const double FramesPerSecPAL = 49.701459;
         public const double FramesPerSecNTSC = 59.922743;
 
+        double framesPerSecond;
         int cyclesPerFrame, numScanlines;
 
         MemoryMapper memoryMapper;
@@ -32,19 +47,20 @@ namespace MasterFudge.Emulation
         VDP vdp;
         BaseCartridge cartridge;
 
-        byte portMemoryControl, portIoControl;
+        byte portMemoryControl, portIoControl, portIoAB, portIoBMisc;
 
         // TODO: uuhhhh threading shit is actually broken and just runs however the fuck it wants, fix maybe?
         Thread mainThread;
         static ManualResetEvent threadReset;
 
-        public bool IsPaused { get { return (mainThread?.ThreadState == ThreadState.Running || mainThread?.ThreadState == ThreadState.Background); } }
+        public bool IsPaused { get { return (mainThread?.ThreadState == System.Threading.ThreadState.Running || mainThread?.ThreadState == System.Threading.ThreadState.Background); } }
 
         public MasterSystem(bool isNtsc, RenderScreenHandler onRenderScreen)
         {
             OnRenderScreen = onRenderScreen;
 
-            cyclesPerFrame = (int)((isNtsc ? MasterClockNTSC : MasterClockPAL) / 15.0 / (isNtsc ? FramesPerSecNTSC : FramesPerSecPAL));
+            framesPerSecond = (isNtsc ? FramesPerSecNTSC : FramesPerSecPAL);
+            cyclesPerFrame = (int)((isNtsc ? MasterClockNTSC : MasterClockPAL) / 15.0 / framesPerSecond);
             numScanlines = (int)(isNtsc ? VDP.NumScanlinesNTSC : VDP.NumScanlinesPAL);
 
             memoryMapper = new MemoryMapper();
@@ -63,7 +79,7 @@ namespace MasterFudge.Emulation
         ~MasterSystem()
         {
             mainThread.Join();
-            while (mainThread.ThreadState != ThreadState.Stopped) { }
+            while (mainThread.ThreadState != System.Threading.ThreadState.Stopped) { }
         }
 
         public static bool IsBitSet(byte value, int bit)
@@ -81,6 +97,32 @@ namespace MasterFudge.Emulation
         public RomHeader GetCartridgeHeader()
         {
             return cartridge.Header;
+        }
+
+        public void SetJoypadInput(JoypadInput p1, JoypadInput p2)
+        {
+            // TODO: IO port control (the active high/low stuff)
+
+            int data1 = 0xFF, data2 = 0xFF;
+
+            if (p1.HasFlag(JoypadInput.Up)) data1 &= ~(1 << 0);
+            if (p1.HasFlag(JoypadInput.Down)) data1 &= ~(1 << 1);
+            if (p1.HasFlag(JoypadInput.Left)) data1 &= ~(1 << 2);
+            if (p1.HasFlag(JoypadInput.Right)) data1 &= ~(1 << 3);
+            if (p1.HasFlag(JoypadInput.Button1)) data1 &= ~(1 << 4);
+            if (p1.HasFlag(JoypadInput.Button2)) data1 &= ~(1 << 5);
+
+            if (p2.HasFlag(JoypadInput.Up)) data1 &= ~(1 << 6);
+            if (p2.HasFlag(JoypadInput.Down)) data1 &= ~(1 << 7);
+            if (p2.HasFlag(JoypadInput.Left)) data2 &= ~(1 << 0);
+            if (p2.HasFlag(JoypadInput.Right)) data2 &= ~(1 << 1);
+            if (p2.HasFlag(JoypadInput.Button1)) data2 &= ~(1 << 2);
+            if (p2.HasFlag(JoypadInput.Button2)) data2 &= ~(1 << 3);
+
+            if (p1.HasFlag(JoypadInput.ResetButton) || p2.HasFlag(JoypadInput.ResetButton)) data2 &= ~(1 << 4);
+
+            portIoAB = (byte)data1;
+            portIoBMisc = (byte)data2;
         }
 
         public void Run()
@@ -111,6 +153,7 @@ namespace MasterFudge.Emulation
             cpu.Reset();
             vdp.Reset();
             portMemoryControl = portIoControl = 0;
+            portIoAB = portIoBMisc = 0xFF;
         }
 
         private void Execute()
@@ -119,22 +162,30 @@ namespace MasterFudge.Emulation
             {
                 Reset();
 
+                Stopwatch sw = new Stopwatch();
+                sw.Start();
+
                 while (true)
                 {
+                    long startTime = sw.ElapsedMilliseconds;
+                    long interval = (long)TimeSpan.FromSeconds(1.0 / framesPerSecond).TotalMilliseconds;
+
                     int totalCycles = 0;
                     while (totalCycles < cyclesPerFrame)
                     {
                         int currentCycles = cpu.Execute();
 
                         vdp.Execute(currentCycles, cyclesPerFrame, numScanlines);
-                        //sound
-                        //irqs
-
                         HandleInterrupts();
+                        // TODO: sound stuff here, too!
 
                         totalCycles += currentCycles;
                     }
+
                     threadReset.WaitOne();
+
+                    while (sw.ElapsedMilliseconds - startTime < interval)
+                        Thread.Sleep(1);
                 }
             }
             catch (ThreadAbortException) { /* probably not good practice, but what do I care */ }
@@ -182,15 +233,9 @@ namespace MasterFudge.Emulation
 
                 case 0xC0:
                     if ((port & 0x01) == 0)
-                    {
-                        // IO port A/B register
-                        return 0xFF;
-                    }
+                        return portIoAB;                // IO port A/B register
                     else
-                    {
-                        // IO port B/misc register
-                        return 0xFF;
-                    }
+                        return portIoBMisc;             // IO port B/misc register
             }
 
             return 0xAA;
