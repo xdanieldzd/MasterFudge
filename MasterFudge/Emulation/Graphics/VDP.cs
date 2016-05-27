@@ -20,6 +20,7 @@ namespace MasterFudge.Emulation.Graphics
         RenderScreenHandler renderScreen;
 
         byte[] registers, vram, cram;
+        byte[] outputFramebuffer;
 
         bool isSecondControlWrite;
         ushort controlWord;
@@ -33,7 +34,25 @@ namespace MasterFudge.Emulation.Graphics
         }
 
         public bool InterruptPending { get; private set; }
-        int currentScanline, hCounter, screenHeight;
+        int currentScanline, hCounter, screenHeight, lineInterruptCounter;
+
+        bool isLineInterruptEnabled { get { return MasterSystem.IsBitSet(registers[0x00], 4); } }
+        bool isFrameInterruptEnabled { get { return MasterSystem.IsBitSet(registers[0x01], 5); } }
+        bool isDisplayBlanked { get { return !MasterSystem.IsBitSet(registers[0x01], 6); } }
+        bool isVScrollPartiallyDisabled { get { return MasterSystem.IsBitSet(registers[0x01], 5); } }   // columns 24-31, i.e. pixels 192-256(?)
+        bool isHScrollPartiallyDisabled { get { return MasterSystem.IsBitSet(registers[0x01], 5); } }   // rows 0-1, i.e. pixels 0-16(?)
+
+        int displayMode { get { return (((registers[0x01] >> 4) & 0x01) | (registers[0x00] & 0x02) | ((registers[0x01] >> 1) & 0x04) | ((registers[0x00] & 0x04) << 1)); } }
+
+        ushort nametableBaseAddress { get { return (ushort)((registers[0x02] & 0x0E) << 10); } }
+        ushort spriteAttibTableBaseAddress { get { return (ushort)((registers[0x05] & 0x7E) << 7); } }
+        ushort spritePatternGenBaseAddress { get { return (ushort)((registers[0x06] & 0x04) << 11); } }
+
+        int overscanBgColor { get { return (registers[0x07] & 0x0F); } }
+        int backgroundXScroll { get { return registers[0x08]; } }
+        int backgroundYScroll { get { return registers[0x09]; } }
+
+        int[] backgroundXScrollCache;
 
         public VDP(RenderScreenHandler onRenderScreen)
         {
@@ -42,6 +61,10 @@ namespace MasterFudge.Emulation.Graphics
             registers = new byte[0x10];
             vram = new byte[0x4000];
             cram = new byte[0x20];
+
+            outputFramebuffer = new byte[(int)(NumPixelsPerLine * NumVisibleLinesHigh) * 4];
+
+            backgroundXScrollCache = new int[(int)NumScanlinesPAL];
         }
 
         public void Reset()
@@ -58,17 +81,33 @@ namespace MasterFudge.Emulation.Graphics
         {
             int cyclesPerLine = ((cyclesPerFrame / numScanlines) * 3);
 
-            if (MasterSystem.IsBitSet(statusFlags, 7) && MasterSystem.IsBitSet(registers[0x01], 5))
-                InterruptPending = true;
+            InterruptPending = (MasterSystem.IsBitSet(statusFlags, 7) && MasterSystem.IsBitSet(registers[0x01], 5));
+
+            hCounter = ((hCounter + currentCycles) % (cyclesPerLine + 1));
 
             if ((hCounter + currentCycles) > cyclesPerLine)
             {
+                backgroundXScrollCache[currentScanline] = backgroundXScroll;
+
                 currentScanline++;
                 hCounter = 0;
 
-                if (currentScanline == screenHeight)
+                if (currentScanline > (screenHeight + 1))
+                    lineInterruptCounter = registers[0x0A];
+                else
                 {
-                    //
+                    lineInterruptCounter--;
+                    if (lineInterruptCounter < 0)
+                    {
+                        lineInterruptCounter = registers[0x0A];
+                        InterruptPending = (isLineInterruptEnabled);
+                    }
+                }
+
+                if (currentScanline == (screenHeight + 1))
+                {
+                    // Frame interrupt
+                    statusFlags |= 0x80;
                 }
                 else if (currentScanline == numScanlines)
                 {
@@ -76,21 +115,59 @@ namespace MasterFudge.Emulation.Graphics
                     Render();
                 }
             }
-
-            // TODO: probably wrong...?
-            hCounter = ((hCounter + currentCycles) % cyclesPerLine);
         }
 
         private void Render()
         {
-            // TODO: actually render shit instead of an empty screen
+            ClearFramebuffer();
 
-            byte[] frameBuffer = new byte[(int)NumPixelsPerLine * screenHeight * 4];
+            if (!isDisplayBlanked)
+            {
+                RenderBackground();
 
-            for (int i = 0; i < frameBuffer.Length; i += 4)
-                Buffer.BlockCopy(GetColorAsArgb8888(0, 8), 0, frameBuffer, i, 4);
+                // TODO: sprites, etc, etc
+            }
 
-            renderScreen?.Invoke(this, new RenderEventArgs((int)NumPixelsPerLine, screenHeight, frameBuffer));
+            renderScreen?.Invoke(this, new RenderEventArgs((int)NumPixelsPerLine, screenHeight, outputFramebuffer));
+        }
+
+        private void ClearFramebuffer()
+        {
+            for (int i = 0; i < outputFramebuffer.Length; i += 4)
+                Buffer.BlockCopy(GetColorAsArgb8888(1, overscanBgColor), 0, outputFramebuffer, i, 4);
+        }
+
+        private void RenderBackground()
+        {
+            // TODO: scrolling and whatever else...
+
+            int numTilesPerLine = (int)(NumPixelsPerLine / 8);
+            for (int line = 0; line < screenHeight; line++)
+            {
+                ushort nametableAddress = (ushort)(nametableBaseAddress + ((line / 8) * (numTilesPerLine * 2)));
+                for (int tile = 0; tile < numTilesPerLine; tile++)
+                {
+                    ushort ntData = (ushort)((vram[nametableAddress + (tile * 2) + 1] << 8) | vram[nametableAddress + (tile * 2)]);
+
+                    int tileIndex = (ntData & 0x01FF);
+                    bool hFlip = ((ntData & 0x200) == 0x200);
+                    bool vFlip = ((ntData & 0x400) == 0x400);
+                    int palette = ((ntData & 0x800) >> 11);
+                    bool priority = ((ntData & 0x1000) == 0x400);
+
+                    ushort tileAddress = (ushort)((tileIndex * 0x20) + ((line % 8) * 4));
+                    for (int pixel = 0; pixel < 8; pixel++)
+                    {
+                        int c = (((vram[tileAddress + 0] >> (7 - pixel)) & 0x1) << 0);
+                        c |= (((vram[tileAddress + 1] >> (7 - pixel)) & 0x1) << 1);
+                        c |= (((vram[tileAddress + 2] >> (7 - pixel)) & 0x1) << 2);
+                        c |= (((vram[tileAddress + 3] >> (7 - pixel)) & 0x1) << 3);
+
+                        int outputAddress = (int)(((line * NumPixelsPerLine) * 4) + (((tile * 8) + pixel) * 4));
+                        Buffer.BlockCopy(GetColorAsArgb8888(palette, c), 0, outputFramebuffer, outputAddress, 4);
+                    }
+                }
+            }
         }
 
         public byte[] DumpVideoRam()
@@ -130,6 +207,9 @@ namespace MasterFudge.Emulation.Graphics
         public byte ReadControlPort()
         {
             isSecondControlWrite = false;
+
+            // Unset frame interrupt flag
+            statusFlags &= 0x7F;
 
             return statusFlags;
         }
@@ -202,12 +282,6 @@ namespace MasterFudge.Emulation.Graphics
         private void WriteRegister(byte register, byte value)
         {
             registers[register] = value;
-
-            if (register == 0x01 && MasterSystem.IsBitSet(registers[register], 5))
-            {
-                // Frame interrupt
-                InterruptPending = true;
-            }
         }
     }
 }

@@ -43,12 +43,13 @@
             this.btnTempRun.Name = "btnTempRun";
             this.btnTempRun.Size = new System.Drawing.Size(75, 23);
             this.btnTempRun.TabIndex = 1;
-            this.btnTempRun.Text = "Reload/Run";
+            this.btnTempRun.Text = "Load && Run";
             this.btnTempRun.UseVisualStyleBackColor = true;
             this.btnTempRun.Click += new System.EventHandler(this.btnTempRun_Click);
             // 
             // btnTempPause
             // 
+            this.btnTempPause.Enabled = false;
             this.btnTempPause.Location = new System.Drawing.Point(93, 12);
             this.btnTempPause.Name = "btnTempPause";
             this.btnTempPause.Size = new System.Drawing.Size(75, 23);
@@ -84,7 +85,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(584, 562);
+            this.ClientSize = new System.Drawing.Size(484, 362);
             this.Controls.Add(this.pbTempPalette);
             this.Controls.Add(this.pbTempDisplay);
             this.Controls.Add(this.btnTempPause);

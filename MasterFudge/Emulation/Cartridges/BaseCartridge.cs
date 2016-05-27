@@ -28,14 +28,10 @@ namespace MasterFudge.Emulation.Cartridges
 
             // TODO: non-standard mappers (Codemasters, "Korean" mapper)
 
-            if (data.Length <= 0x8000)
-                cartridge = (new Basic32kCartridge(data) as T);
-            else if (data.Length > 0x8000 && data.Length <= 0x80000)
+            if (data.Length <= 0x80000)
                 cartridge = (new SegaMapperCartridge(data) as T);
             else
-            {
                 throw new Exception("Unhandled cartridge type");
-            }
 
             return cartridge;
         }

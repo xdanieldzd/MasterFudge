@@ -41,8 +41,8 @@ namespace MasterFudge.Emulation.Cartridges
             switch (address & 0xC000)
             {
                 case 0x0000:
-                    if ((address & 0x0FFF) < 0x400)
-                        return romData[address & 0x0FFF];
+                    if (address < 0x400)
+                        return romData[address];
                     else
                         return romData[(((pagingRegisters[1] & 0x0F) << 14) | (address & 0x3FFF))];
 

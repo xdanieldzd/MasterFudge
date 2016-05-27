@@ -113,13 +113,6 @@ namespace MasterFudge.Emulation
             portMemoryControl = portIoControl = 0;
         }
 
-        // BAH, JUNK, REMOVE AGAIN ASAP
-        [Obsolete]
-        public System.Drawing.Color GetPaletteColorDebug(int palette, int color)
-        {
-            return System.Drawing.Color.FromArgb(BitConverter.ToInt32(vdp.GetColorAsArgb8888(palette, color), 0));
-        }
-
         private void Execute()
         {
             try
@@ -179,7 +172,6 @@ namespace MasterFudge.Emulation
                         return vdp.ReadVCounter();      // V counter
                     else
                         return vdp.ReadHCounter();      // H counter
-                    break;
 
                 case 0x80:
                     // VDP
@@ -192,12 +184,13 @@ namespace MasterFudge.Emulation
                     if ((port & 0x01) == 0)
                     {
                         // IO port A/B register
+                        return 0xFF;
                     }
                     else
                     {
                         // IO port B/misc register
+                        return 0xFF;
                     }
-                    break;
             }
 
             return 0xAA;

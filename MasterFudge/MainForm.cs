@@ -44,9 +44,13 @@ namespace MasterFudge
 
                 if (ms != null)
                 {
-                    System.IO.File.WriteAllBytes(@"E:\temp\sms\wram.bin", ms.DumpMemory(DebugMemoryRegion.WorkRam));
-                    System.IO.File.WriteAllBytes(@"E:\temp\sms\vram.sms", ms.DumpMemory(DebugMemoryRegion.VideoRam));
-                    System.IO.File.WriteAllBytes(@"E:\temp\sms\cram.bin", ms.DumpMemory(DebugMemoryRegion.ColorRam));
+                    try
+                    {
+                        System.IO.File.WriteAllBytes(@"E:\temp\sms\wram.bin", MasterSystem.Debugging.DumpMemory(ms, MasterSystem.Debugging.DumpRegion.WorkRam));
+                        System.IO.File.WriteAllBytes(@"E:\temp\sms\vram.sms", MasterSystem.Debugging.DumpMemory(ms, MasterSystem.Debugging.DumpRegion.VideoRam));
+                        System.IO.File.WriteAllBytes(@"E:\temp\sms\cram.bin", MasterSystem.Debugging.DumpMemory(ms, MasterSystem.Debugging.DumpRegion.ColorRam));
+                    }
+                    catch (System.IO.IOException) { /* just ignore this one, happens if I have any of these open in ex. a hexeditor */ }
                 }
             });
 
@@ -90,12 +94,15 @@ namespace MasterFudge
             //romFile = @"D:\ROMs\SMS\Y's_-_The_Vanished_Omen_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\VDPTEST.sms";
             //romFile = @"D:\ROMs\SMS\[BIOS] Sega Master System (USA, Europe) (v1.3).sms";
+            romFile = @"D:\ROMs\SMS\Teddy_Boy_(UE)_[!].sms";
 
             ofdOpenRom.InitialDirectory = System.IO.Path.GetDirectoryName(romFile);
             ofdOpenRom.FileName = System.IO.Path.GetFileName(romFile);
 
             if (ofdOpenRom.ShowDialog() == DialogResult.OK)
             {
+                Text = Application.ProductName + " - " + System.IO.Path.GetFileName(ofdOpenRom.FileName);
+
                 Program.Log.ClearEvents();
 
                 ms = new MasterSystem(false, Emulation_OnRenderScreen);
@@ -130,7 +137,7 @@ namespace MasterFudge
             }
 
             BitmapData bmpData = screenBitmap.LockBits(new Rectangle(0, 0, screenBitmap.Width, screenBitmap.Height), ImageLockMode.WriteOnly, screenBitmap.PixelFormat);
-            Marshal.Copy(e.FrameData, 0, bmpData.Scan0, e.FrameData.Length);
+            Marshal.Copy(e.FrameData, 0, bmpData.Scan0, (e.FrameWidth * e.FrameHeight * 4));
             screenBitmap.UnlockBits(bmpData);
 
             if (paletteBitmap == null) paletteBitmap = new Bitmap(128, 256);
@@ -141,7 +148,7 @@ namespace MasterFudge
                 {
                     for (int c = 0; c < 16; c++)
                     {
-                        using (SolidBrush brush = new SolidBrush(ms.GetPaletteColorDebug(p, c)))
+                        using (SolidBrush brush = new SolidBrush(MasterSystem.Debugging.GetPaletteColor(ms, p, c)))
                         {
                             g.FillRectangle(brush, p * 64, c * 16, 64, 16);
                         }

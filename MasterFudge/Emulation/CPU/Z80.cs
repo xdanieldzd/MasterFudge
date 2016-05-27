@@ -790,7 +790,7 @@ namespace MasterFudge.Emulation.CPU
 
         private void ExecuteOpDDFD(byte op, ref Register register)
         {
-            ushort calcAddress = (ushort)(register.Word + (sbyte)memoryMapper.Read8(pc++));
+            ushort calcAddress = (ushort)(register.Word + (sbyte)memoryMapper.Read8((ushort)(pc + 1)));
 
             switch (op)
             {
@@ -805,42 +805,42 @@ namespace MasterFudge.Emulation.CPU
                 case 0x2A: LoadRegister16(ref register.Word, memoryMapper.Read16(memoryMapper.Read16(pc))); pc += 2; break;
                 case 0x2B: Decrement16(ref register.Word); break;
 
-                case 0x34: IncrementMemory8(calcAddress); break;
-                case 0x35: DecrementMemory8(calcAddress); break;
-                case 0x36: LoadMemory8(calcAddress, memoryMapper.Read8(pc++)); break;
+                case 0x34: IncrementMemory8(calcAddress); pc++; break;
+                case 0x35: DecrementMemory8(calcAddress); pc++; break;
+                case 0x36: LoadMemory8(calcAddress, memoryMapper.Read8(pc++)); pc++; break;
                 case 0x39: Add16(ref register, sp, false); break;
 
-                case 0x46: bc.High = memoryMapper.Read8(calcAddress); break;
-                case 0x4E: bc.Low = memoryMapper.Read8(calcAddress); break;
+                case 0x46: bc.High = memoryMapper.Read8(calcAddress); pc++; break;
+                case 0x4E: bc.Low = memoryMapper.Read8(calcAddress); pc++; break;
 
-                case 0x56: de.High = memoryMapper.Read8(calcAddress); break;
-                case 0x5E: de.Low = memoryMapper.Read8(calcAddress); break;
+                case 0x56: de.High = memoryMapper.Read8(calcAddress); pc++; break;
+                case 0x5E: de.Low = memoryMapper.Read8(calcAddress); pc++; break;
 
-                case 0x66: hl.High = memoryMapper.Read8(calcAddress); break;
-                case 0x6E: hl.Low = memoryMapper.Read8(calcAddress); break;
+                case 0x66: hl.High = memoryMapper.Read8(calcAddress); pc++; break;
+                case 0x6E: hl.Low = memoryMapper.Read8(calcAddress); pc++; break;
 
-                case 0x70: LoadMemory8(calcAddress, bc.High); break;
-                case 0x71: LoadMemory8(calcAddress, bc.Low); break;
-                case 0x72: LoadMemory8(calcAddress, de.High); break;
-                case 0x73: LoadMemory8(calcAddress, de.Low); break;
-                case 0x74: LoadMemory8(calcAddress, hl.High); break;
-                case 0x75: LoadMemory8(calcAddress, hl.Low); break;
-                case 0x77: LoadMemory8(calcAddress, af.High); break;
-                case 0x7E: af.High = memoryMapper.Read8(calcAddress); break;
+                case 0x70: LoadMemory8(calcAddress, bc.High); pc++; break;
+                case 0x71: LoadMemory8(calcAddress, bc.Low); pc++; break;
+                case 0x72: LoadMemory8(calcAddress, de.High); pc++; break;
+                case 0x73: LoadMemory8(calcAddress, de.Low); pc++; break;
+                case 0x74: LoadMemory8(calcAddress, hl.High); pc++; break;
+                case 0x75: LoadMemory8(calcAddress, hl.Low); pc++; break;
+                case 0x77: LoadMemory8(calcAddress, af.High); pc++; break;
+                case 0x7E: af.High = memoryMapper.Read8(calcAddress); pc++; break;
 
-                case 0x86: Add8(memoryMapper.Read8(calcAddress), false); break;
-                case 0x8E: Add8(memoryMapper.Read8(calcAddress), true); break;
+                case 0x86: Add8(memoryMapper.Read8(calcAddress), false); pc++; break;
+                case 0x8E: Add8(memoryMapper.Read8(calcAddress), true); pc++; break;
 
-                case 0x96: Subtract8(memoryMapper.Read8(calcAddress), false); break;
-                case 0x9E: Subtract8(memoryMapper.Read8(calcAddress), true); break;
+                case 0x96: Subtract8(memoryMapper.Read8(calcAddress), false); pc++; break;
+                case 0x9E: Subtract8(memoryMapper.Read8(calcAddress), true); pc++; break;
 
-                case 0xA6: And8(memoryMapper.Read8(calcAddress)); break;
-                case 0xAE: Xor8(memoryMapper.Read8(calcAddress)); break;
+                case 0xA6: And8(memoryMapper.Read8(calcAddress)); pc++; break;
+                case 0xAE: Xor8(memoryMapper.Read8(calcAddress)); pc++; break;
 
-                case 0xB6: Or8(memoryMapper.Read8(calcAddress)); break;
-                case 0xBE: Cp8(memoryMapper.Read8(calcAddress)); break;
+                case 0xB6: Or8(memoryMapper.Read8(calcAddress)); pc++; break;
+                case 0xBE: Cp8(memoryMapper.Read8(calcAddress)); pc++; break;
 
-                case 0xCB: ExecuteOpDDFDCB(memoryMapper.Read8(pc++), ref register); break;
+                case 0xCB: ExecuteOpDDFDCB(memoryMapper.Read8((ushort)(pc + 1)), ref register); break;
 
                 case 0xE1: Pop(ref register); break;
                 case 0xE3: ExchangeStackRegister16(ref register); break;
@@ -857,8 +857,9 @@ namespace MasterFudge.Emulation.CPU
         {
             currentCycles += (cycleCountsCB[op] + AddCyclesDDFDCBOps);
 
-            sbyte operand = (sbyte)memoryMapper.Read8((ushort)(pc - 2));
+            sbyte operand = (sbyte)memoryMapper.Read8(pc);
             ushort address = (ushort)(register.Word + operand);
+            pc += 2;
 
             switch (op)
             {

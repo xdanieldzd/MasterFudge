@@ -3,26 +3,37 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Drawing;
 
 namespace MasterFudge.Emulation
 {
-    public enum DebugMemoryRegion
-    {
-        WorkRam,
-        VideoRam,
-        ColorRam,
-    }
-
     public partial class MasterSystem
     {
-        public byte[] DumpMemory(DebugMemoryRegion memoryRegion)
+        // TODO: more sensible or neater placement of this stuff?
+
+        public class Debugging
         {
-            switch (memoryRegion)
+            public enum DumpRegion
             {
-                case DebugMemoryRegion.WorkRam: return wram.DumpWorkRam();
-                case DebugMemoryRegion.VideoRam: return vdp.DumpVideoRam();
-                case DebugMemoryRegion.ColorRam: return vdp.DumpColorRam();
-                default: throw new Exception("Invalid memory region for dumping");
+                WorkRam,
+                VideoRam,
+                ColorRam,
+            }
+
+            public static byte[] DumpMemory(MasterSystem ms, DumpRegion memoryRegion)
+            {
+                switch (memoryRegion)
+                {
+                    case DumpRegion.WorkRam: return ms.wram.DumpWorkRam();
+                    case DumpRegion.VideoRam: return ms.vdp.DumpVideoRam();
+                    case DumpRegion.ColorRam: return ms.vdp.DumpColorRam();
+                    default: throw new Exception("Invalid memory region for dumping");
+                }
+            }
+
+            public static Color GetPaletteColor(MasterSystem ms, int palette, int color)
+            {
+                return Color.FromArgb(BitConverter.ToInt32(ms.vdp.GetColorAsArgb8888(palette, color), 0));
             }
         }
     }
