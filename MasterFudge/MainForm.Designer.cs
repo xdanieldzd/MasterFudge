@@ -29,7 +29,6 @@
         private void InitializeComponent()
         {
             this.btnTempRun = new System.Windows.Forms.Button();
-            this.btnTempPause = new System.Windows.Forms.Button();
             this.pbTempDisplay = new System.Windows.Forms.PictureBox();
             this.pbTempPalette = new System.Windows.Forms.PictureBox();
             this.ofdOpenRom = new System.Windows.Forms.OpenFileDialog();
@@ -48,17 +47,6 @@
             this.btnTempRun.Text = "Load && Run";
             this.btnTempRun.UseVisualStyleBackColor = true;
             this.btnTempRun.Click += new System.EventHandler(this.btnTempRun_Click);
-            // 
-            // btnTempPause
-            // 
-            this.btnTempPause.Enabled = false;
-            this.btnTempPause.Location = new System.Drawing.Point(93, 12);
-            this.btnTempPause.Name = "btnTempPause";
-            this.btnTempPause.Size = new System.Drawing.Size(75, 23);
-            this.btnTempPause.TabIndex = 2;
-            this.btnTempPause.Text = "Pause";
-            this.btnTempPause.UseVisualStyleBackColor = true;
-            this.btnTempPause.Click += new System.EventHandler(this.btnTempPause_Click);
             // 
             // pbTempDisplay
             // 
@@ -112,7 +100,6 @@
             this.Controls.Add(this.chkTempFPSLimiter);
             this.Controls.Add(this.pbTempPalette);
             this.Controls.Add(this.pbTempDisplay);
-            this.Controls.Add(this.btnTempPause);
             this.Controls.Add(this.btnTempRun);
             this.KeyPreview = true;
             this.Name = "MainForm";
@@ -127,7 +114,6 @@
 
         #endregion
         private System.Windows.Forms.Button btnTempRun;
-        private System.Windows.Forms.Button btnTempPause;
         private System.Windows.Forms.PictureBox pbTempDisplay;
         private System.Windows.Forms.PictureBox pbTempPalette;
         private System.Windows.Forms.OpenFileDialog ofdOpenRom;

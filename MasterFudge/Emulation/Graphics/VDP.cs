@@ -101,13 +101,16 @@ namespace MasterFudge.Emulation.Graphics
 
         public void Execute(int currentCycles, int cyclesPerFrame)
         {
-            int cyclesPerLine = (cyclesPerFrame / numScanlines);
+            int cyclesPerLine = (cyclesPerFrame / numScanlines) * 3;
+            int currentHCounter = hCounter;
+            bool nextLine = false;
 
             InterruptPending = (MasterSystem.IsBitSet(statusFlags, 7) && MasterSystem.IsBitSet(registers[0x01], 5));
 
+            nextLine = ((currentHCounter + currentCycles) > cyclesPerLine);
             hCounter = ((hCounter + currentCycles) % (cyclesPerLine + 1));
 
-            if ((hCounter + currentCycles) > cyclesPerLine)
+            if (nextLine)
             {
                 backgroundXScrollCache[currentScanline] = backgroundHScroll;
 
@@ -165,8 +168,6 @@ namespace MasterFudge.Emulation.Graphics
                     currentScanline = 0;
                     Render();
                 }
-
-                AdjustVCounter();
             }
         }
 
@@ -420,6 +421,7 @@ namespace MasterFudge.Emulation.Graphics
 
         public byte ReadVCounter()
         {
+            AdjustVCounter();
             return (byte)vCounter;
         }
 

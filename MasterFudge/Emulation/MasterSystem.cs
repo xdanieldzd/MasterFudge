@@ -51,9 +51,8 @@ namespace MasterFudge.Emulation
 
         // TODO: uuhhhh threading shit is actually broken and just runs however the fuck it wants, fix maybe?
         Thread mainThread;
-        static ManualResetEvent threadReset;
 
-        public bool IsPaused { get { return (mainThread?.ThreadState == System.Threading.ThreadState.Running || mainThread?.ThreadState == System.Threading.ThreadState.Background); } }
+        bool isStopped;
         public bool LimitFPS { get; set; }
         public bool DebugLogOpcodes { get { return cpu.DebugLogOpcodes; } set { cpu.DebugLogOpcodes = value; } }
 
@@ -73,9 +72,9 @@ namespace MasterFudge.Emulation
 
             memoryMapper.AddMemoryArea(wram.GetMemoryAreaDescriptor());
 
-            mainThread = new Thread(new ThreadStart(Execute)) { IsBackground = true, Name = "SMS" };
-            threadReset = new ManualResetEvent(false);
+            mainThread = new Thread(new ThreadStart(Execute)) { Priority = ThreadPriority.AboveNormal, Name = "SMS" };
 
+            isStopped = false;
             LimitFPS = false;
         }
 
@@ -131,23 +130,11 @@ namespace MasterFudge.Emulation
         public void Run()
         {
             mainThread.Start();
-            threadReset.Set();
         }
 
         public void Stop()
         {
             mainThread.Abort();
-            threadReset.Reset();
-        }
-
-        public void Pause()
-        {
-            threadReset.Reset();
-        }
-
-        public void Resume()
-        {
-            threadReset.Set();
         }
 
         public void Reset()
@@ -168,7 +155,7 @@ namespace MasterFudge.Emulation
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
 
-                while (true)
+                while (!isStopped)
                 {
                     long startTime = sw.ElapsedMilliseconds;
                     long interval = (long)TimeSpan.FromSeconds(1.0 / framesPerSecond).TotalMilliseconds;
@@ -176,16 +163,16 @@ namespace MasterFudge.Emulation
                     int totalCycles = 0;
                     while (totalCycles < cyclesPerFrame)
                     {
-                        int currentCycles = cpu.Execute();
+                        double currentCycles = cpu.Execute();
 
-                        vdp.Execute(currentCycles, cyclesPerFrame);
+                        currentCycles *= 3.0;
+
+                        vdp.Execute((int)(currentCycles / 2.0), cyclesPerFrame);
                         HandleInterrupts();
                         // TODO: sound stuff here, too!
 
-                        totalCycles += currentCycles;
+                        totalCycles += (int)currentCycles;
                     }
-
-                    threadReset.WaitOne();
 
                     while (LimitFPS && sw.ElapsedMilliseconds - startTime < interval)
                         Thread.Sleep(1);
