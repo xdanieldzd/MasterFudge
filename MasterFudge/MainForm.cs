@@ -84,7 +84,15 @@ namespace MasterFudge
                 pbTempDisplay.Invalidate();
                 pbTempPalette.Invalidate();
             });
-            pbTempDisplay.Paint += ((s, ev) => { if (screenBitmap != null) ev.Graphics.DrawImageUnscaled(screenBitmap, 0, 0); });
+            pbTempDisplay.Paint += ((s, ev) =>
+            {
+                if (screenBitmap != null)
+                {
+                    ev.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+                    ev.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+                    ev.Graphics.DrawImage(screenBitmap, new Rectangle(0, 0, screenBitmap.Width * 2, screenBitmap.Height * 2), new Rectangle(0, 0, screenBitmap.Width, screenBitmap.Height), GraphicsUnit.Pixel);
+                }
+            });
             pbTempPalette.Paint += ((s, ev) => { if (paletteBitmap != null) ev.Graphics.DrawImageUnscaled(paletteBitmap, 0, 0); });
 
             Program.Log.OnLogUpdate += new Logger.LogUpdateHandler((s, ev) =>

@@ -53,8 +53,19 @@ namespace MasterFudge.Emulation.Graphics
         int overscanBgColor { get { return (registers[0x07] & 0x0F); } }
         int backgroundHScroll { get { return registers[0x08]; } }
 
+        byte[] overscanBgColorArgb;
+
         int[] backgroundXScrollCache;
         int[] spriteBuffer;
+
+        enum PixelDrawn : byte
+        {
+            None = 0,
+            BackgroundLowPriority = (1 << 0),
+            BackgroundHighPriority = (1 << 1),
+            Sprite = (1 << 2)
+        }
+        PixelDrawn[] screenDrawnPixels;
 
         public VDP(RenderScreenHandler onRenderScreen)
         {
@@ -68,6 +79,7 @@ namespace MasterFudge.Emulation.Graphics
 
             backgroundXScrollCache = new int[NumScanlinesPAL];
             spriteBuffer = new int[8];
+            screenDrawnPixels = new PixelDrawn[NumPixelsPerLine * NumVisibleLinesHigh];
         }
 
         public void Reset()
@@ -82,7 +94,7 @@ namespace MasterFudge.Emulation.Graphics
 
         public void Execute(int currentCycles, int cyclesPerFrame, int numScanlines)
         {
-            int cyclesPerLine = ((cyclesPerFrame / numScanlines) * 3);
+            int cyclesPerLine = (cyclesPerFrame / numScanlines);
 
             InterruptPending = (MasterSystem.IsBitSet(statusFlags, 7) && MasterSystem.IsBitSet(registers[0x01], 5));
 
@@ -133,6 +145,8 @@ namespace MasterFudge.Emulation.Graphics
 
         private void Render()
         {
+            overscanBgColorArgb = GetColorAsArgb8888(1, overscanBgColor);
+
             ClearFramebuffer();
 
             if (!isDisplayBlanked)
@@ -143,11 +157,10 @@ namespace MasterFudge.Emulation.Graphics
                 // Mask column 0 with overscan color
                 if (MasterSystem.IsBitSet(registers[0x00], 5))
                 {
-                    byte[] color = GetColorAsArgb8888(1, overscanBgColor);
                     for (int i = 0; i < outputFramebuffer.Length; i += (NumPixelsPerLine * 4))
                     {
                         for (int j = 0; j < (8 * 4); j += 4)
-                            Buffer.BlockCopy(color, 0, outputFramebuffer, i + j, 4);
+                            Buffer.BlockCopy(overscanBgColorArgb, 0, outputFramebuffer, i + j, 4);
                     }
                 }
             }
@@ -157,8 +170,11 @@ namespace MasterFudge.Emulation.Graphics
 
         private void ClearFramebuffer()
         {
+            for (int i = 0; i < screenDrawnPixels.Length; i++)
+                screenDrawnPixels[i] = 0x00;
+
             for (int i = 0; i < outputFramebuffer.Length; i += 4)
-                Buffer.BlockCopy(GetColorAsArgb8888(1, overscanBgColor), 0, outputFramebuffer, i, 4);
+                Buffer.BlockCopy(overscanBgColorArgb, 0, outputFramebuffer, i, 4);
         }
 
         private void RenderBackground()
@@ -203,10 +219,15 @@ namespace MasterFudge.Emulation.Graphics
                             lineOnScreen %= (byte)screenHeight;
                         }
 
-                        int outputY = (((lineOnScreen % screenHeight) * NumPixelsPerLine) * 4);
-                        int outputX = (((hScroll + (tile * 8) + pixel) % NumPixelsPerLine) * 4);
+                        int outputY = ((lineOnScreen % screenHeight) * NumPixelsPerLine);
+                        int outputX = ((hScroll + (tile * 8) + pixel) % NumPixelsPerLine);
 
-                        Buffer.BlockCopy(GetColorAsArgb8888(palette, c), 0, outputFramebuffer, (outputY + outputX), 4);
+                        if (screenDrawnPixels[outputY + outputX] == 0x00)
+                        {
+                            screenDrawnPixels[outputY + outputX] |= (priority ? PixelDrawn.BackgroundHighPriority : PixelDrawn.BackgroundLowPriority);
+                            int outputAddress = ((outputY + outputX) * 4);
+                            Buffer.BlockCopy(GetColorAsArgb8888(palette, c), 0, outputFramebuffer, outputAddress, 4);
+                        }
                     }
                 }
             }
@@ -267,10 +288,21 @@ namespace MasterFudge.Emulation.Graphics
 
                             if (c == 0 || xCoordinate + pixel >= NumPixelsPerLine) continue;
 
-                            int outputY = (((y % screenHeight) * NumPixelsPerLine) * 4);
-                            int outputX = (((xCoordinate + pixel) % NumPixelsPerLine) * 4);
+                            int outputY = ((y % screenHeight) * NumPixelsPerLine);
+                            int outputX = ((xCoordinate + pixel) % NumPixelsPerLine);
 
-                            Buffer.BlockCopy(GetColorAsArgb8888(1, c), 0, outputFramebuffer, (outputY + outputX), 4);
+                            if ((screenDrawnPixels[outputY + outputX] & PixelDrawn.Sprite) == PixelDrawn.Sprite)
+                            {
+                                // Sprite collision
+                                statusFlags |= 0x20;
+                            }
+                            else if ((screenDrawnPixels[outputY + outputX] & PixelDrawn.BackgroundHighPriority) != PixelDrawn.BackgroundHighPriority)
+                            {
+                                // Draw if pixel isn't occupied by high-priority BG
+                                screenDrawnPixels[outputY + outputX] |= PixelDrawn.Sprite;
+                                int outputAddress = ((outputY + outputX) * 4);
+                                Buffer.BlockCopy(GetColorAsArgb8888(1, c), 0, outputFramebuffer, outputAddress, 4);
+                            }
                         }
                     }
                 }

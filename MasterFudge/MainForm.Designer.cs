@@ -66,14 +66,14 @@
             this.pbTempDisplay.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.pbTempDisplay.Location = new System.Drawing.Point(12, 41);
             this.pbTempDisplay.Name = "pbTempDisplay";
-            this.pbTempDisplay.Size = new System.Drawing.Size(300, 300);
+            this.pbTempDisplay.Size = new System.Drawing.Size(525, 450);
             this.pbTempDisplay.TabIndex = 3;
             this.pbTempDisplay.TabStop = false;
             // 
             // pbTempPalette
             // 
             this.pbTempPalette.BackColor = System.Drawing.Color.LightGray;
-            this.pbTempPalette.Location = new System.Drawing.Point(318, 41);
+            this.pbTempPalette.Location = new System.Drawing.Point(543, 41);
             this.pbTempPalette.Name = "pbTempPalette";
             this.pbTempPalette.Size = new System.Drawing.Size(128, 256);
             this.pbTempPalette.TabIndex = 4;
@@ -96,7 +96,7 @@
             // chkTempLogZ80
             // 
             this.chkTempLogZ80.AutoSize = true;
-            this.chkTempLogZ80.Location = new System.Drawing.Point(318, 16);
+            this.chkTempLogZ80.Location = new System.Drawing.Point(250, 16);
             this.chkTempLogZ80.Name = "chkTempLogZ80";
             this.chkTempLogZ80.Size = new System.Drawing.Size(90, 17);
             this.chkTempLogZ80.TabIndex = 6;
@@ -107,7 +107,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(484, 362);
+            this.ClientSize = new System.Drawing.Size(684, 512);
             this.Controls.Add(this.chkTempLogZ80);
             this.Controls.Add(this.chkTempFPSLimiter);
             this.Controls.Add(this.pbTempPalette);
