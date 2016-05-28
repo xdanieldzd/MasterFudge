@@ -64,13 +64,13 @@ namespace MasterFudge
             limitFPSToolStripMenuItem.CheckedChanged += ((s, ev) =>
             {
                 if (ms == null) return;
-                ms.LimitFPS = (s as MenuItem).Checked;
+                ms.LimitFPS = (s as ToolStripMenuItem).Checked;
             });
 
             logOpcodesToolStripMenuItem.CheckedChanged += ((s, ev) =>
             {
                 if (ms == null) return;
-                ms.DebugLogOpcodes = (s as MenuItem).Checked;
+                ms.DebugLogOpcodes = (s as ToolStripMenuItem).Checked;
             });
 
             Application.Idle += ((s, ev) =>
@@ -171,6 +171,12 @@ namespace MasterFudge
 
             Program.Log.WriteEvent("--- STARTING EMULATION ---");
             ms.Run();
+        }
+
+        private void exitToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ms?.Stop();
+            Application.Exit();
         }
 
         private void Emulation_OnRenderScreen(object sender, RenderEventArgs e)

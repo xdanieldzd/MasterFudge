@@ -105,8 +105,9 @@
             // exitToolStripMenuItem
             // 
             this.exitToolStripMenuItem.Name = "exitToolStripMenuItem";
-            this.exitToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
+            this.exitToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.exitToolStripMenuItem.Text = "E&xit";
+            this.exitToolStripMenuItem.Click += new System.EventHandler(this.exitToolStripMenuItem_Click);
             // 
             // debugToolStripMenuItem
             // 
@@ -119,14 +120,16 @@
             // 
             // limitFPSToolStripMenuItem
             // 
+            this.limitFPSToolStripMenuItem.CheckOnClick = true;
             this.limitFPSToolStripMenuItem.Name = "limitFPSToolStripMenuItem";
-            this.limitFPSToolStripMenuItem.Size = new System.Drawing.Size(144, 22);
+            this.limitFPSToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.limitFPSToolStripMenuItem.Text = "&Limit FPS";
             // 
             // logOpcodesToolStripMenuItem
             // 
+            this.logOpcodesToolStripMenuItem.CheckOnClick = true;
             this.logOpcodesToolStripMenuItem.Name = "logOpcodesToolStripMenuItem";
-            this.logOpcodesToolStripMenuItem.Size = new System.Drawing.Size(144, 22);
+            this.logOpcodesToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.logOpcodesToolStripMenuItem.Text = "Log &Opcodes";
             // 
             // statusStrip1
