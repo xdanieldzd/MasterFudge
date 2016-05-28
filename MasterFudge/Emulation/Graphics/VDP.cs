@@ -22,6 +22,9 @@ namespace MasterFudge.Emulation.Graphics
         byte[] registers, vram, cram;
         byte[] outputFramebuffer;
 
+        bool isNtsc;
+        int numScanlines;
+
         bool isSecondControlWrite;
         ushort controlWord;
         byte readBuffer, statusFlags;
@@ -34,7 +37,7 @@ namespace MasterFudge.Emulation.Graphics
         }
 
         public bool InterruptPending { get; private set; }
-        int currentScanline, hCounter, screenHeight, lineInterruptCounter, backgroundVScroll;
+        int currentScanline, vCounter, hCounter, screenHeight, nametableHeight, lineInterruptCounter, backgroundVScroll;
 
         bool isLineInterruptEnabled { get { return MasterSystem.IsBitSet(registers[0x00], 4); } }
         bool isFrameInterruptEnabled { get { return MasterSystem.IsBitSet(registers[0x01], 5); } }
@@ -44,7 +47,7 @@ namespace MasterFudge.Emulation.Graphics
         bool isLargeSprites { get { return MasterSystem.IsBitSet(registers[0x01], 1); } }
         bool isZoomedSprites { get { return MasterSystem.IsBitSet(registers[0x01], 0); } }
 
-        int displayMode { get { return (((registers[0x01] >> 4) & 0x01) | (registers[0x00] & 0x02) | ((registers[0x01] >> 1) & 0x04) | ((registers[0x00] & 0x04) << 1)); } }
+        bool isMode4 { get { return MasterSystem.IsBitSet(registers[0x00], 2); } }
 
         ushort nametableBaseAddress { get { return (ushort)((registers[0x02] & 0x0E) << 10); } }
         ushort spriteAttribTableBaseAddress { get { return (ushort)((registers[0x05] & 0x7E) << 7); } }
@@ -67,8 +70,11 @@ namespace MasterFudge.Emulation.Graphics
         }
         PixelDrawn[] screenDrawnPixels;
 
-        public VDP(RenderScreenHandler onRenderScreen)
+        public VDP(bool ntsc, RenderScreenHandler onRenderScreen)
         {
+            isNtsc = ntsc;
+            numScanlines = (isNtsc ? NumScanlinesNTSC : NumScanlinesPAL);
+
             renderScreen = onRenderScreen;
 
             registers = new byte[0x10];
@@ -77,7 +83,7 @@ namespace MasterFudge.Emulation.Graphics
 
             outputFramebuffer = new byte[(NumPixelsPerLine * NumVisibleLinesHigh) * 4];
 
-            backgroundXScrollCache = new int[NumScanlinesPAL];
+            backgroundXScrollCache = new int[numScanlines];
             spriteBuffer = new int[8];
             screenDrawnPixels = new PixelDrawn[NumPixelsPerLine * NumVisibleLinesHigh];
         }
@@ -88,11 +94,12 @@ namespace MasterFudge.Emulation.Graphics
             controlWord = 0x0000;
             readBuffer = statusFlags = 0;
 
-            currentScanline = hCounter = 0;
+            currentScanline = vCounter = hCounter = 0;
             screenHeight = NumVisibleLinesLow;
+            nametableHeight = 224;
         }
 
-        public void Execute(int currentCycles, int cyclesPerFrame, int numScanlines)
+        public void Execute(int currentCycles, int cyclesPerFrame)
         {
             int cyclesPerLine = (cyclesPerFrame / numScanlines);
 
@@ -112,13 +119,31 @@ namespace MasterFudge.Emulation.Graphics
                     lineInterruptCounter = registers[0x0A];
                     backgroundVScroll = registers[0x09];
 
-                    // BLAH
-                    if (displayMode == 11)
-                        screenHeight = NumVisibleLinesMed;
-                    else if (displayMode == 14)
-                        screenHeight = NumVisibleLinesHigh;
+                    if (isMode4)
+                    {
+                        if (MasterSystem.IsBitSet(registers[0x01], 3))
+                        {
+                            // 240-line mode
+                            screenHeight = NumVisibleLinesHigh;
+                            nametableHeight = 256;
+                        }
+                        else if (MasterSystem.IsBitSet(registers[0x01], 4))
+                        {
+                            // 224-line mode
+                            screenHeight = NumVisibleLinesMed;
+                            nametableHeight = 256;
+                        }
+                        else
+                        {
+                            // 192-line mode
+                            screenHeight = NumVisibleLinesLow;
+                            nametableHeight = 224;
+                        }
+                    }
                     else
-                        screenHeight = NumVisibleLinesLow;
+                    {
+                        // TODO: Modes 0-3, used by "non-SMS" games (SG-1000, SC-3000) ?
+                    }
                 }
                 else
                 {
@@ -140,6 +165,56 @@ namespace MasterFudge.Emulation.Graphics
                     currentScanline = 0;
                     Render();
                 }
+
+                AdjustVCounter();
+            }
+        }
+
+        private void AdjustVCounter()
+        {
+            vCounter = currentScanline;
+
+            // TODO: odd thing, verify this is correct http://www.smspower.org/Development/ScanlineCounter
+            if (isNtsc)
+            {
+                if (screenHeight == NumVisibleLinesHigh)
+                {
+                    // Invalid on NTSC?
+                    if (currentScanline > 0xFF)
+                        vCounter = (currentScanline - 0xFF);
+                }
+                else if (screenHeight == NumVisibleLinesMed)
+                {
+                    if (currentScanline > 0xEA)
+                        vCounter = (currentScanline - 0x05);
+                }
+                else
+                {
+                    if (currentScanline > 0xDA)
+                        vCounter = (currentScanline - 0x05);
+                }
+            }
+            else
+            {
+                if (screenHeight == NumVisibleLinesHigh)
+                {
+                    if (currentScanline > 0xFF && currentScanline < 0xFF + 0x0A)
+                        vCounter = (currentScanline - 0xFF);
+                    else
+                        vCounter = (currentScanline - 0x37);
+                }
+                else if (screenHeight == NumVisibleLinesMed)
+                {
+                    if (currentScanline > 0xFF && currentScanline < 0xFF + 0x02)
+                        vCounter = (currentScanline - 0xFF);
+                    else
+                        vCounter = (currentScanline - 0x37);
+                }
+                else
+                {
+                    if (currentScanline > 0xF2)
+                        vCounter = (currentScanline - 0x38);
+                }
             }
         }
 
@@ -151,8 +226,15 @@ namespace MasterFudge.Emulation.Graphics
 
             if (!isDisplayBlanked)
             {
-                RenderBackground();
-                RenderSprites();
+                if (isMode4)
+                {
+                    RenderBackgroundMode4();
+                    RenderSpritesMode2();
+                }
+                else
+                {
+                    // TODO: Modes 0-3 rendering
+                }
 
                 // Mask column 0 with overscan color
                 if (MasterSystem.IsBitSet(registers[0x00], 5))
@@ -177,29 +259,35 @@ namespace MasterFudge.Emulation.Graphics
                 Buffer.BlockCopy(overscanBgColorArgb, 0, outputFramebuffer, i, 4);
         }
 
-        private void RenderBackground()
+        private void RenderBackgroundMode4()
         {
             // TODO: scrolling is kinda wrong, especially vertically, but really both
 
-            int vScroll = backgroundVScroll;
             int numTilesPerLine = (NumPixelsPerLine / 8);
 
             for (int line = 0; line < screenHeight; line++)
             {
-                int hScroll = ((MasterSystem.IsBitSet(registers[0x00], 6) && line < 16) ? 0 : backgroundXScrollCache[line]);
-
-                ushort nametableAddress = (ushort)(nametableBaseAddress + ((line / 8) * (numTilesPerLine * 2)));
                 for (int tile = 0; tile < numTilesPerLine; tile++)
                 {
+                    int scrolledLine = line;
+                    if (!(MasterSystem.IsBitSet(registers[0x00], 7) && tile >= 24))
+                    {
+                        scrolledLine = (line + backgroundVScroll);
+                        if (scrolledLine >= nametableHeight) scrolledLine -= nametableHeight;
+                    }
+
+                    int hScroll = (MasterSystem.IsBitSet(registers[0x00], 6) && line < 16 ? 0 : backgroundXScrollCache[line]);
+
+                    ushort nametableAddress = (ushort)(nametableBaseAddress + ((scrolledLine / 8) * (numTilesPerLine * 2)));
                     ushort ntData = (ushort)((vram[nametableAddress + (tile * 2) + 1] << 8) | vram[nametableAddress + (tile * 2)]);
 
                     int tileIndex = (ntData & 0x01FF);
                     bool hFlip = ((ntData & 0x200) == 0x200);
                     bool vFlip = ((ntData & 0x400) == 0x400);
                     int palette = ((ntData & 0x800) >> 11);
-                    bool priority = ((ntData & 0x1000) == 0x400);
+                    bool priority = ((ntData & 0x1000) == 0x1000);
 
-                    int tileLine = (vFlip ? ((line / 8) * 8) + (-(line % 8) + 7) : line);
+                    int tileLine = (vFlip ? ((scrolledLine / 8) * 8) + (-(scrolledLine % 8) + 7) : scrolledLine);
 
                     ushort tileAddress = (ushort)((tileIndex * 0x20) + ((tileLine % 8) * 4));
                     for (int pixel = 0; pixel < 8; pixel++)
@@ -211,20 +299,12 @@ namespace MasterFudge.Emulation.Graphics
                         c |= (((vram[tileAddress + 2] >> hShift) & 0x1) << 2);
                         c |= (((vram[tileAddress + 3] >> hShift) & 0x1) << 3);
 
-                        int lineOnScreen = line;
-                        if (!(MasterSystem.IsBitSet(registers[0x00], 7) && tile >= 24))
-                        {
-                            //lineOnScreen = ((screenHeight - (vScroll > screenHeight ? vScroll % 31 : vScroll)) + line);
-                            lineOnScreen += (byte)(screenHeight - vScroll);
-                            lineOnScreen %= (byte)screenHeight;
-                        }
-
-                        int outputY = ((lineOnScreen % screenHeight) * NumPixelsPerLine);
+                        int outputY = ((line % screenHeight) * NumPixelsPerLine);
                         int outputX = ((hScroll + (tile * 8) + pixel) % NumPixelsPerLine);
 
                         if (screenDrawnPixels[outputY + outputX] == 0x00)
                         {
-                            screenDrawnPixels[outputY + outputX] |= (priority ? PixelDrawn.BackgroundHighPriority : PixelDrawn.BackgroundLowPriority);
+                            screenDrawnPixels[outputY + outputX] |= ((c != 0 && priority) ? PixelDrawn.BackgroundHighPriority : PixelDrawn.BackgroundLowPriority);
                             int outputAddress = ((outputY + outputX) * 4);
                             Buffer.BlockCopy(GetColorAsArgb8888(palette, c), 0, outputFramebuffer, outputAddress, 4);
                         }
@@ -233,7 +313,7 @@ namespace MasterFudge.Emulation.Graphics
             }
         }
 
-        private void RenderSprites()
+        private void RenderSpritesMode2()
         {
             int spriteSize = (isLargeSprites ? 16 : 8);
 
@@ -245,8 +325,13 @@ namespace MasterFudge.Emulation.Graphics
                 int numSprites = 0;
                 for (int sprite = 0; sprite < 64; sprite++)
                 {
+                    int yCoordinate = vram[spriteAttribTableBaseAddress + sprite];
+
+                    // Ignore following if Y coord is 208 in 192-line mode
+                    if (yCoordinate == 208 && screenHeight == NumVisibleLinesLow) break;
+
                     // Y coord equals current scanline
-                    if (vram[spriteAttribTableBaseAddress + sprite] == line)
+                    if (yCoordinate == line)
                     {
                         if (numSprites < spriteBuffer.Length)
                             spriteBuffer[numSprites] = sprite;
@@ -335,7 +420,7 @@ namespace MasterFudge.Emulation.Graphics
 
         public byte ReadVCounter()
         {
-            return (byte)currentScanline;
+            return (byte)vCounter;
         }
 
         public byte ReadHCounter()
@@ -345,17 +430,14 @@ namespace MasterFudge.Emulation.Graphics
 
         public byte ReadControlPort()
         {
-            // TODO: read up on how the hell this works
-            //  this has been looked up in meka's source, then mangled, then put here, but hey, it helps get games to run further! :D
+            byte statusCurrent = statusFlags;
 
-            byte status = statusFlags;
-
-            statusFlags &= 0x1F;
+            statusFlags = 0;
 
             isSecondControlWrite = false;
             InterruptPending = false;
 
-            return (byte)(status | 0x1F);
+            return statusCurrent;
         }
 
         public void WriteControlPort(byte value)

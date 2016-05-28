@@ -105,7 +105,7 @@ namespace MasterFudge.Emulation.CPU
             halted = false;
         }
 
-        // TODO: undocumented opcodes (ugh)
+        // TODO: undocumented opcodes (ugh; have a bad feeling ZEXALL needs them...)
 
         public int Execute()
         {
@@ -183,7 +183,7 @@ namespace MasterFudge.Emulation.CPU
                 case 0x04: Increment8(ref bc.High); break;
                 case 0x05: Decrement8(ref bc.High); break;
                 case 0x06: LoadRegisterImmediate8(ref bc.High, false); break;
-                case 0x07: RotateLeftAccumulator(true); break;
+                case 0x07: RotateLeftAccumulatorCircular(); break;
                 case 0x08: ExchangeRegisters16(ref af, ref afShadow); break;
                 case 0x09: Add16(ref hl, bc.Word, false); break;
                 case 0x0A: LoadRegisterFromMemory8(ref af.High, bc.Word, false); break;
@@ -191,7 +191,7 @@ namespace MasterFudge.Emulation.CPU
                 case 0x0C: Increment8(ref bc.Low); break;
                 case 0x0D: Decrement8(ref bc.Low); break;
                 case 0x0E: LoadRegisterImmediate8(ref bc.Low, false); break;
-                case 0x0F: RotateRightAccumulator(true); break;
+                case 0x0F: RotateRightAccumulatorCircular(); break;
                 case 0x10: DecrementJumpNonZero(); break;
                 case 0x11: LoadRegisterImmediate16(ref de.Word); break;
                 case 0x12: LoadMemory8(de.Word, af.High); break;
@@ -199,7 +199,7 @@ namespace MasterFudge.Emulation.CPU
                 case 0x14: Increment8(ref de.High); break;
                 case 0x15: Decrement8(ref de.High); break;
                 case 0x16: LoadRegisterImmediate8(ref de.High, false); break;
-                case 0x17: RotateLeftAccumulator(false); break;
+                case 0x17: RotateLeftAccumulator(); break;
                 case 0x18: Jump8(); break;
                 case 0x19: Add16(ref hl, de.Word, false); break;
                 case 0x1A: LoadRegisterFromMemory8(ref af.High, de.Word, false); break;
@@ -207,7 +207,7 @@ namespace MasterFudge.Emulation.CPU
                 case 0x1C: Increment8(ref de.Low); break;
                 case 0x1D: Decrement8(ref de.Low); break;
                 case 0x1E: LoadRegisterImmediate8(ref de.Low, false); break;
-                case 0x1F: RotateRightAccumulator(false); break;
+                case 0x1F: RotateRightAccumulator(); break;
                 case 0x20: JumpConditional8(!IsFlagSet(Flags.Z)); break;
                 case 0x21: LoadRegisterImmediate16(ref hl.Word); break;
                 case 0x22: LoadMemory16(memoryMapper.Read16(pc), hl.Word); pc += 2; break;
@@ -1083,7 +1083,7 @@ namespace MasterFudge.Emulation.CPU
             bool isLsbSet = MasterSystem.IsBitSet(value, 0);
             value >>= 1;
 
-            ClearFlag(Flags.S);
+            SetClearFlagConditional(Flags.S, MasterSystem.IsBitSet(value, 7));
             SetClearFlagConditional(Flags.Z, (value == 0));
             ClearFlag(Flags.H);
             CalculateAndSetParity(value);
@@ -1151,46 +1151,62 @@ namespace MasterFudge.Emulation.CPU
             pc = address;
         }
 
-        private void RotateLeftAccumulator(bool circular)
+        private void RotateLeftAccumulator()
         {
-            bool bit7Set = MasterSystem.IsBitSet(af.High, 7);
-            if (!circular)
-            {
-                af.High <<= 1;
-                if (IsFlagSet(Flags.C)) af.High |= 0x01;
-            }
-            else
-            {
-                af.High = (byte)((af.High << 1) | (af.High >> 7));
-            }
+            bool isCarrySet = IsFlagSet(Flags.C);
+            bool isMsbSet = MasterSystem.IsBitSet(af.High, 7);
+            af.High <<= 1;
+            if (isCarrySet) SetBit(ref af.High, 0);
 
             // S
             // Z
             ClearFlag(Flags.H);
             // PV
             ClearFlag(Flags.N);
-            SetClearFlagConditional(Flags.C, bit7Set);
+            SetClearFlagConditional(Flags.C, isMsbSet);
         }
 
-        private void RotateRightAccumulator(bool circular)
+        private void RotateLeftAccumulatorCircular()
         {
-            bool bit0Set = MasterSystem.IsBitSet(af.High, 0);
-            if (!circular)
-            {
-                af.High >>= 1;
-                if (IsFlagSet(Flags.C)) af.High |= 0x80;
-            }
-            else
-            {
-                af.High = (byte)((af.High << 7) | (af.High >> 1));
-            }
+            bool isMsbSet = MasterSystem.IsBitSet(af.High, 7);
+            af.High <<= 1;
+            if (isMsbSet) SetBit(ref af.High, 0);
 
             // S
             // Z
             ClearFlag(Flags.H);
             // PV
             ClearFlag(Flags.N);
-            SetClearFlagConditional(Flags.C, bit0Set);
+            SetClearFlagConditional(Flags.C, isMsbSet);
+        }
+
+        private void RotateRightAccumulator()
+        {
+            bool isCarrySet = IsFlagSet(Flags.C);
+            bool isLsbSet = MasterSystem.IsBitSet(af.High, 0);
+            af.High >>= 1;
+            if (isCarrySet) SetBit(ref af.High, 7);
+
+            // S
+            // Z
+            ClearFlag(Flags.H);
+            // PV
+            ClearFlag(Flags.N);
+            SetClearFlagConditional(Flags.C, isLsbSet);
+        }
+
+        private void RotateRightAccumulatorCircular()
+        {
+            bool isLsbSet = MasterSystem.IsBitSet(af.High, 0);
+            af.High >>= 1;
+            if (isLsbSet) SetBit(ref af.High, 7);
+
+            // S
+            // Z
+            ClearFlag(Flags.H);
+            // PV
+            ClearFlag(Flags.N);
+            SetClearFlagConditional(Flags.C, isLsbSet);
         }
 
         private void RotateRight4B()
@@ -1256,14 +1272,14 @@ namespace MasterFudge.Emulation.CPU
                 if (IsFlagSet(Flags.C)) value -= 0x60;
             }
 
-            af.High = (byte)value;
-
-            SetClearFlagConditional(Flags.S, MasterSystem.IsBitSet(af.High, 7));
-            SetClearFlagConditional(Flags.Z, (af.High == 0));
-            ClearFlag(Flags.H); // TODO: correct?
-            CalculateAndSetParity(af.High);
+            // S
+            SetClearFlagConditional(Flags.Z, (value == 0));
+            ClearFlag(Flags.H);
+            CalculateAndSetParity((byte)value);
             // N
-            ClearFlag(Flags.C); // TODO: correct?
+            SetClearFlagConditional(Flags.C, ((value & 0x100) != 0));
+
+            af.High = (byte)value;
         }
 
         private void ExchangeRegisters16(ref Register reg1, ref Register reg2)
@@ -1568,18 +1584,12 @@ namespace MasterFudge.Emulation.CPU
             int operandWithCarry = ((sbyte)operand + (withCarry && IsFlagSet(Flags.C) ? 1 : 0));
             int result = (af.High + operandWithCarry);
 
-            SetClearFlagConditional(Flags.S, (result < 0));
+            SetClearFlagConditional(Flags.S, ((127 < result) && (result < 256)));
             SetClearFlagConditional(Flags.Z, ((result & 0xFF) == 0));
             SetClearFlagConditional(Flags.H, (((result ^ af.High ^ operandWithCarry) & 0x10) != 0));
-            //SetClearFlagConditional(Flags.PV, (((((af.High ^ result) & (operandWithCarry ^ result)) >> 5) & 0x04) != 0));
+            SetClearFlagConditional(Flags.PV, ((((af.High ^ operand) & 0x80) == 0) && ((af.High ^ result) & 0x80) != 0));
             ClearFlag(Flags.N);
             SetClearFlagConditional(Flags.C, (((result ^ af.High ^ operandWithCarry) & 0x100) != 0));
-
-
-            SetClearFlagConditional(Flags.S, (127 < result && result < 256));
-            SetClearFlagConditional(Flags.C, (((result ^ af.High ^ operandWithCarry) & 0x100) != 0));
-            SetClearFlagConditional(Flags.PV, ((((af.High ^ operand) & 0x80) == 0) && ((af.High ^ result) & 0x80) != 0));
-
 
             af.High = (byte)result;
         }
@@ -1589,78 +1599,68 @@ namespace MasterFudge.Emulation.CPU
             int operandWithCarry = ((sbyte)operand + (withCarry && IsFlagSet(Flags.C) ? 1 : 0));
             int result = (af.High - operandWithCarry);
 
-            //SetClearFlagConditional(Flags.S, (result < 0));
+            SetClearFlagConditional(Flags.S, ((127 < result) && (result < 256)));
             SetClearFlagConditional(Flags.Z, ((result & 0xFF) == 0));
             SetClearFlagConditional(Flags.H, (((result ^ af.High ^ operandWithCarry) & 0x20) != 0));
-            //SetClearFlagConditional(Flags.PV, (((((af.High ^ result) & (operandWithCarry ^ result)) >> 5) & 0x04) != 0));
-            SetFlag(Flags.N);
-            //SetClearFlagConditional(Flags.C, ((result & 0xFF) < operandWithCarry));
-
-
-            SetClearFlagConditional(Flags.S, (127 < result && result < 256));
-            SetClearFlagConditional(Flags.C, (af.High < operand));
             SetClearFlagConditional(Flags.PV, ((((af.High ^ operand) & 0x80) != 0) && ((operand ^ result) & 0x80) == 0));
+            SetFlag(Flags.N);
+            SetClearFlagConditional(Flags.C, (af.High < operand));
 
             af.High = (byte)result;
         }
 
         private void And8(byte operand)
         {
-            byte result = (byte)(af.High & operand);
+            int result = (af.High & operand);
 
-            SetClearFlagConditional(Flags.S, MasterSystem.IsBitSet(result, 7));
+            SetClearFlagConditional(Flags.S, MasterSystem.IsBitSet((byte)result, 7));
             SetClearFlagConditional(Flags.Z, (result == 0));
             SetFlag(Flags.H);
-            CalculateAndSetParity(result);
+            CalculateAndSetParity((byte)result);
             ClearFlag(Flags.N);
             ClearFlag(Flags.C);
 
-            af.High = result;
+            af.High = (byte)result;
         }
 
         private void Xor8(byte operand)
         {
-            byte result = (byte)(af.High ^ operand);
+            int result = (af.High ^ operand);
 
-            SetClearFlagConditional(Flags.S, MasterSystem.IsBitSet(result, 7));
+            SetClearFlagConditional(Flags.S, MasterSystem.IsBitSet((byte)result, 7));
             SetClearFlagConditional(Flags.Z, (result == 0));
             ClearFlag(Flags.H);
-            CalculateAndSetParity(result);
+            CalculateAndSetParity((byte)result);
             ClearFlag(Flags.N);
             ClearFlag(Flags.C);
 
-            af.High = result;
+            af.High = (byte)result;
         }
 
         private void Or8(byte operand)
         {
-            byte result = (byte)(af.High | operand);
+            int result = (af.High | operand);
 
-            SetClearFlagConditional(Flags.S, MasterSystem.IsBitSet(result, 7));
+            SetClearFlagConditional(Flags.S, MasterSystem.IsBitSet((byte)result, 7));
             SetClearFlagConditional(Flags.Z, (result == 0));
             ClearFlag(Flags.H);
-            CalculateAndSetParity(result);
+            CalculateAndSetParity((byte)result);
             ClearFlag(Flags.N);
             ClearFlag(Flags.C);
 
-            af.High = result;
+            af.High = (byte)result;
         }
 
         private void Cp8(byte operand)
         {
             int result = (af.High - (sbyte)operand);
 
-            //SetClearFlagConditional(Flags.S, (result < 0));
+            SetClearFlagConditional(Flags.S, ((127 < result) && (result < 256)));
             SetClearFlagConditional(Flags.Z, ((result & 0xFF) == 0));
             SetClearFlagConditional(Flags.H, (((result ^ af.High ^ operand) & 0x20) != 0));
-            //SetClearFlagConditional(Flags.PV, (((((af.High ^ result) & (operand ^ result)) >> 5) & 0x04) != 0));
-            SetFlag(Flags.N);
-            //SetClearFlagConditional(Flags.C, ((result & 0xFF) < operand));
-
-
-            SetClearFlagConditional(Flags.S, (127 < result && result < 256));
-            SetClearFlagConditional(Flags.C, (af.High < operand));
             SetClearFlagConditional(Flags.PV, ((((af.High ^ operand) & 0x80) != 0) && ((operand ^ result) & 0x80) == 0));
+            SetFlag(Flags.N);
+            SetClearFlagConditional(Flags.C, (af.High < operand));
         }
 
         private void Add16(ref Register dest, ushort operand, bool withCarry)

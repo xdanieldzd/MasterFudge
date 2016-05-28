@@ -38,7 +38,7 @@ namespace MasterFudge.Emulation
         public const double FramesPerSecNTSC = 59.922743;
 
         double framesPerSecond;
-        int cyclesPerFrame, numScanlines;
+        int cyclesPerFrame;
 
         MemoryMapper memoryMapper;
 
@@ -63,14 +63,13 @@ namespace MasterFudge.Emulation
 
             framesPerSecond = (isNtsc ? FramesPerSecNTSC : FramesPerSecPAL);
             cyclesPerFrame = (int)((isNtsc ? MasterClockNTSC : MasterClockPAL) / 15.0 / framesPerSecond);
-            numScanlines = (isNtsc ? VDP.NumScanlinesNTSC : VDP.NumScanlinesPAL);
 
             memoryMapper = new MemoryMapper();
 
             cpu = new Z80(memoryMapper, ReadIOPort, WriteIOPort);
             //cpu.DebugLogOpcodes = true;
             wram = new WRAM();
-            vdp = new VDP(onRenderScreen);
+            vdp = new VDP(isNtsc, onRenderScreen);
 
             memoryMapper.AddMemoryArea(wram.GetMemoryAreaDescriptor());
 
@@ -156,8 +155,8 @@ namespace MasterFudge.Emulation
             // TODO: more resetti things
             cpu.Reset();
             vdp.Reset();
-            portMemoryControl = portIoControl = 0;
-            portIoAB = portIoBMisc = 0xFF;
+            portMemoryControl = 0x00;
+            portIoControl = portIoAB = portIoBMisc = 0xFF;
         }
 
         private void Execute()
@@ -179,7 +178,7 @@ namespace MasterFudge.Emulation
                     {
                         int currentCycles = cpu.Execute();
 
-                        vdp.Execute(currentCycles, cyclesPerFrame, numScanlines);
+                        vdp.Execute(currentCycles, cyclesPerFrame);
                         HandleInterrupts();
                         // TODO: sound stuff here, too!
 

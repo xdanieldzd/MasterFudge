@@ -76,8 +76,8 @@ namespace MasterFudge.Emulation.Cartridges
             {
                 // ROM write enabled...?
             }
-            else
-                throw new Exception(string.Format("Cannot write to cartridge address 0x{0:X4}", address));
+            /*else
+                throw new Exception(string.Format("Cannot write to cartridge address 0x{0:X4}", address));*/
         }
 
         public override MemoryAreaDescriptor GetMappingRegisterAreaDescriptor()
@@ -93,7 +93,7 @@ namespace MasterFudge.Emulation.Cartridges
         private void WriteRegister(ushort address, byte value)
         {
             pagingRegisters[address & 0x0003] = value;
-            Program.Log.WriteEvent("## Cartridge mapper write (address 0x{0:X4}, value 0x{1:X2})", address, value);
+            //Program.Log.WriteEvent("## Cartridge mapper write (address 0x{0:X4}, value 0x{1:X2})", address, value);
         }
     }
 }
