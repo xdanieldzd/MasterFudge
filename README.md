@@ -2,10 +2,10 @@
 "What am I even doing", indeed. Not much to see here, just a little bit, very much not yet finished. Not sure if "yet", "ever", "whatever", "dishwasher", eh.
 
 ## Status
-* __Z80__: All opcodes done (main, CB-, DD-, ED- and FD-prefix) but with issues (flags, etc)
+* __Z80__: All documented opcodes done (main, CB-, DD-, ED- and FD-prefix; only a few "undocumented" ones) but with issues (flags, etc)
 * __VDP__: Basic background and sprite rendering, some bad scrolling; much is missing
 * __Memory__: Working, I guess; nothing fancy here
-* __Cartridges__: Basic Sega mapper support (ROM and RAM), probably buggy
+* __Cartridges__: Basic Sega mapper support (ROM and RAM), maybe not quite as buggy as some other parts
 * __Input__: P1 joypad should work, I think
 * __Sound__: No sir, neither PSG nor FM!
 * __Misc__: If it's not listed above, it's probably not there (yet)
