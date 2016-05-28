@@ -54,6 +54,8 @@ namespace MasterFudge.Emulation
         static ManualResetEvent threadReset;
 
         public bool IsPaused { get { return (mainThread?.ThreadState == System.Threading.ThreadState.Running || mainThread?.ThreadState == System.Threading.ThreadState.Background); } }
+        public bool LimitFPS { get; set; }
+        public bool DebugLogOpcodes { get { return cpu.DebugLogOpcodes; } set { cpu.DebugLogOpcodes = value; } }
 
         public MasterSystem(bool isNtsc, RenderScreenHandler onRenderScreen)
         {
@@ -74,6 +76,8 @@ namespace MasterFudge.Emulation
 
             mainThread = new Thread(new ThreadStart(Execute)) { IsBackground = true, Name = "SMS" };
             threadReset = new ManualResetEvent(false);
+
+            LimitFPS = false;
         }
 
         ~MasterSystem()
@@ -184,7 +188,7 @@ namespace MasterFudge.Emulation
 
                     threadReset.WaitOne();
 
-                    while (sw.ElapsedMilliseconds - startTime < interval)
+                    while (LimitFPS && sw.ElapsedMilliseconds - startTime < interval)
                         Thread.Sleep(1);
                 }
             }
@@ -235,7 +239,19 @@ namespace MasterFudge.Emulation
                     if ((port & 0x01) == 0)
                         return portIoAB;                // IO port A/B register
                     else
-                        return portIoBMisc;             // IO port B/misc register
+                    {
+                        // IO port B/misc register
+                        // Check if export SMS
+                        if (true)
+                        {
+                            if (portIoControl == 0xF5)
+                                return (byte)(portIoBMisc | 0xC0);
+                            else
+                                return (byte)(portIoBMisc & 0x3F);
+                        }
+                        else
+                            return portIoBMisc;
+                    }
             }
 
             return 0xAA;

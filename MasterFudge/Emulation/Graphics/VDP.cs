@@ -206,12 +206,17 @@ namespace MasterFudge.Emulation.Graphics
 
         public byte ReadControlPort()
         {
+            // TODO: read up on how the hell this works
+            //  this has been looked up in meka's source, then mangled, then put here, but hey, it helps get games to run further! :D
+
+            byte status = statusFlags;
+
+            statusFlags &= 0x1F;
+
             isSecondControlWrite = false;
+            InterruptPending = false;
 
-            // Unset frame interrupt flag
-            statusFlags &= 0x7F;
-
-            return statusFlags;
+            return (byte)(status | 0x1F);
         }
 
         public void WriteControlPort(byte value)

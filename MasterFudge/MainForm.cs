@@ -57,18 +57,30 @@ namespace MasterFudge
                 }
             });
 
+            chkTempFPSLimiter.CheckedChanged += ((s, ev) =>
+            {
+                if (ms == null) return;
+                ms.LimitFPS = (s as CheckBox).Checked;
+            });
+
+            chkTempLogZ80.CheckedChanged += ((s, ev) =>
+            {
+                if (ms == null) return;
+                ms.DebugLogOpcodes = (s as CheckBox).Checked;
+            });
+
             Application.Idle += ((s, ev) =>
             {
                 JoypadInput p1 = JoypadInput.None;
-                if (keysDown[(int)Keys.Up]) p1 |= JoypadInput.Up;
-                if (keysDown[(int)Keys.Down]) p1 |= JoypadInput.Down;
-                if (keysDown[(int)Keys.Left]) p1 |= JoypadInput.Left;
-                if (keysDown[(int)Keys.Right]) p1 |= JoypadInput.Right;
+                if (keysDown[(int)Keys.NumPad8]) p1 |= JoypadInput.Up;
+                if (keysDown[(int)Keys.NumPad2]) p1 |= JoypadInput.Down;
+                if (keysDown[(int)Keys.NumPad4]) p1 |= JoypadInput.Left;
+                if (keysDown[(int)Keys.NumPad6]) p1 |= JoypadInput.Right;
                 if (keysDown[(int)Keys.B]) p1 |= JoypadInput.Button1;
                 if (keysDown[(int)Keys.A]) p1 |= JoypadInput.Button2;
                 if (keysDown[(int)Keys.Back]) p1 |= JoypadInput.ResetButton;
                 ms?.SetJoypadInput(p1, JoypadInput.None);
-                
+
                 pbTempDisplay.Invalidate();
                 pbTempPalette.Invalidate();
             });
@@ -124,6 +136,9 @@ namespace MasterFudge
 
                 ms = new MasterSystem(false, Emulation_OnRenderScreen);
                 ms.LoadCartridge(ofdOpenRom.FileName);
+
+                ms.DebugLogOpcodes = chkTempLogZ80.Checked;
+                ms.LimitFPS = chkTempFPSLimiter.Checked;
 
                 LogRomInformation(ms, ofdOpenRom.FileName);
 

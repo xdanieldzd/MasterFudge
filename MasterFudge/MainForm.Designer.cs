@@ -33,6 +33,8 @@
             this.pbTempDisplay = new System.Windows.Forms.PictureBox();
             this.pbTempPalette = new System.Windows.Forms.PictureBox();
             this.ofdOpenRom = new System.Windows.Forms.OpenFileDialog();
+            this.chkTempFPSLimiter = new System.Windows.Forms.CheckBox();
+            this.chkTempLogZ80 = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.pbTempDisplay)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pbTempPalette)).BeginInit();
             this.SuspendLayout();
@@ -81,11 +83,33 @@
             // 
             this.ofdOpenRom.Filter = "SMS ROMs (*.sms)|*.sms|All Files (*.*)|*.*";
             // 
+            // chkTempFPSLimiter
+            // 
+            this.chkTempFPSLimiter.AutoSize = true;
+            this.chkTempFPSLimiter.Location = new System.Drawing.Point(174, 16);
+            this.chkTempFPSLimiter.Name = "chkTempFPSLimiter";
+            this.chkTempFPSLimiter.Size = new System.Drawing.Size(70, 17);
+            this.chkTempFPSLimiter.TabIndex = 5;
+            this.chkTempFPSLimiter.Text = "Limit FPS";
+            this.chkTempFPSLimiter.UseVisualStyleBackColor = true;
+            // 
+            // chkTempLogZ80
+            // 
+            this.chkTempLogZ80.AutoSize = true;
+            this.chkTempLogZ80.Location = new System.Drawing.Point(318, 16);
+            this.chkTempLogZ80.Name = "chkTempLogZ80";
+            this.chkTempLogZ80.Size = new System.Drawing.Size(90, 17);
+            this.chkTempLogZ80.TabIndex = 6;
+            this.chkTempLogZ80.Text = "Log Opcodes";
+            this.chkTempLogZ80.UseVisualStyleBackColor = true;
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(484, 362);
+            this.Controls.Add(this.chkTempLogZ80);
+            this.Controls.Add(this.chkTempFPSLimiter);
             this.Controls.Add(this.pbTempPalette);
             this.Controls.Add(this.pbTempDisplay);
             this.Controls.Add(this.btnTempPause);
@@ -97,6 +121,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.pbTempDisplay)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pbTempPalette)).EndInit();
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
@@ -106,6 +131,8 @@
         private System.Windows.Forms.PictureBox pbTempDisplay;
         private System.Windows.Forms.PictureBox pbTempPalette;
         private System.Windows.Forms.OpenFileDialog ofdOpenRom;
+        private System.Windows.Forms.CheckBox chkTempFPSLimiter;
+        private System.Windows.Forms.CheckBox chkTempLogZ80;
     }
 }
 
