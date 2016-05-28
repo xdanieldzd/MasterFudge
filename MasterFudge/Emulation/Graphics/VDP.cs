@@ -11,11 +11,11 @@ namespace MasterFudge.Emulation.Graphics
         public const double NumScanlinesPAL = 313.0;
         public const double NumScanlinesNTSC = 262.0;
 
-        public const double NumVisibleLinesLow = 192.0;
-        public const double NumVisibleLinesMed = 224.0;
-        public const double NumVisibleLinesHigh = 240.0;
+        public const int NumVisibleLinesLow = 192;
+        public const int NumVisibleLinesMed = 224;
+        public const int NumVisibleLinesHigh = 240;
 
-        public const double NumPixelsPerLine = 256.0;
+        public const int NumPixelsPerLine = 256;
 
         RenderScreenHandler renderScreen;
 
@@ -34,7 +34,7 @@ namespace MasterFudge.Emulation.Graphics
         }
 
         public bool InterruptPending { get; private set; }
-        int currentScanline, hCounter, screenHeight, lineInterruptCounter;
+        int currentScanline, hCounter, screenHeight, lineInterruptCounter, screenVScroll;
 
         bool isLineInterruptEnabled { get { return MasterSystem.IsBitSet(registers[0x00], 4); } }
         bool isFrameInterruptEnabled { get { return MasterSystem.IsBitSet(registers[0x01], 5); } }
@@ -49,8 +49,7 @@ namespace MasterFudge.Emulation.Graphics
         ushort spritePatternGenBaseAddress { get { return (ushort)((registers[0x06] & 0x04) << 11); } }
 
         int overscanBgColor { get { return (registers[0x07] & 0x0F); } }
-        int backgroundXScroll { get { return registers[0x08]; } }
-        int backgroundYScroll { get { return registers[0x09]; } }
+        int screenHScroll { get { return registers[0x08]; } }
 
         int[] backgroundXScrollCache;
 
@@ -62,7 +61,7 @@ namespace MasterFudge.Emulation.Graphics
             vram = new byte[0x4000];
             cram = new byte[0x20];
 
-            outputFramebuffer = new byte[(int)(NumPixelsPerLine * NumVisibleLinesHigh) * 4];
+            outputFramebuffer = new byte[(NumPixelsPerLine * NumVisibleLinesHigh) * 4];
 
             backgroundXScrollCache = new int[(int)NumScanlinesPAL];
         }
@@ -87,13 +86,24 @@ namespace MasterFudge.Emulation.Graphics
 
             if ((hCounter + currentCycles) > cyclesPerLine)
             {
-                backgroundXScrollCache[currentScanline] = backgroundXScroll;
+                backgroundXScrollCache[currentScanline] = screenHScroll;
 
                 currentScanline++;
                 hCounter = 0;
 
                 if (currentScanline > (screenHeight + 1))
+                {
                     lineInterruptCounter = registers[0x0A];
+                    screenVScroll = registers[0x09];
+
+                    // BLAH
+                    if (displayMode == 11)
+                        screenHeight = NumVisibleLinesMed;
+                    else if (displayMode == 14)
+                        screenHeight = NumVisibleLinesHigh;
+                    else
+                        screenHeight = NumVisibleLinesLow;
+                }
                 else
                 {
                     lineInterruptCounter--;
@@ -128,7 +138,7 @@ namespace MasterFudge.Emulation.Graphics
                 // TODO: sprites, etc, etc
             }
 
-            renderScreen?.Invoke(this, new RenderEventArgs((int)NumPixelsPerLine, screenHeight, outputFramebuffer));
+            renderScreen?.Invoke(this, new RenderEventArgs(NumPixelsPerLine, screenHeight, outputFramebuffer));
         }
 
         private void ClearFramebuffer()
@@ -139,11 +149,15 @@ namespace MasterFudge.Emulation.Graphics
 
         private void RenderBackground()
         {
-            // TODO: scrolling and whatever else...
+            // TODO: scrolling is probably wrong
 
-            int numTilesPerLine = (int)(NumPixelsPerLine / 8);
+            int vScroll = screenVScroll;
+            int numTilesPerLine = (NumPixelsPerLine / 8);
+
             for (int line = 0; line < screenHeight; line++)
             {
+                int hScroll = ((MasterSystem.IsBitSet(registers[0x00], 6) && line < 16) ? 0 : backgroundXScrollCache[line]);
+
                 ushort nametableAddress = (ushort)(nametableBaseAddress + ((line / 8) * (numTilesPerLine * 2)));
                 for (int tile = 0; tile < numTilesPerLine; tile++)
                 {
@@ -155,16 +169,24 @@ namespace MasterFudge.Emulation.Graphics
                     int palette = ((ntData & 0x800) >> 11);
                     bool priority = ((ntData & 0x1000) == 0x400);
 
-                    ushort tileAddress = (ushort)((tileIndex * 0x20) + ((line % 8) * 4));
+                    int tileLine = (vFlip ? ((line / 8) * 8) + (-(line % 8) + 7) : line);
+
+                    ushort tileAddress = (ushort)((tileIndex * 0x20) + ((tileLine % 8) * 4));
                     for (int pixel = 0; pixel < 8; pixel++)
                     {
-                        int c = (((vram[tileAddress + 0] >> (7 - pixel)) & 0x1) << 0);
-                        c |= (((vram[tileAddress + 1] >> (7 - pixel)) & 0x1) << 1);
-                        c |= (((vram[tileAddress + 2] >> (7 - pixel)) & 0x1) << 2);
-                        c |= (((vram[tileAddress + 3] >> (7 - pixel)) & 0x1) << 3);
+                        int hShift = (hFlip ? pixel : (7 - pixel));
 
-                        int outputAddress = (int)(((line * NumPixelsPerLine) * 4) + (((tile * 8) + pixel) * 4));
-                        Buffer.BlockCopy(GetColorAsArgb8888(palette, c), 0, outputFramebuffer, outputAddress, 4);
+                        int c = (((vram[tileAddress + 0] >> hShift) & 0x1) << 0);
+                        c |= (((vram[tileAddress + 1] >> hShift) & 0x1) << 1);
+                        c |= (((vram[tileAddress + 2] >> hShift) & 0x1) << 2);
+                        c |= (((vram[tileAddress + 3] >> hShift) & 0x1) << 3);
+
+                        int lineOnScreen = ((MasterSystem.IsBitSet(registers[0x00], 7) && tile >= 24) ? 0 : ((screenHeight - (vScroll > screenHeight ? vScroll % 31 : vScroll)) + line));
+
+                        int outputY = (((lineOnScreen % screenHeight) * NumPixelsPerLine) * 4);
+                        int outputX = (((hScroll + (tile * 8) + pixel) % NumPixelsPerLine) * 4);
+
+                        Buffer.BlockCopy(GetColorAsArgb8888(palette, c), 0, outputFramebuffer, (outputY + outputX), 4);
                     }
                 }
             }

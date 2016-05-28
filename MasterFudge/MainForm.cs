@@ -131,7 +131,7 @@ namespace MasterFudge
             if (ofdOpenRom.ShowDialog() == DialogResult.OK)
             {
                 Text = Application.ProductName + " - " + System.IO.Path.GetFileName(ofdOpenRom.FileName);
-
+                
                 Program.Log.ClearEvents();
 
                 ms = new MasterSystem(false, Emulation_OnRenderScreen);

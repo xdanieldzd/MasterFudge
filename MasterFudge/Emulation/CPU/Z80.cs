@@ -790,10 +790,13 @@ namespace MasterFudge.Emulation.CPU
             }
         }
 
+        private ushort CalculateIXIYAddress(Register register)
+        {
+            return (ushort)(register.Word + (sbyte)memoryMapper.Read8(pc++));
+        }
+
         private void ExecuteOpDDFD(byte op, ref Register register)
         {
-            ushort calcAddress = (ushort)(register.Word + (sbyte)memoryMapper.Read8((ushort)(pc + 1)));
-
             switch (op)
             {
                 case 0x09: Add16(ref register, bc.Word, false); break;
@@ -803,44 +806,46 @@ namespace MasterFudge.Emulation.CPU
                 case 0x21: LoadRegisterImmediate16(ref register.Word); break;
                 case 0x22: LoadMemory16(memoryMapper.Read16(pc), register.Word); pc += 2; break;
                 case 0x23: Increment16(ref register.Word); break;
+                case 0x26: /* XXX */ register.High = memoryMapper.Read8(pc++); break;
                 case 0x29: Add16(ref register, register.Word, false); break;
                 case 0x2A: LoadRegister16(ref register.Word, memoryMapper.Read16(memoryMapper.Read16(pc))); pc += 2; break;
                 case 0x2B: Decrement16(ref register.Word); break;
+                case 0x2E: /* XXX */ register.Low = memoryMapper.Read8(pc++); break;
 
-                case 0x34: IncrementMemory8(calcAddress); pc++; break;
-                case 0x35: DecrementMemory8(calcAddress); pc++; break;
-                case 0x36: LoadMemory8(calcAddress, memoryMapper.Read8(pc++)); pc++; break;
+                case 0x34: IncrementMemory8(CalculateIXIYAddress(register)); break;
+                case 0x35: DecrementMemory8(CalculateIXIYAddress(register)); break;
+                case 0x36: LoadMemory8(CalculateIXIYAddress(register), memoryMapper.Read8(pc++)); break;
                 case 0x39: Add16(ref register, sp, false); break;
 
-                case 0x46: bc.High = memoryMapper.Read8(calcAddress); pc++; break;
-                case 0x4E: bc.Low = memoryMapper.Read8(calcAddress); pc++; break;
+                case 0x46: bc.High = memoryMapper.Read8(CalculateIXIYAddress(register)); break;
+                case 0x4E: bc.Low = memoryMapper.Read8(CalculateIXIYAddress(register)); break;
 
-                case 0x56: de.High = memoryMapper.Read8(calcAddress); pc++; break;
-                case 0x5E: de.Low = memoryMapper.Read8(calcAddress); pc++; break;
+                case 0x56: de.High = memoryMapper.Read8(CalculateIXIYAddress(register)); break;
+                case 0x5E: de.Low = memoryMapper.Read8(CalculateIXIYAddress(register)); break;
 
-                case 0x66: hl.High = memoryMapper.Read8(calcAddress); pc++; break;
-                case 0x6E: hl.Low = memoryMapper.Read8(calcAddress); pc++; break;
+                case 0x66: hl.High = memoryMapper.Read8(CalculateIXIYAddress(register)); break;
+                case 0x6E: hl.Low = memoryMapper.Read8(CalculateIXIYAddress(register)); break;
 
-                case 0x70: LoadMemory8(calcAddress, bc.High); pc++; break;
-                case 0x71: LoadMemory8(calcAddress, bc.Low); pc++; break;
-                case 0x72: LoadMemory8(calcAddress, de.High); pc++; break;
-                case 0x73: LoadMemory8(calcAddress, de.Low); pc++; break;
-                case 0x74: LoadMemory8(calcAddress, hl.High); pc++; break;
-                case 0x75: LoadMemory8(calcAddress, hl.Low); pc++; break;
-                case 0x77: LoadMemory8(calcAddress, af.High); pc++; break;
-                case 0x7E: af.High = memoryMapper.Read8(calcAddress); pc++; break;
+                case 0x70: LoadMemory8(CalculateIXIYAddress(register), bc.High); break;
+                case 0x71: LoadMemory8(CalculateIXIYAddress(register), bc.Low); break;
+                case 0x72: LoadMemory8(CalculateIXIYAddress(register), de.High); break;
+                case 0x73: LoadMemory8(CalculateIXIYAddress(register), de.Low); break;
+                case 0x74: LoadMemory8(CalculateIXIYAddress(register), hl.High); break;
+                case 0x75: LoadMemory8(CalculateIXIYAddress(register), hl.Low); break;
+                case 0x77: LoadMemory8(CalculateIXIYAddress(register), af.High); break;
+                case 0x7E: af.High = memoryMapper.Read8(CalculateIXIYAddress(register)); break;
 
-                case 0x86: Add8(memoryMapper.Read8(calcAddress), false); pc++; break;
-                case 0x8E: Add8(memoryMapper.Read8(calcAddress), true); pc++; break;
+                case 0x86: Add8(memoryMapper.Read8(CalculateIXIYAddress(register)), false); break;
+                case 0x8E: Add8(memoryMapper.Read8(CalculateIXIYAddress(register)), true); break;
 
-                case 0x96: Subtract8(memoryMapper.Read8(calcAddress), false); pc++; break;
-                case 0x9E: Subtract8(memoryMapper.Read8(calcAddress), true); pc++; break;
+                case 0x96: Subtract8(memoryMapper.Read8(CalculateIXIYAddress(register)), false); break;
+                case 0x9E: Subtract8(memoryMapper.Read8(CalculateIXIYAddress(register)), true); break;
 
-                case 0xA6: And8(memoryMapper.Read8(calcAddress)); pc++; break;
-                case 0xAE: Xor8(memoryMapper.Read8(calcAddress)); pc++; break;
+                case 0xA6: And8(memoryMapper.Read8(CalculateIXIYAddress(register))); break;
+                case 0xAE: Xor8(memoryMapper.Read8(CalculateIXIYAddress(register))); break;
 
-                case 0xB6: Or8(memoryMapper.Read8(calcAddress)); pc++; break;
-                case 0xBE: Cp8(memoryMapper.Read8(calcAddress)); pc++; break;
+                case 0xB6: Or8(memoryMapper.Read8(CalculateIXIYAddress(register))); break;
+                case 0xBE: Cp8(memoryMapper.Read8(CalculateIXIYAddress(register))); break;
 
                 case 0xCB: ExecuteOpDDFDCB(memoryMapper.Read8((ushort)(pc + 1)), ref register); break;
 
@@ -1566,9 +1571,15 @@ namespace MasterFudge.Emulation.CPU
             SetClearFlagConditional(Flags.S, (result < 0));
             SetClearFlagConditional(Flags.Z, ((result & 0xFF) == 0));
             SetClearFlagConditional(Flags.H, (((result ^ af.High ^ operandWithCarry) & 0x10) != 0));
-            SetClearFlagConditional(Flags.PV, (((((af.High ^ result) & (operandWithCarry ^ result)) >> 5) & 0x04) != 0));
+            //SetClearFlagConditional(Flags.PV, (((((af.High ^ result) & (operandWithCarry ^ result)) >> 5) & 0x04) != 0));
             ClearFlag(Flags.N);
             SetClearFlagConditional(Flags.C, (((result ^ af.High ^ operandWithCarry) & 0x100) != 0));
+
+
+            SetClearFlagConditional(Flags.S, (127 < result && result < 256));
+            SetClearFlagConditional(Flags.C, (((result ^ af.High ^ operandWithCarry) & 0x100) != 0));
+            SetClearFlagConditional(Flags.PV, ((((af.High ^ operand) & 0x80) == 0) && ((af.High ^ result) & 0x80) != 0));
+
 
             af.High = (byte)result;
         }
@@ -1578,12 +1589,17 @@ namespace MasterFudge.Emulation.CPU
             int operandWithCarry = ((sbyte)operand + (withCarry && IsFlagSet(Flags.C) ? 1 : 0));
             int result = (af.High - operandWithCarry);
 
-            SetClearFlagConditional(Flags.S, (result < 0));
+            //SetClearFlagConditional(Flags.S, (result < 0));
             SetClearFlagConditional(Flags.Z, ((result & 0xFF) == 0));
             SetClearFlagConditional(Flags.H, (((result ^ af.High ^ operandWithCarry) & 0x20) != 0));
-            SetClearFlagConditional(Flags.PV, (((((af.High ^ result) & (operandWithCarry ^ result)) >> 5) & 0x04) != 0));
+            //SetClearFlagConditional(Flags.PV, (((((af.High ^ result) & (operandWithCarry ^ result)) >> 5) & 0x04) != 0));
             SetFlag(Flags.N);
-            SetClearFlagConditional(Flags.C, ((result & 0xFF) < operandWithCarry));
+            //SetClearFlagConditional(Flags.C, ((result & 0xFF) < operandWithCarry));
+
+
+            SetClearFlagConditional(Flags.S, (127 < result && result < 256));
+            SetClearFlagConditional(Flags.C, (af.High < operand));
+            SetClearFlagConditional(Flags.PV, ((((af.High ^ operand) & 0x80) != 0) && ((operand ^ result) & 0x80) == 0));
 
             af.High = (byte)result;
         }
@@ -1634,12 +1650,17 @@ namespace MasterFudge.Emulation.CPU
         {
             int result = (af.High - (sbyte)operand);
 
-            SetClearFlagConditional(Flags.S, (result < 0));
+            //SetClearFlagConditional(Flags.S, (result < 0));
             SetClearFlagConditional(Flags.Z, ((result & 0xFF) == 0));
-            SetClearFlagConditional(Flags.H, (((result ^ af.High ^ (sbyte)operand) & 0x20) != 0));
-            SetClearFlagConditional(Flags.PV, (((((af.High ^ result) & ((sbyte)operand ^ result)) >> 5) & 0x04) != 0));
+            SetClearFlagConditional(Flags.H, (((result ^ af.High ^ operand) & 0x20) != 0));
+            //SetClearFlagConditional(Flags.PV, (((((af.High ^ result) & (operand ^ result)) >> 5) & 0x04) != 0));
             SetFlag(Flags.N);
-            SetClearFlagConditional(Flags.C, ((result & 0xFF) < (sbyte)operand));
+            //SetClearFlagConditional(Flags.C, ((result & 0xFF) < operand));
+
+
+            SetClearFlagConditional(Flags.S, (127 < result && result < 256));
+            SetClearFlagConditional(Flags.C, (af.High < operand));
+            SetClearFlagConditional(Flags.PV, ((((af.High ^ operand) & 0x80) != 0) && ((operand ^ result) & 0x80) == 0));
         }
 
         private void Add16(ref Register dest, ushort operand, bool withCarry)

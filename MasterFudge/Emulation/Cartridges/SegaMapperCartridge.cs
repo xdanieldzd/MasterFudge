@@ -13,6 +13,7 @@ namespace MasterFudge.Emulation.Cartridges
 
         byte[] pagingRegisters;
         byte[][] ramData;
+        byte bankMask;
 
         public SegaMapperCartridge(byte[] romData) : base(romData)
         {
@@ -24,6 +25,8 @@ namespace MasterFudge.Emulation.Cartridges
 
             ramData = new byte[0x02][];
             for (int i = 0; i < ramData.Length; i++) ramData[i] = new byte[0x4000];
+
+            bankMask = (byte)((romData.Length >> 14) - 1);
         }
 
         public override ushort GetStartAddress()
@@ -46,16 +49,16 @@ namespace MasterFudge.Emulation.Cartridges
                     if (address < 0x400)
                         return romData[address];
                     else
-                        return romData[(((pagingRegisters[1] & 0x0F) << 14) | (address & 0x3FFF))];
+                        return romData[(((pagingRegisters[1] & bankMask) << 14) | (address & 0x3FFF))];
 
                 case 0x4000:
-                    return romData[(((pagingRegisters[2] & 0x0F) << 14) | (address & 0x3FFF))];
+                    return romData[(((pagingRegisters[2] & bankMask) << 14) | (address & 0x3FFF))];
 
                 case 0x8000:
                     if (MasterSystem.IsBitSet(pagingRegisters[0], 3))
                         return ramData[((pagingRegisters[0] >> 2) & 0x01)][(address & 0x3FFF)];
                     else
-                        return romData[(((pagingRegisters[3] & 0x0F) << 14) | (address & 0x3FFF))];
+                        return romData[(((pagingRegisters[3] & bankMask) << 14) | (address & 0x3FFF))];
 
                 default:
                     throw new Exception(string.Format("Cannot read from cartridge address 0x{0:X4}", address));

@@ -242,7 +242,7 @@ namespace MasterFudge.Emulation
                     {
                         // IO port B/misc register
                         // Check if export SMS
-                        if (true)
+                        if (false)
                         {
                             if (portIoControl == 0xF5)
                                 return (byte)(portIoBMisc | 0xC0);
