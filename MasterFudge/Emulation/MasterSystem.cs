@@ -63,7 +63,7 @@ namespace MasterFudge.Emulation
 
             framesPerSecond = (isNtsc ? FramesPerSecNTSC : FramesPerSecPAL);
             cyclesPerFrame = (int)((isNtsc ? MasterClockNTSC : MasterClockPAL) / 15.0 / framesPerSecond);
-            numScanlines = (int)(isNtsc ? VDP.NumScanlinesNTSC : VDP.NumScanlinesPAL);
+            numScanlines = (isNtsc ? VDP.NumScanlinesNTSC : VDP.NumScanlinesPAL);
 
             memoryMapper = new MemoryMapper();
 
