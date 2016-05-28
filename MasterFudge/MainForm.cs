@@ -22,6 +22,9 @@ namespace MasterFudge
         MasterSystem ms;
         Bitmap screenBitmap, paletteBitmap;
         bool[] keysDown;
+        int zoom;
+
+        static string romFile;
 
         public MainForm()
         {
@@ -30,6 +33,7 @@ namespace MasterFudge
             Text = Application.ProductName;
 
             keysDown = new bool[0x1000];
+            zoom = 1;
 
             // TODO: remove eventually, or fix up somehow
             System.IO.TextWriter writer = new System.IO.StreamWriter(@"E:\temp\sms\log.txt");
@@ -57,16 +61,16 @@ namespace MasterFudge
                 }
             });
 
-            chkTempFPSLimiter.CheckedChanged += ((s, ev) =>
+            limitFPSToolStripMenuItem.CheckedChanged += ((s, ev) =>
             {
                 if (ms == null) return;
-                ms.LimitFPS = (s as CheckBox).Checked;
+                ms.LimitFPS = (s as MenuItem).Checked;
             });
 
-            chkTempLogZ80.CheckedChanged += ((s, ev) =>
+            logOpcodesToolStripMenuItem.CheckedChanged += ((s, ev) =>
             {
                 if (ms == null) return;
-                ms.DebugLogOpcodes = (s as CheckBox).Checked;
+                ms.DebugLogOpcodes = (s as MenuItem).Checked;
             });
 
             Application.Idle += ((s, ev) =>
@@ -90,7 +94,7 @@ namespace MasterFudge
                 {
                     ev.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
                     ev.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
-                    ev.Graphics.DrawImage(screenBitmap, new Rectangle(0, 0, screenBitmap.Width * 2, screenBitmap.Height * 2), new Rectangle(0, 0, screenBitmap.Width, screenBitmap.Height), GraphicsUnit.Pixel);
+                    ev.Graphics.DrawImage(screenBitmap, new Rectangle(0, 0, screenBitmap.Width * zoom, screenBitmap.Height * zoom), new Rectangle(0, 0, screenBitmap.Width, screenBitmap.Height), GraphicsUnit.Pixel);
                 }
             });
             pbTempPalette.Paint += ((s, ev) => { if (paletteBitmap != null) ev.Graphics.DrawImageUnscaled(paletteBitmap, 0, 0); });
@@ -106,6 +110,15 @@ namespace MasterFudge
                 }
             });
             Program.Log.OnLogCleared += new EventHandler((s, ev) => { writer?.Flush(); });
+
+            romFile = @"D:\ROMs\SMS\Hang-On_(UE)_[!].sms";
+            romFile = @"D:\ROMs\SMS\Sonic_the_Hedgehog_(UE)_[!].sms";
+            //romFile = @"D:\ROMs\SMS\Y's_-_The_Vanished_Omen_(UE)_[!].sms";
+            //romFile = @"D:\ROMs\SMS\VDPTEST.sms";
+            //romFile = @"D:\ROMs\SMS\[BIOS] Sega Master System (USA, Europe) (v1.3).sms";
+            //romFile = @"D:\ROMs\SMS\Teddy_Boy_(UE)_[!].sms";
+
+            DebugLoadRomShim();
         }
 
         private void LogRomInformation(MasterSystem ms, string romFile)
@@ -124,35 +137,40 @@ namespace MasterFudge
             Program.Log.WriteEvent(string.Empty);
         }
 
-        private void btnTempRun_Click(object sender, EventArgs e)
+        private void openROMToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            string romFile = @"D:\ROMs\SMS\Hang-On_(UE)_[!].sms";
-            //romFile = @"D:\ROMs\SMS\Sonic_the_Hedgehog_(UE)_[!].sms";
-            //romFile = @"D:\ROMs\SMS\Y's_-_The_Vanished_Omen_(UE)_[!].sms";
-            //romFile = @"D:\ROMs\SMS\VDPTEST.sms";
-            //romFile = @"D:\ROMs\SMS\[BIOS] Sega Master System (USA, Europe) (v1.3).sms";
-            romFile = @"D:\ROMs\SMS\Teddy_Boy_(UE)_[!].sms";
-
             ofdOpenRom.InitialDirectory = System.IO.Path.GetDirectoryName(romFile);
             ofdOpenRom.FileName = System.IO.Path.GetFileName(romFile);
 
             if (ofdOpenRom.ShowDialog() == DialogResult.OK)
             {
-                Text = Application.ProductName + " - " + System.IO.Path.GetFileName(ofdOpenRom.FileName);
-
-                Program.Log.ClearEvents();
-
-                ms = new MasterSystem(false, Emulation_OnRenderScreen);
-                ms.LoadCartridge(ofdOpenRom.FileName);
-
-                ms.DebugLogOpcodes = chkTempLogZ80.Checked;
-                ms.LimitFPS = chkTempFPSLimiter.Checked;
-
-                LogRomInformation(ms, ofdOpenRom.FileName);
-
-                Program.Log.WriteEvent("--- STARTING EMULATION ---");
-                ms.Run();
+                LoadRom(ofdOpenRom.FileName);
             }
+        }
+
+        [System.Diagnostics.Conditional("DEBUG")]
+        private void DebugLoadRomShim()
+        {
+            if (Environment.MachineName != "NANAMI-X") return;
+            LoadRom(romFile);
+        }
+
+        private void LoadRom(string filename)
+        {
+            Text = Application.ProductName + " - " + System.IO.Path.GetFileName(filename);
+
+            Program.Log.ClearEvents();
+
+            ms = new MasterSystem(false, Emulation_OnRenderScreen);
+            ms.LoadCartridge(filename);
+
+            ms.DebugLogOpcodes = logOpcodesToolStripMenuItem.Checked;
+            ms.LimitFPS = limitFPSToolStripMenuItem.Checked;
+
+            LogRomInformation(ms, filename);
+
+            Program.Log.WriteEvent("--- STARTING EMULATION ---");
+            ms.Run();
         }
 
         private void Emulation_OnRenderScreen(object sender, RenderEventArgs e)
