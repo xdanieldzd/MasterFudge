@@ -17,6 +17,8 @@ namespace MasterFudge.Emulation.Graphics
 
         public const int NumPixelsPerLine = 256;
 
+        public const double ClockDivider = 5.0;
+
         byte[] registers, vram, cram;
 
         bool isNtsc;
@@ -88,6 +90,16 @@ namespace MasterFudge.Emulation.Graphics
             Reset();
         }
 
+        public static int GetVDPClockCyclesPerFrame(bool isNtsc)
+        {
+            return (int)(MasterSystem.GetMasterClockCyclesPerFrame(isNtsc) / ClockDivider);
+        }
+
+        public static int GetVDPClockCyclesPerScanline(bool isNtsc)
+        {
+            return (int)(MasterSystem.GetMasterClockCyclesPerScanline(isNtsc) / ClockDivider);
+        }
+
         public void Reset()
         {
             isSecondControlWrite = false;
@@ -108,18 +120,19 @@ namespace MasterFudge.Emulation.Graphics
             numScanlines = (isNtsc ? NumScanlinesNTSC : NumScanlinesPAL);
         }
 
-        public bool Execute(int currentCycles, int cyclesPerFrame)
+        public bool Execute(int currentCycles)
         {
+            // TODO: all the timing!
+
             AdjustVCounter();
 
-            int cyclesPerLine = (cyclesPerFrame / numScanlines) * 3;
             int currentHCounter = hCounter;
             bool nextLine = false;
 
             InterruptPending = (MasterSystem.IsBitSet(statusFlags, 7) && MasterSystem.IsBitSet(registers[0x01], 5));
 
-            nextLine = ((currentHCounter + currentCycles) > cyclesPerLine);
-            hCounter = ((hCounter + currentCycles) % (cyclesPerLine + 1));
+            nextLine = ((currentHCounter + currentCycles) > GetVDPClockCyclesPerScanline(isNtsc));
+            hCounter = ((hCounter + currentCycles) % (GetVDPClockCyclesPerScanline(isNtsc) + 1));
 
             if (nextLine)
             {

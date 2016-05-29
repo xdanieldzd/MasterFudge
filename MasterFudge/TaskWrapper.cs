@@ -1,5 +1,6 @@
-﻿using System;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
+
+using MasterFudge.Emulation;
 
 namespace MasterFudge
 {
@@ -10,12 +11,16 @@ namespace MasterFudge
 
         public TaskWrapper() { }
 
-        public void Start(Action action)
+        public void Start(MasterSystem emulator)
         {
             if (task != null) Stop();
 
             isStopping = false;
-            task = new Task(() => { while (!isStopping) action(); });
+            task = new Task(() =>
+            {
+                while (!isStopping)
+                    emulator.Execute();
+            }, TaskCreationOptions.LongRunning);
             task.Start();
         }
 

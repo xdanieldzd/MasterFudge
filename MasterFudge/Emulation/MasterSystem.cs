@@ -32,9 +32,6 @@ namespace MasterFudge.Emulation
         public const double FramesPerSecPAL = 49.701459;
         public const double FramesPerSecNTSC = 59.922743;
 
-        double framesPerSecond;
-        int cyclesPerFrame;
-
         MemoryMapper memoryMapper;
 
         Z80 cpu;
@@ -43,7 +40,13 @@ namespace MasterFudge.Emulation
         BaseCartridge cartridge;
 
         byte portMemoryControl, portIoControl, portIoAB, portIoBMisc;
+
         bool isNtscSystem, isExportSystem;
+
+        public bool IsNtscSystem { get { return isNtscSystem; } }
+        public bool IsPalSystem { get { return !isNtscSystem; } }
+        public bool IsExportSystem { get { return isExportSystem; } }
+        public bool IsJapaneseSystem { get { return !isExportSystem; } }
 
         public event RenderScreenHandler OnRenderScreen;
 
@@ -57,8 +60,6 @@ namespace MasterFudge.Emulation
 
         public MasterSystem()
         {
-            SetRegion(false, true);
-
             memoryMapper = new MemoryMapper();
 
             cpu = new Z80(memoryMapper, ReadIOPort, WriteIOPort);
@@ -71,16 +72,30 @@ namespace MasterFudge.Emulation
             stopWatch.Start();
 
             isStopped = true;
-            LimitFPS = false;
+            LimitFPS = true;
+
+            SetRegion(true, true);
+        }
+
+        public static double GetFrameRate(bool isNtsc)
+        {
+            return (isNtsc ? FramesPerSecNTSC : FramesPerSecPAL);
+        }
+
+        public static int GetMasterClockCyclesPerFrame(bool isNtsc)
+        {
+            return (int)((isNtsc ? MasterClockNTSC : MasterClockPAL) / GetFrameRate(isNtsc));
+        }
+
+        public static int GetMasterClockCyclesPerScanline(bool isNtsc)
+        {
+            return (GetMasterClockCyclesPerFrame(isNtsc) / (isNtsc ? VDP.NumScanlinesNTSC : VDP.NumScanlinesPAL));
         }
 
         public void SetRegion(bool isNtsc, bool isExport)
         {
             isNtscSystem = isNtsc;
             isExportSystem = isExport;
-
-            framesPerSecond = (isNtsc ? FramesPerSecNTSC : FramesPerSecPAL);
-            cyclesPerFrame = (int)((isNtsc ? MasterClockNTSC : MasterClockPAL) / 15.0 / framesPerSecond);
 
             vdp?.SetTVSystem(isNtsc);
         }
@@ -142,23 +157,21 @@ namespace MasterFudge.Emulation
         {
             //try
             {
-                // TODO: fix timing and frame limiter...
+                // TODO: fix timing
 
                 while (!isStopped)
                 {
                     long startTime = stopWatch.ElapsedMilliseconds;
-                    long interval = (long)TimeSpan.FromSeconds(1.0 / framesPerSecond).TotalMilliseconds;
+                    long interval = (long)TimeSpan.FromSeconds(1.0 / GetFrameRate(isNtscSystem)).TotalMilliseconds;
 
                     int totalCycles = 0;
-                    while (totalCycles < cyclesPerFrame)
+                    while (totalCycles < Z80.GetCPUClockCyclesPerFrame(isNtscSystem))
                     {
                         double currentCycles = cpu.Execute();
 
                         HandleInterrupts();
 
-                        currentCycles *= 3.0;
-
-                        if (vdp.Execute((int)(currentCycles / 2.0), cyclesPerFrame))
+                        if (vdp.Execute((int)(currentCycles * (Z80.ClockDivider / VDP.ClockDivider))))
                         {
                             if (!isStopped)
                                 OnRenderScreen?.Invoke(this, new RenderEventArgs(vdp.OutputFramebuffer));
@@ -169,7 +182,7 @@ namespace MasterFudge.Emulation
                         totalCycles += (int)currentCycles;
                     }
 
-                    while (LimitFPS && stopWatch.ElapsedMilliseconds - startTime < (interval / 3.0) / 4.0)
+                    while (LimitFPS && stopWatch.ElapsedMilliseconds - startTime < interval)
                         Thread.Sleep(1);
                 }
             }

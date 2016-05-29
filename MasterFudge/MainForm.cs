@@ -16,8 +16,8 @@ namespace MasterFudge
 {
     public partial class MainForm : Form
     {
-        TaskWrapper taskWrapper;
         MasterSystem emulator;
+        TaskWrapper taskWrapper;
         Bitmap screenBitmap;
 
         Version programVersion;
@@ -29,19 +29,28 @@ namespace MasterFudge
             InitializeComponent();
 
             /* Create task wrapper & SMS instance */
-            taskWrapper = new TaskWrapper();
-            taskWrapper.Start(() => { emulator?.Execute(); });
             emulator = new MasterSystem();
             emulator.OnRenderScreen += Emulator_OnRenderScreen;
+            emulator.SetRegion(true, true);
+            taskWrapper = new TaskWrapper();
+            taskWrapper.Start(emulator);
             screenBitmap = new Bitmap(VDP.NumPixelsPerLine, VDP.NumVisibleLinesHigh, PixelFormat.Format32bppArgb);
 
-            /* Misc UI stuff */
+            /* Misc variables */
             programVersion = new Version(Application.ProductVersion);
-            logEnabled = false;
-            logWriter = null;
+
+            /* Misc UI stuff */
+            nTSCToolStripMenuItem.DataBindings.Add("Checked", emulator, "IsNtscSystem");
+            pALToolStripMenuItem.DataBindings.Add("Checked", emulator, "IsPalSystem");
+            exportToolStripMenuItem.DataBindings.Add("Checked", emulator, "IsExportSystem");
+            japaneseToolStripMenuItem.DataBindings.Add("Checked", emulator, "IsJapaneseSystem");
 
             SetFormTitle();
             tsslStatus.Text = "Ready";
+
+            /* Logging stuff */
+            logEnabled = false;
+            logWriter = null;
 
             Program.Log.OnLogUpdate += new Logger.LogUpdateHandler((s, ev) =>
             {
@@ -55,6 +64,7 @@ namespace MasterFudge
             });
             Program.Log.OnLogCleared += new EventHandler((s, ev) => { logWriter?.Flush(); });
 
+            /* Autostart ROM when debugging thingy */
             DebugLoadRomShim();
         }
 
@@ -107,6 +117,7 @@ namespace MasterFudge
 
             SetFormTitle();
             tsslStatus.Text = string.Format("Cartridge '{0}' loaded", Path.GetFileName(filename));
+            cartridgeInformationToolStripMenuItem.Enabled = true;
 
             Program.Log.WriteEvent("--- STARTING EMULATION ---");
             emulator.PowerOn();
@@ -282,6 +293,26 @@ namespace MasterFudge
             }
             if (keyBit != 0)
                 emulator?.SetJoypadReleased(keyBit);
+        }
+
+        private void nTSCToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            emulator.SetRegion((sender as ToolStripMenuItem).Checked, emulator.IsExportSystem);
+        }
+
+        private void pALToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            emulator.SetRegion(!(sender as ToolStripMenuItem).Checked, emulator.IsExportSystem);
+        }
+
+        private void japaneseToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            emulator.SetRegion(emulator.IsNtscSystem, !(sender as ToolStripMenuItem).Checked);
+        }
+
+        private void exportToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            emulator.SetRegion(emulator.IsNtscSystem, (sender as ToolStripMenuItem).Checked);
         }
     }
 }

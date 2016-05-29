@@ -18,6 +18,8 @@ namespace MasterFudge.Emulation.CPU
         public delegate byte IOPortReadDelegate(byte port);
         public delegate void IOPortWriteDelegate(byte port, byte value);
 
+        public const double ClockDivider = 15.0;
+
         const int AddCyclesJumpCond8Taken = 5;
         const int AddCyclesRetCondTaken = 6;
         const int AddCyclesCallCondTaken = 7;
@@ -86,6 +88,16 @@ namespace MasterFudge.Emulation.CPU
             sp = pc = 0;
 
             Reset();
+        }
+
+        public static int GetCPUClockCyclesPerFrame(bool isNtsc)
+        {
+            return (int)(MasterSystem.GetMasterClockCyclesPerFrame(isNtsc) / ClockDivider);
+        }
+
+        public static int GetCPUClockCyclesPerScanline(bool isNtsc)
+        {
+            return (int)(MasterSystem.GetMasterClockCyclesPerScanline(isNtsc) / ClockDivider);
         }
 
         public void Reset()
