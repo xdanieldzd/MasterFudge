@@ -130,6 +130,8 @@ namespace MasterFudge.Emulation
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
 
+                // TODO: fix timing and frame limiter...
+
                 while (!isStopped)
                 {
                     long startTime = sw.ElapsedMilliseconds;
@@ -149,7 +151,7 @@ namespace MasterFudge.Emulation
                         totalCycles += (int)currentCycles;
                     }
 
-                    while (LimitFPS && sw.ElapsedMilliseconds - startTime < interval)
+                    while (LimitFPS && sw.ElapsedMilliseconds - startTime < (interval / 3.0) / 3.0)
                         Thread.Sleep(1);
                 }
             }
