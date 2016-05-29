@@ -17,10 +17,7 @@ namespace MasterFudge.Emulation.Graphics
 
         public const int NumPixelsPerLine = 256;
 
-        RenderScreenHandler renderScreen;
-
         byte[] registers, vram, cram;
-        byte[] outputFramebuffer;
 
         bool isNtsc;
         int numScanlines;
@@ -37,6 +34,7 @@ namespace MasterFudge.Emulation.Graphics
         }
 
         public bool InterruptPending { get; private set; }
+
         int currentScanline, vCounter, hCounter, screenHeight, nametableHeight, lineInterruptCounter, backgroundVScroll;
 
         bool isLineInterruptEnabled { get { return MasterSystem.IsBitSet(registers[0x00], 4); } }
@@ -70,22 +68,24 @@ namespace MasterFudge.Emulation.Graphics
         }
         PixelDrawn[] screenDrawnPixels;
 
-        public VDP(bool ntsc, RenderScreenHandler onRenderScreen)
-        {
-            isNtsc = ntsc;
-            numScanlines = (isNtsc ? NumScanlinesNTSC : NumScanlinesPAL);
+        public byte[] OutputFramebuffer { get; private set; }
+        int outputFramebufferStartAddress { get { return (((NumVisibleLinesHigh - screenHeight) / 4) * NumPixelsPerLine) * 4; } }
 
-            renderScreen = onRenderScreen;
+        public VDP()
+        {
+            SetTVSystem(false);
 
             registers = new byte[0x10];
             vram = new byte[0x4000];
             cram = new byte[0x20];
 
-            outputFramebuffer = new byte[(NumPixelsPerLine * NumVisibleLinesHigh) * 4];
-
-            backgroundXScrollCache = new int[numScanlines];
+            backgroundXScrollCache = new int[NumVisibleLinesHigh];
             spriteBuffer = new int[8];
             screenDrawnPixels = new PixelDrawn[NumPixelsPerLine * NumVisibleLinesHigh];
+
+            OutputFramebuffer = new byte[(NumPixelsPerLine * NumVisibleLinesHigh) * 4];
+
+            Reset();
         }
 
         public void Reset()
@@ -94,14 +94,21 @@ namespace MasterFudge.Emulation.Graphics
             controlWord = 0x0000;
             readBuffer = statusFlags = 0;
 
-            currentScanline = vCounter = hCounter = 0;
             screenHeight = NumVisibleLinesLow;
+
+            currentScanline = vCounter = hCounter = 0;
             nametableHeight = 224;
             lineInterruptCounter = 255;
             backgroundVScroll = 0;
         }
 
-        public void Execute(int currentCycles, int cyclesPerFrame)
+        public void SetTVSystem(bool ntsc)
+        {
+            isNtsc = ntsc;
+            numScanlines = (isNtsc ? NumScanlinesNTSC : NumScanlinesPAL);
+        }
+
+        public bool Execute(int currentCycles, int cyclesPerFrame)
         {
             AdjustVCounter();
 
@@ -116,8 +123,6 @@ namespace MasterFudge.Emulation.Graphics
 
             if (nextLine)
             {
-                backgroundXScrollCache[currentScanline] = backgroundHScroll;
-
                 currentScanline++;
                 hCounter = 0;
 
@@ -154,6 +159,8 @@ namespace MasterFudge.Emulation.Graphics
                 }
                 else
                 {
+                    backgroundXScrollCache[currentScanline] = backgroundHScroll;
+
                     lineInterruptCounter--;
                     if (lineInterruptCounter < 0)
                     {
@@ -171,8 +178,12 @@ namespace MasterFudge.Emulation.Graphics
                 {
                     currentScanline = 0;
                     Render();
+
+                    return true;
                 }
             }
+
+            return false;
         }
 
         private void AdjustVCounter()
@@ -244,15 +255,13 @@ namespace MasterFudge.Emulation.Graphics
                 // Mask column 0 with overscan color
                 if (MasterSystem.IsBitSet(registers[0x00], 5))
                 {
-                    for (int i = 0; i < outputFramebuffer.Length; i += (NumPixelsPerLine * 4))
+                    for (int i = 0; i < OutputFramebuffer.Length; i += (NumPixelsPerLine * 4))
                     {
                         for (int j = 0; j < (8 * 4); j += 4)
-                            Buffer.BlockCopy(overscanBgColorArgb, 0, outputFramebuffer, i + j, 4);
+                            Buffer.BlockCopy(overscanBgColorArgb, 0, OutputFramebuffer, i + j, 4);
                     }
                 }
             }
-
-            renderScreen?.Invoke(this, new RenderEventArgs(NumPixelsPerLine, screenHeight, outputFramebuffer));
         }
 
         private void ClearFramebuffer()
@@ -260,8 +269,8 @@ namespace MasterFudge.Emulation.Graphics
             for (int i = 0; i < screenDrawnPixels.Length; i++)
                 screenDrawnPixels[i] = 0x00;
 
-            for (int i = 0; i < outputFramebuffer.Length; i += 4)
-                Buffer.BlockCopy(overscanBgColorArgb, 0, outputFramebuffer, i, 4);
+            for (int i = 0; i < OutputFramebuffer.Length; i += 4)
+                Buffer.BlockCopy(overscanBgColorArgb, 0, OutputFramebuffer, i, 4);
         }
 
         private void RenderBackgroundMode4()
@@ -310,8 +319,8 @@ namespace MasterFudge.Emulation.Graphics
                         if (screenDrawnPixels[outputY + outputX] == 0x00)
                         {
                             screenDrawnPixels[outputY + outputX] |= ((c != 0 && priority) ? PixelDrawn.BackgroundHighPriority : PixelDrawn.BackgroundLowPriority);
-                            int outputAddress = ((outputY + outputX) * 4);
-                            Buffer.BlockCopy(GetColorAsArgb8888(palette, c), 0, outputFramebuffer, outputAddress, 4);
+                            int outputAddress = outputFramebufferStartAddress + ((outputY + outputX) * 4);
+                            Buffer.BlockCopy(GetColorAsArgb8888(palette, c), 0, OutputFramebuffer, outputAddress, 4);
                         }
                     }
                 }
@@ -390,8 +399,8 @@ namespace MasterFudge.Emulation.Graphics
                             {
                                 // Draw if pixel isn't occupied by high-priority BG
                                 screenDrawnPixels[outputY + outputX] |= PixelDrawn.Sprite;
-                                int outputAddress = ((outputY + outputX) * 4);
-                                Buffer.BlockCopy(GetColorAsArgb8888(1, c), 0, outputFramebuffer, outputAddress, 4);
+                                int outputAddress = outputFramebufferStartAddress + ((outputY + outputX) * 4);
+                                Buffer.BlockCopy(GetColorAsArgb8888(1, c), 0, OutputFramebuffer, outputAddress, 4);
                             }
                         }
                     }

@@ -15,10 +15,18 @@ namespace MasterFudge.Emulation
 {
     public delegate void RenderScreenHandler(object sender, RenderEventArgs e);
 
+    public class RenderEventArgs : EventArgs
+    {
+        public byte[] FrameData { get; private set; }
+
+        public RenderEventArgs(byte[] data)
+        {
+            FrameData = data;
+        }
+    }
+
     public partial class MasterSystem
     {
-        public event RenderScreenHandler OnRenderScreen;
-
         public const double MasterClockPAL = 53203424;
         public const double MasterClockNTSC = 53693175;
         public const double FramesPerSecPAL = 49.701459;
@@ -35,40 +43,46 @@ namespace MasterFudge.Emulation
         BaseCartridge cartridge;
 
         byte portMemoryControl, portIoControl, portIoAB, portIoBMisc;
+        bool isNtscSystem, isExportSystem;
 
-        // TODO: uuhhhh threading shit is actually broken and just runs however the fuck it wants, fix maybe?
-        Thread mainThread;
+        public event RenderScreenHandler OnRenderScreen;
 
+        Stopwatch stopWatch;
         bool isStopped;
+
         public bool LimitFPS { get; set; }
         public bool DebugLogOpcodes { get { return cpu.DebugLogOpcodes; } set { cpu.DebugLogOpcodes = value; } }
+        public bool CartridgeLoaded { get { return (cartridge != null); } }
+        public string CartridgeFilename { get; private set; }
 
-        public MasterSystem(bool isNtsc, RenderScreenHandler onRenderScreen)
+        public MasterSystem()
         {
-            OnRenderScreen = onRenderScreen;
-
-            framesPerSecond = (isNtsc ? FramesPerSecNTSC : FramesPerSecPAL);
-            cyclesPerFrame = (int)((isNtsc ? MasterClockNTSC : MasterClockPAL) / 15.0 / framesPerSecond);
+            SetRegion(false, true);
 
             memoryMapper = new MemoryMapper();
 
             cpu = new Z80(memoryMapper, ReadIOPort, WriteIOPort);
-            //cpu.DebugLogOpcodes = true;
             wram = new WRAM();
-            vdp = new VDP(isNtsc, onRenderScreen);
+            vdp = new VDP();
 
             memoryMapper.AddMemoryArea(wram.GetMemoryAreaDescriptor());
 
-            mainThread = new Thread(new ThreadStart(Execute)) { Priority = ThreadPriority.Normal, Name = "SMS" };
+            stopWatch = new Stopwatch();
+            stopWatch.Start();
 
-            isStopped = false;
+            isStopped = true;
             LimitFPS = false;
         }
 
-        ~MasterSystem()
+        public void SetRegion(bool isNtsc, bool isExport)
         {
-            mainThread.Join();
-            while (mainThread.ThreadState != System.Threading.ThreadState.Stopped) { }
+            isNtscSystem = isNtsc;
+            isExportSystem = isExport;
+
+            framesPerSecond = (isNtsc ? FramesPerSecNTSC : FramesPerSecPAL);
+            cyclesPerFrame = (int)((isNtsc ? MasterClockNTSC : MasterClockPAL) / 15.0 / framesPerSecond);
+
+            vdp?.SetTVSystem(isNtsc);
         }
 
         public static bool IsBitSet(byte value, int bit)
@@ -78,6 +92,8 @@ namespace MasterFudge.Emulation
 
         public void LoadCartridge(string filename)
         {
+            CartridgeFilename = filename;
+
             cartridge = BaseCartridge.LoadCartridge<BaseCartridge>(filename);
             memoryMapper.AddMemoryArea(cartridge.GetMemoryAreaDescriptor());
             memoryMapper.AddMemoryArea(cartridge.GetMappingRegisterAreaDescriptor());
@@ -89,7 +105,6 @@ namespace MasterFudge.Emulation
         }
 
         // TODO: IO port control (the active high/low stuff)
-
         public void SetJoypadPressed(byte keyBit)
         {
             // TODO: player 2 buttons
@@ -102,16 +117,6 @@ namespace MasterFudge.Emulation
             portIoAB |= keyBit;
         }
 
-        public void Run()
-        {
-            mainThread.Start();
-        }
-
-        public void Stop()
-        {
-            mainThread.Abort();
-        }
-
         public void Reset()
         {
             // TODO: more resetti things
@@ -121,20 +126,27 @@ namespace MasterFudge.Emulation
             portIoControl = portIoAB = portIoBMisc = 0xFF;
         }
 
-        private void Execute()
+        public void PowerOn()
         {
-            try
+            Reset();
+
+            isStopped = false;
+        }
+
+        public void PowerOff()
+        {
+            isStopped = true;
+        }
+
+        public void Execute()
+        {
+            //try
             {
-                Reset();
-
-                Stopwatch sw = new Stopwatch();
-                sw.Start();
-
                 // TODO: fix timing and frame limiter...
 
                 while (!isStopped)
                 {
-                    long startTime = sw.ElapsedMilliseconds;
+                    long startTime = stopWatch.ElapsedMilliseconds;
                     long interval = (long)TimeSpan.FromSeconds(1.0 / framesPerSecond).TotalMilliseconds;
 
                     int totalCycles = 0;
@@ -146,22 +158,28 @@ namespace MasterFudge.Emulation
 
                         currentCycles *= 3.0;
 
-                        vdp.Execute((int)(currentCycles / 2.0), cyclesPerFrame);
+                        if (vdp.Execute((int)(currentCycles / 2.0), cyclesPerFrame))
+                        {
+                            if (!isStopped)
+                                OnRenderScreen?.Invoke(this, new RenderEventArgs(vdp.OutputFramebuffer));
+                        }
+
                         // TODO: sound stuff here, too!
 
                         totalCycles += (int)currentCycles;
                     }
 
-                    while (LimitFPS && sw.ElapsedMilliseconds - startTime < (interval / 3.0) / 4.0)
+                    while (LimitFPS && stopWatch.ElapsedMilliseconds - startTime < (interval / 3.0) / 4.0)
                         Thread.Sleep(1);
                 }
             }
-            catch (ThreadAbortException) { /* probably not good practice, but what do I care */ }
-            catch (Exception ex)
+            /*catch (Exception ex)
             {
                 string message = string.Format("Exception occured: {0}\n\nEmulation thread has been stopped.", ex.Message);
                 System.Windows.Forms.MessageBox.Show(message);
-            }
+
+                isStopped = true;
+            }*/
         }
 
         private void HandleInterrupts()
@@ -205,8 +223,7 @@ namespace MasterFudge.Emulation
                     else
                     {
                         // IO port B/misc register
-                        // Check if export SMS
-                        if (false)
+                        if (isExportSystem)
                         {
                             if (portIoControl == 0xF5)
                                 return (byte)(portIoBMisc | 0xC0);
@@ -251,20 +268,6 @@ namespace MasterFudge.Emulation
                     // No effect
                     break;
             }
-        }
-    }
-
-    public class RenderEventArgs : EventArgs
-    {
-        public int FrameWidth { get; private set; }
-        public int FrameHeight { get; private set; }
-        public byte[] FrameData { get; private set; }
-
-        public RenderEventArgs(int width, int height, byte[] data)
-        {
-            FrameWidth = width;
-            FrameHeight = height;
-            FrameData = data;
         }
     }
 }

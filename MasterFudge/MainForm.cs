@@ -1,207 +1,253 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
+using System.Reflection;
+using System.IO;
 
 using MasterFudge.Emulation;
 using MasterFudge.Emulation.Cartridges;
+using MasterFudge.Emulation.Graphics;
 
 namespace MasterFudge
 {
     public partial class MainForm : Form
     {
-        // TODO: lots of kludges & debug crap, fix or remove once unneccesary! also fix threading and related shit! sooo much to do beyond just the emulation...
+        TaskWrapper taskWrapper;
+        MasterSystem emulator;
+        Bitmap screenBitmap;
 
-        MasterSystem ms;
-        Bitmap screenBitmap, paletteBitmap;
-        int zoom;
-
-        static string romFile;
+        Version programVersion;
+        bool logEnabled;
+        TextWriter logWriter;
 
         public MainForm()
         {
             InitializeComponent();
 
-            Text = Application.ProductName;
+            /* Create task wrapper & SMS instance */
+            taskWrapper = new TaskWrapper();
+            taskWrapper.Start(() => { emulator?.Execute(); });
+            emulator = new MasterSystem();
+            emulator.OnRenderScreen += Emulator_OnRenderScreen;
+            screenBitmap = new Bitmap(VDP.NumPixelsPerLine, VDP.NumVisibleLinesHigh, PixelFormat.Format32bppArgb);
 
-            zoom = 1;
+            /* Misc UI stuff */
+            programVersion = new Version(Application.ProductVersion);
+            logEnabled = false;
+            logWriter = null;
 
-            // TODO: remove eventually, or fix up somehow
-            System.IO.TextWriter writer = new System.IO.StreamWriter(@"E:\temp\sms\log.txt");
-            FormClosing += ((s, ev) =>
-            {
-                ms?.Stop();
-
-                if (IsHandleCreated && !Disposing)
-                {
-                    if (InvokeRequired)
-                        Invoke(new Action(() => { writer?.Close(); }));
-                    else
-                        writer?.Close();
-                }
-
-                if (ms != null)
-                {
-                    try
-                    {
-                        System.IO.File.WriteAllBytes(@"E:\temp\sms\wram.bin", MasterSystem.Debugging.DumpMemory(ms, MasterSystem.Debugging.DumpRegion.WorkRam));
-                        System.IO.File.WriteAllBytes(@"E:\temp\sms\vram.sms", MasterSystem.Debugging.DumpMemory(ms, MasterSystem.Debugging.DumpRegion.VideoRam));
-                        System.IO.File.WriteAllBytes(@"E:\temp\sms\cram.bin", MasterSystem.Debugging.DumpMemory(ms, MasterSystem.Debugging.DumpRegion.ColorRam));
-                    }
-                    catch (System.IO.IOException) { /* just ignore this one, happens if I have any of these open in ex. a hexeditor */ }
-                }
-            });
-
-            limitFPSToolStripMenuItem.CheckedChanged += ((s, ev) =>
-            {
-                if (ms == null) return;
-                ms.LimitFPS = (s as ToolStripMenuItem).Checked;
-            });
-
-            logOpcodesToolStripMenuItem.CheckedChanged += ((s, ev) =>
-            {
-                if (ms == null) return;
-                ms.DebugLogOpcodes = (s as ToolStripMenuItem).Checked;
-            });
-
-            Application.Idle += ((s, ev) => { pbTempDisplay.Invalidate(); pbTempPalette.Invalidate(); });
-            pbTempDisplay.Paint += ((s, ev) =>
-            {
-                if (screenBitmap != null)
-                {
-                    ev.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
-                    ev.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
-                    ev.Graphics.DrawImage(screenBitmap, new Rectangle(0, 0, screenBitmap.Width * zoom, screenBitmap.Height * zoom), new Rectangle(0, 0, screenBitmap.Width, screenBitmap.Height), GraphicsUnit.Pixel);
-                }
-            });
-            pbTempPalette.Paint += ((s, ev) => { if (paletteBitmap != null) ev.Graphics.DrawImageUnscaled(paletteBitmap, 0, 0); });
+            SetFormTitle();
+            tsslStatus.Text = "Ready";
 
             Program.Log.OnLogUpdate += new Logger.LogUpdateHandler((s, ev) =>
             {
-                if (IsHandleCreated && !Disposing)
+                if (logWriter != null && !Disposing)
                 {
                     if (InvokeRequired)
-                        Invoke(new Action(() => { writer.WriteLine(ev.Message); }));
+                        Invoke(new Action(() => { logWriter.WriteLine(ev.Message); }));
                     else
-                        writer.WriteLine(ev.Message);
+                        logWriter.WriteLine(ev.Message);
                 }
             });
-            Program.Log.OnLogCleared += new EventHandler((s, ev) => { writer?.Flush(); });
-
-            romFile = @"D:\ROMs\SMS\Hang-On_(UE)_[!].sms";
-            romFile = @"D:\ROMs\SMS\Sonic_the_Hedgehog_(UE)_[!].sms";
-            romFile = @"D:\ROMs\SMS\Y's_-_The_Vanished_Omen_(UE)_[!].sms";
-            //romFile = @"D:\ROMs\SMS\VDPTEST.sms";
-            //romFile = @"D:\ROMs\SMS\[BIOS] Sega Master System (USA, Europe) (v1.3).sms";
-            //romFile = @"D:\ROMs\SMS\Teddy_Boy_(UE)_[!].sms";
+            Program.Log.OnLogCleared += new EventHandler((s, ev) => { logWriter?.Flush(); });
 
             DebugLoadRomShim();
         }
 
-        private void LogRomInformation(MasterSystem ms, string romFile)
+        private void SetFormTitle()
         {
-            RomHeader header = ms.GetCartridgeHeader();
+            StringBuilder builder = new StringBuilder();
+            builder.AppendFormat("{0} v{1}.{2}", Application.ProductName, programVersion.Major, programVersion.Minor);
+            if (programVersion.Build != 0) builder.AppendFormat(".{0}", programVersion.Build);
 
-            Program.Log.WriteEvent("--- ROM INFORMATION ---");
-            Program.Log.WriteEvent("Filename: {0}", System.IO.Path.GetFileName(romFile));
-            Program.Log.WriteEvent("TMR SEGA string: '{0}'", header.TMRSEGAString);
-            Program.Log.WriteEvent("Reserved: [0x{0:X2}, 0x{1:X2}]", header.Reserved[0], header.Reserved[1]);
-            Program.Log.WriteEvent("Checksum: 0x{0:X4} (calculated 0x{1:X4}, {2})", header.Checksum, header.ChecksumCalculated, (header.Checksum == header.ChecksumCalculated ? "matches header" : "mismatch"));
-            Program.Log.WriteEvent("Product code: {0}", header.ProductCode);
-            Program.Log.WriteEvent("Version: {0}", header.Version);
-            Program.Log.WriteEvent("Region: {0}", header.GetRegionName());
-            Program.Log.WriteEvent("ROM size: {0} (file is {1} KB, {2})", header.GetRomSizeName(), (header.RomSizeCalculated / 1024), (header.IsRomSizeCorrect ? "matches header" : "mismatch"));
-            Program.Log.WriteEvent(string.Empty);
+            if (emulator.CartridgeLoaded)
+                builder.AppendFormat(" - [{0}]", Path.GetFileName(emulator.CartridgeFilename));
+
+            Text = builder.ToString();
         }
 
-        private void openROMToolStripMenuItem_Click(object sender, EventArgs e)
+        private void ResizeWindowByOutput()
         {
-            ofdOpenRom.InitialDirectory = System.IO.Path.GetDirectoryName(romFile);
-            ofdOpenRom.FileName = System.IO.Path.GetFileName(romFile);
+            ClientSize = new Size(pbRenderOutput.Width * 2, (pbRenderOutput.Height * 2) + menuStrip.Height);
+        }
 
-            if (ofdOpenRom.ShowDialog() == DialogResult.OK)
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            emulator.OnRenderScreen -= Emulator_OnRenderScreen;
+
+            emulator?.PowerOff();
+            taskWrapper.Stop();
+
+            logWriter?.Close();
+
+            // TODO: make menu options for dumps, I guess
+            if (emulator != null)
             {
-                LoadRom(ofdOpenRom.FileName);
+                try
+                {
+                    File.WriteAllBytes(@"E:\temp\sms\wram.bin", MasterSystem.Debugging.DumpMemory(emulator, MasterSystem.Debugging.DumpRegion.WorkRam));
+                    File.WriteAllBytes(@"E:\temp\sms\vram.sms", MasterSystem.Debugging.DumpMemory(emulator, MasterSystem.Debugging.DumpRegion.VideoRam));
+                    File.WriteAllBytes(@"E:\temp\sms\cram.bin", MasterSystem.Debugging.DumpMemory(emulator, MasterSystem.Debugging.DumpRegion.ColorRam));
+                }
+                catch (IOException) { /* just ignore this one, happens if I have any of these open in ex. a hexeditor */ }
             }
+        }
+
+        private void LoadCartridge(string filename)
+        {
+            Program.Log.ClearEvents();
+
+            emulator.PowerOff();
+            emulator.LoadCartridge(filename);
+            LogCartridgeInformation(emulator, filename);
+
+            SetFormTitle();
+            tsslStatus.Text = string.Format("Cartridge '{0}' loaded", Path.GetFileName(filename));
+
+            Program.Log.WriteEvent("--- STARTING EMULATION ---");
+            emulator.PowerOn();
         }
 
         [System.Diagnostics.Conditional("DEBUG")]
         private void DebugLoadRomShim()
         {
             if (Environment.MachineName != "NANAMI-X") return;
-            LoadRom(romFile);
+
+            string romFile = @"D:\ROMs\SMS\Hang-On_(UE)_[!].sms";
+            romFile = @"D:\ROMs\SMS\Sonic_the_Hedgehog_(UE)_[!].sms";
+            romFile = @"D:\ROMs\SMS\Y's_-_The_Vanished_Omen_(UE)_[!].sms";
+            //romFile = @"D:\ROMs\SMS\VDPTEST.sms";
+            //romFile = @"D:\ROMs\SMS\[BIOS] Sega Master System (USA, Europe) (v1.3).sms";
+            //romFile = @"D:\ROMs\SMS\Teddy_Boy_(UE)_[!].sms";
+
+            LoadCartridge(romFile);
         }
 
-        private void LoadRom(string filename)
+        private void LogCartridgeInformation(MasterSystem ms, string romFile)
         {
-            Text = Application.ProductName + " - " + System.IO.Path.GetFileName(filename);
+            Program.Log.WriteEvent("--- ROM INFORMATION ---");
 
-            Program.Log.ClearEvents();
-
-            ms = new MasterSystem(false, Emulation_OnRenderScreen);
-            ms.LoadCartridge(filename);
-
-            ms.DebugLogOpcodes = logOpcodesToolStripMenuItem.Checked;
-            ms.LimitFPS = limitFPSToolStripMenuItem.Checked;
-
-            LogRomInformation(ms, filename);
-
-            Program.Log.WriteEvent("--- STARTING EMULATION ---");
-            ms.Run();
+            foreach (string line in GetCartridgeInformation())
+                Program.Log.WriteEvent(line);
         }
 
-        private void exitToolStripMenuItem_Click(object sender, EventArgs e)
+        private string[] GetCartridgeInformation()
         {
-            ms?.Stop();
-            Application.Exit();
+            RomHeader header = emulator.GetCartridgeHeader();
+
+            List<string> lines = new List<string>();
+            lines.Add(string.Format("Filename: {0}", Path.GetFileName(emulator.CartridgeFilename)));
+            lines.Add(string.Format("TMR SEGA string: '{0}'", header.TMRSEGAString));
+            lines.Add(string.Format("Reserved: [0x{0:X2}, 0x{1:X2}]", header.Reserved[0], header.Reserved[1]));
+            lines.Add(string.Format("Checksum: 0x{0:X4} (calculated 0x{1:X4}, {2})", header.Checksum, header.ChecksumCalculated, (header.Checksum == header.ChecksumCalculated ? "matches header" : "mismatch")));
+            lines.Add(string.Format("Product code: {0}", header.ProductCode));
+            lines.Add(string.Format("Version: {0}", header.Version));
+            lines.Add(string.Format("Region: {0}", header.GetRegionName()));
+            lines.Add(string.Format("ROM size: {0} (file is {1} KB, {2})", header.GetRomSizeName(), (header.RomSizeCalculated / 1024), (header.IsRomSizeCorrect ? "matches header" : "mismatch")));
+            return lines.ToArray();
         }
 
-        private void Emulation_OnRenderScreen(object sender, RenderEventArgs e)
+        private void Emulator_OnRenderScreen(object sender, RenderEventArgs e)
         {
-            if (IsHandleCreated && !Disposing)
+            try
             {
-                if (InvokeRequired)
-                    Invoke(new Action<RenderEventArgs>(RenderScreen), e);
-                else
-                    RenderScreen(e);
+                if (IsHandleCreated && !Disposing)
+                {
+                    if (InvokeRequired)
+                        Invoke(new Action<RenderEventArgs>(RenderScreen), e);
+                    else
+                        RenderScreen(e);
+                }
             }
+            catch (ObjectDisposedException) { /* meh, maybe fix later */ }
         }
 
         private void RenderScreen(RenderEventArgs e)
         {
-            // TODO: make this much more safe
-
-            if (screenBitmap == null || screenBitmap.Width != e.FrameWidth || screenBitmap.Height != e.FrameHeight)
-            {
-                screenBitmap?.Dispose();
-                screenBitmap = new Bitmap(e.FrameWidth, e.FrameHeight, PixelFormat.Format32bppArgb);
-            }
-
             BitmapData bmpData = screenBitmap.LockBits(new Rectangle(0, 0, screenBitmap.Width, screenBitmap.Height), ImageLockMode.WriteOnly, screenBitmap.PixelFormat);
-            Marshal.Copy(e.FrameData, 0, bmpData.Scan0, (e.FrameWidth * e.FrameHeight * 4));
+
+            byte[] pixelData = new byte[bmpData.Stride * bmpData.Height];
+            Buffer.BlockCopy(e.FrameData, 0, pixelData, 0, pixelData.Length);
+
+            Marshal.Copy(pixelData, 0, bmpData.Scan0, pixelData.Length);
+
             screenBitmap.UnlockBits(bmpData);
 
-            if (paletteBitmap == null) paletteBitmap = new Bitmap(128, 256);
+            pbRenderOutput.Invalidate();
+        }
 
-            using (Graphics g = Graphics.FromImage(paletteBitmap))
+        private void openCartridgeToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ofdOpenCartridge.InitialDirectory = Path.GetDirectoryName(emulator.CartridgeFilename);
+            ofdOpenCartridge.FileName = Path.GetFileName(emulator.CartridgeFilename);
+
+            if (ofdOpenCartridge.ShowDialog() == DialogResult.OK)
             {
-                for (int p = 0; p < 2; p++)
-                {
-                    for (int c = 0; c < 16; c++)
-                    {
-                        using (SolidBrush brush = new SolidBrush(MasterSystem.Debugging.GetPaletteColor(ms, p, c)))
-                        {
-                            g.FillRectangle(brush, p * 64, c * 16, 64, 16);
-                        }
-                    }
-                }
+                LoadCartridge(ofdOpenCartridge.FileName);
+            }
+        }
+
+        private void cartridgeInformationToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            StringBuilder builder = new StringBuilder();
+            foreach (string line in GetCartridgeInformation()) builder.AppendLine(line);
+
+            MessageBox.Show(builder.ToString(), "Cartridge Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void exitToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            taskWrapper.Stop();
+            Application.Exit();
+        }
+
+        private void enableLogToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            logEnabled = (sender as ToolStripMenuItem).Checked;
+
+            if (logEnabled && logWriter == null)
+            {
+                // TODO: path selection? or just dump into executable or ROM folder?
+                logWriter = new StreamWriter(@"E:\temp\sms\log.txt", false);
+            }
+        }
+
+        private void limitFPSToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            emulator.LimitFPS = (sender as ToolStripMenuItem).Checked;
+        }
+
+        private void logOpcodesToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            emulator.DebugLogOpcodes = (sender as ToolStripMenuItem).Checked;
+        }
+
+        private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            StringBuilder builder = new StringBuilder();
+
+            Version programVersion = new Version(Application.ProductVersion);
+            builder.AppendFormat("{0} v{1}.{2}", Application.ProductName, programVersion.Major, programVersion.Minor);
+            if (programVersion.Build != 0) builder.AppendFormat(".{0}", programVersion.Build);
+            builder.Append(" - ");
+            builder.AppendLine((Assembly.GetExecutingAssembly().GetCustomAttribute(typeof(AssemblyDescriptionAttribute)) as AssemblyDescriptionAttribute).Description);
+            builder.AppendLine();
+            builder.AppendLine((Assembly.GetExecutingAssembly().GetCustomAttribute(typeof(AssemblyCopyrightAttribute)) as AssemblyCopyrightAttribute).Copyright);
+
+            MessageBox.Show(builder.ToString(), "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void pbRenderOutput_Paint(object sender, PaintEventArgs e)
+        {
+            if (screenBitmap != null)
+            {
+                e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+                e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+                e.Graphics.DrawImage(screenBitmap, (sender as PictureBox).ClientRectangle, new Rectangle(0, 0, screenBitmap.Width, screenBitmap.Height), GraphicsUnit.Pixel);
             }
         }
 
@@ -210,16 +256,16 @@ namespace MasterFudge
             byte keyBit = 0;
             switch (e.KeyCode)
             {
-                case Keys.NumPad8: keyBit = (1 << 0); break;    //Up
-                case Keys.NumPad2: keyBit = (1 << 1); break;    //Down
-                case Keys.NumPad4: keyBit = (1 << 2); break;    //Left
-                case Keys.NumPad6: keyBit = (1 << 3); break;    //Right
+                case Keys.Up: keyBit = (1 << 0); break;         //Up
+                case Keys.Down: keyBit = (1 << 1); break;       //Down
+                case Keys.Left: keyBit = (1 << 2); break;       //Left
+                case Keys.Right: keyBit = (1 << 3); break;      //Right
                 case Keys.A: keyBit = (1 << 4); break;          //Button1
                 case Keys.S: keyBit = (1 << 5); break;          //Button2
             }
 
             if (keyBit != 0)
-                ms?.SetJoypadPressed(keyBit);
+                emulator?.SetJoypadPressed(keyBit);
         }
 
         private void MainForm_KeyUp(object sender, KeyEventArgs e)
@@ -227,15 +273,15 @@ namespace MasterFudge
             byte keyBit = 0;
             switch (e.KeyCode)
             {
-                case Keys.NumPad8: keyBit = (1 << 0); break;    //Up
-                case Keys.NumPad2: keyBit = (1 << 1); break;    //Down
-                case Keys.NumPad4: keyBit = (1 << 2); break;    //Left
-                case Keys.NumPad6: keyBit = (1 << 3); break;    //Right
+                case Keys.Up: keyBit = (1 << 0); break;         //Up
+                case Keys.Down: keyBit = (1 << 1); break;       //Down
+                case Keys.Left: keyBit = (1 << 2); break;       //Left
+                case Keys.Right: keyBit = (1 << 3); break;      //Right
                 case Keys.A: keyBit = (1 << 4); break;          //Button1
                 case Keys.S: keyBit = (1 << 5); break;          //Button2
             }
             if (keyBit != 0)
-                ms?.SetJoypadReleased(keyBit);
+                emulator?.SetJoypadReleased(keyBit);
         }
     }
 }
