@@ -15,19 +15,6 @@ namespace MasterFudge.Emulation
 {
     public delegate void RenderScreenHandler(object sender, RenderEventArgs e);
 
-    [Flags]
-    public enum JoypadInput
-    {
-        None = 0,
-        Up = (1 << 0),
-        Down = (1 << 1),
-        Left = (1 << 2),
-        Right = (1 << 3),
-        Button1 = (1 << 4),
-        Button2 = (1 << 5),
-        ResetButton = (1 << 6)
-    }
-
     public partial class MasterSystem
     {
         public event RenderScreenHandler OnRenderScreen;
@@ -101,30 +88,18 @@ namespace MasterFudge.Emulation
             return cartridge.Header;
         }
 
-        public void SetJoypadInput(JoypadInput p1, JoypadInput p2)
+        // TODO: IO port control (the active high/low stuff)
+
+        public void SetJoypadPressed(byte keyBit)
         {
-            // TODO: IO port control (the active high/low stuff)
+            // TODO: player 2 buttons
+            portIoAB &= (byte)~keyBit;
+        }
 
-            int data1 = 0xFF, data2 = 0xFF;
-
-            if (p1.HasFlag(JoypadInput.Up)) data1 &= ~(1 << 0);
-            if (p1.HasFlag(JoypadInput.Down)) data1 &= ~(1 << 1);
-            if (p1.HasFlag(JoypadInput.Left)) data1 &= ~(1 << 2);
-            if (p1.HasFlag(JoypadInput.Right)) data1 &= ~(1 << 3);
-            if (p1.HasFlag(JoypadInput.Button1)) data1 &= ~(1 << 4);
-            if (p1.HasFlag(JoypadInput.Button2)) data1 &= ~(1 << 5);
-
-            if (p2.HasFlag(JoypadInput.Up)) data1 &= ~(1 << 6);
-            if (p2.HasFlag(JoypadInput.Down)) data1 &= ~(1 << 7);
-            if (p2.HasFlag(JoypadInput.Left)) data2 &= ~(1 << 0);
-            if (p2.HasFlag(JoypadInput.Right)) data2 &= ~(1 << 1);
-            if (p2.HasFlag(JoypadInput.Button1)) data2 &= ~(1 << 2);
-            if (p2.HasFlag(JoypadInput.Button2)) data2 &= ~(1 << 3);
-
-            if (p1.HasFlag(JoypadInput.ResetButton) || p2.HasFlag(JoypadInput.ResetButton)) data2 &= ~(1 << 4);
-
-            portIoAB = (byte)data1;
-            portIoBMisc = (byte)data2;
+        public void SetJoypadReleased(byte keyBit)
+        {
+            // TODO: player 2 buttons
+            portIoAB |= keyBit;
         }
 
         public void Run()

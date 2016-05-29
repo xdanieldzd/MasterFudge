@@ -116,6 +116,8 @@ namespace MasterFudge.Emulation.CPU
         {
             currentCycles = 0;
 
+            //if (pc == 0xA4C) DebugLogOpcodes = true;
+
             if (DebugLogOpcodes)
                 Program.Log.WriteEvent(string.Format("{0} | {1} | {2}", DisassembleOpcode(pc).PadRight(48), PrintRegisters(), PrintFlags()));
 
@@ -1299,27 +1301,40 @@ namespace MasterFudge.Emulation.CPU
 
         private void DecimalAdjustAccumulator()
         {
-            int value = af.High;
+            // http://www.worldofspectrum.org/faq/reference/z80reference.htm
 
-            if (!IsFlagSet(Flags.N))
+            byte before = af.High, factor = 0;
+            int result = 0;
+
+            if ((af.High > 0x99) || IsFlagSet(Flags.C))
             {
-                if (IsFlagSet(Flags.H) || ((value & 0x0F) > 9)) value += 6;
-                if (IsFlagSet(Flags.C) || value > 0x9F) value += 0x60;
+                factor |= 0x60;
+                SetFlag(Flags.C);
             }
             else
             {
-                if (IsFlagSet(Flags.H)) value = (value - 6) & 0xFF;
-                if (IsFlagSet(Flags.C)) value -= 0x60;
+                factor |= 0x00;
+                ClearFlag(Flags.C);
             }
 
-            // S
-            SetClearFlagConditional(Flags.Z, (value == 0x00));
-            ClearFlag(Flags.H);
-            CalculateAndSetParity((byte)value);
-            // N
-            SetClearFlagConditional(Flags.C, ((value & 0x100) != 0));
+            if (((af.High & 0x0F) > 0x09) || IsFlagSet(Flags.H))
+                factor |= 0x06;
+            else
+                factor |= 0x00;
 
-            af.High = (byte)value;
+            if (!IsFlagSet(Flags.N))
+                result = (af.High + factor);
+            else
+                result = (af.High - factor);
+
+            SetClearFlagConditional(Flags.S, MasterSystem.IsBitSet((byte)result, 7));
+            SetClearFlagConditional(Flags.Z, ((byte)result == 0x00));
+            SetClearFlagConditional(Flags.H, (((before ^ (byte)result) & 0x10) != 0));
+            CalculateAndSetParity(af.High);
+            // N
+            // C (set above)
+
+            af.High = (byte)result;
         }
 
         private void ExchangeRegisters16(ref Register reg1, ref Register reg2)
@@ -1429,24 +1444,24 @@ namespace MasterFudge.Emulation.CPU
 
         private void CompareIncrement()
         {
-            bool carry = IsFlagSet(Flags.C);
             byte operand = memoryMapper.Read8(hl.Word);
+            int result = (af.High - (sbyte)operand);
 
-            Cp8(operand);
-            Increment16(ref hl.Word);
-            Decrement16(ref bc.Word);
+            hl.Word++;
+            bc.Word--;
 
-            // S from CP
+            SetClearFlagConditional(Flags.S, MasterSystem.IsBitSet((byte)result, 7));
             SetClearFlagConditional(Flags.Z, (af.High == operand));
-            // H from CP
+            SetClearFlagConditional(Flags.H, (((af.High ^ result ^ operand) & 0x10) != 0));
             SetClearFlagConditional(Flags.PV, (bc.Word != 0));
-            // N from CP
-            SetClearFlagConditional(Flags.C, carry);
+            SetFlag(Flags.N);
+            // C
         }
 
         private void CompareIncrementRepeat()
         {
             CompareIncrement();
+
             if (bc.Word != 0 && !IsFlagSet(Flags.Z))
             {
                 currentCycles += AddCyclesRepeatByteOps;
@@ -1456,19 +1471,18 @@ namespace MasterFudge.Emulation.CPU
 
         private void CompareDecrement()
         {
-            bool carry = IsFlagSet(Flags.C);
             byte operand = memoryMapper.Read8(hl.Word);
+            int result = (af.High - (sbyte)operand);
 
-            Cp8(operand);
-            Decrement16(ref hl.Word);
-            Decrement16(ref bc.Word);
+            hl.Word--;
+            bc.Word--;
 
-            // S from CP
+            SetClearFlagConditional(Flags.S, MasterSystem.IsBitSet((byte)result, 7));
             SetClearFlagConditional(Flags.Z, (af.High == operand));
-            // H from CP
+            SetClearFlagConditional(Flags.H, (((af.High ^ result ^ operand) & 0x10) != 0));
             SetClearFlagConditional(Flags.PV, (bc.Word != 0));
-            // N from CP
-            SetClearFlagConditional(Flags.C, carry);
+            SetFlag(Flags.N);
+            // C
         }
 
         private void CompareDecrementRepeat()
@@ -1621,7 +1635,7 @@ namespace MasterFudge.Emulation.CPU
 
         private void Add8(byte operand, bool withCarry)
         {
-            int operandWithCarry = ((sbyte)operand + (withCarry && IsFlagSet(Flags.C) ? 1 : 0));
+            int operandWithCarry = (operand + (withCarry && IsFlagSet(Flags.C) ? 1 : 0));
             int result = (af.High + operandWithCarry);
 
             SetClearFlagConditional(Flags.S, MasterSystem.IsBitSet((byte)result, 7));
@@ -1629,14 +1643,14 @@ namespace MasterFudge.Emulation.CPU
             SetClearFlagConditional(Flags.H, (((af.High ^ result ^ operand) & 0x10) != 0));
             SetClearFlagConditional(Flags.PV, (((operand ^ af.High ^ 0x80) & (af.High ^ result) & 0x80) != 0));
             ClearFlag(Flags.N);
-            SetClearFlagConditional(Flags.C, ((af.High + (byte)operandWithCarry) > 0xFF));
+            SetClearFlagConditional(Flags.C, (result > 0xFF));
 
             af.High = (byte)result;
         }
 
         private void Subtract8(byte operand, bool withCarry)
         {
-            int operandWithCarry = ((sbyte)operand + (withCarry && IsFlagSet(Flags.C) ? 1 : 0));
+            int operandWithCarry = (operand + (withCarry && IsFlagSet(Flags.C) ? 1 : 0));
             int result = (af.High - operandWithCarry);
 
             SetClearFlagConditional(Flags.S, MasterSystem.IsBitSet((byte)result, 7));
@@ -1644,7 +1658,7 @@ namespace MasterFudge.Emulation.CPU
             SetClearFlagConditional(Flags.H, (((af.High ^ result ^ operand) & 0x10) != 0));
             SetClearFlagConditional(Flags.PV, (((operand ^ af.High) & (af.High ^ result) & 0x80) != 0));
             SetFlag(Flags.N);
-            SetClearFlagConditional(Flags.C, (af.High < (byte)operandWithCarry));
+            SetClearFlagConditional(Flags.C, (af.High < operandWithCarry));
 
             af.High = (byte)result;
         }
@@ -1693,7 +1707,7 @@ namespace MasterFudge.Emulation.CPU
 
         private void Cp8(byte operand)
         {
-            int result = (af.High - (sbyte)operand);
+            int result = (af.High - operand);
 
             SetClearFlagConditional(Flags.S, MasterSystem.IsBitSet((byte)result, 7));
             SetClearFlagConditional(Flags.Z, ((result & 0xFF) == 0));
@@ -1713,7 +1727,7 @@ namespace MasterFudge.Emulation.CPU
             SetClearFlagConditional(Flags.H, (((dest.Word & 0x0FFF) + (operandWithCarry & 0x0FFF)) > 0x0FFF));
             // PV
             ClearFlag(Flags.N);
-            SetClearFlagConditional(Flags.C, (result >= 0x10000));
+            SetClearFlagConditional(Flags.C, (((dest.Word & 0xFFFF) + (operandWithCarry & 0xFFFF)) > 0xFFFF));
 
             if (withCarry)
             {

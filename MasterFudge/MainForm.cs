@@ -21,7 +21,6 @@ namespace MasterFudge
 
         MasterSystem ms;
         Bitmap screenBitmap, paletteBitmap;
-        bool[] keysDown;
         int zoom;
 
         static string romFile;
@@ -32,7 +31,6 @@ namespace MasterFudge
 
             Text = Application.ProductName;
 
-            keysDown = new bool[0x1000];
             zoom = 1;
 
             // TODO: remove eventually, or fix up somehow
@@ -73,21 +71,7 @@ namespace MasterFudge
                 ms.DebugLogOpcodes = (s as ToolStripMenuItem).Checked;
             });
 
-            Application.Idle += ((s, ev) =>
-            {
-                JoypadInput p1 = JoypadInput.None;
-                if (keysDown[(char)Keys.NumPad8]) p1 |= JoypadInput.Up;
-                if (keysDown[(char)Keys.NumPad2]) p1 |= JoypadInput.Down;
-                if (keysDown[(char)Keys.NumPad4]) p1 |= JoypadInput.Left;
-                if (keysDown[(char)Keys.NumPad6]) p1 |= JoypadInput.Right;
-                if (keysDown[(char)Keys.A]) p1 |= JoypadInput.Button1;
-                if (keysDown[(char)Keys.S]) p1 |= JoypadInput.Button2;
-                if (keysDown[(char)Keys.Back]) p1 |= JoypadInput.ResetButton;
-                ms?.SetJoypadInput(p1, JoypadInput.None);
-
-                pbTempDisplay.Invalidate();
-                pbTempPalette.Invalidate();
-            });
+            Application.Idle += ((s, ev) => { pbTempDisplay.Invalidate(); pbTempPalette.Invalidate(); });
             pbTempDisplay.Paint += ((s, ev) =>
             {
                 if (screenBitmap != null)
@@ -223,12 +207,35 @@ namespace MasterFudge
 
         private void MainForm_KeyDown(object sender, KeyEventArgs e)
         {
-            keysDown[e.KeyValue] = true;
+            byte keyBit = 0;
+            switch (e.KeyCode)
+            {
+                case Keys.NumPad8: keyBit = (1 << 0); break;    //Up
+                case Keys.NumPad2: keyBit = (1 << 1); break;    //Down
+                case Keys.NumPad4: keyBit = (1 << 2); break;    //Left
+                case Keys.NumPad6: keyBit = (1 << 3); break;    //Right
+                case Keys.A: keyBit = (1 << 4); break;          //Button1
+                case Keys.S: keyBit = (1 << 5); break;          //Button2
+            }
+
+            if (keyBit != 0)
+                ms?.SetJoypadPressed(keyBit);
         }
 
         private void MainForm_KeyUp(object sender, KeyEventArgs e)
         {
-            keysDown[e.KeyValue] = false;
+            byte keyBit = 0;
+            switch (e.KeyCode)
+            {
+                case Keys.NumPad8: keyBit = (1 << 0); break;    //Up
+                case Keys.NumPad2: keyBit = (1 << 1); break;    //Down
+                case Keys.NumPad4: keyBit = (1 << 2); break;    //Left
+                case Keys.NumPad6: keyBit = (1 << 3); break;    //Right
+                case Keys.A: keyBit = (1 << 4); break;          //Button1
+                case Keys.S: keyBit = (1 << 5); break;          //Button2
+            }
+            if (keyBit != 0)
+                ms?.SetJoypadReleased(keyBit);
         }
     }
 }
