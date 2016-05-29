@@ -151,7 +151,7 @@ namespace MasterFudge.Emulation
                         totalCycles += (int)currentCycles;
                     }
 
-                    while (LimitFPS && sw.ElapsedMilliseconds - startTime < (interval / 3.0) / 3.0)
+                    while (LimitFPS && sw.ElapsedMilliseconds - startTime < (interval / 3.0) / 4.0)
                         Thread.Sleep(1);
                 }
             }

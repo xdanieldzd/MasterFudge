@@ -318,7 +318,7 @@ namespace MasterFudge.Emulation.Graphics
         {
             int spriteSize = (isLargeSprites ? 16 : 8);
 
-            for (int line = 1; line < screenHeight; line++)
+            for (int line = 0; line < screenHeight; line++)
             {
                 for (int i = 0; i < spriteBuffer.Length; i++)
                     spriteBuffer[i] = 0;
@@ -326,7 +326,7 @@ namespace MasterFudge.Emulation.Graphics
                 int numSprites = 0;
                 for (int sprite = 0; sprite < 64; sprite++)
                 {
-                    int yCoordinate = vram[spriteAttribTableBaseAddress + sprite];
+                    int yCoordinate = vram[spriteAttribTableBaseAddress + sprite] + 1;
 
                     // Ignore following if Y coord is 208 in 192-line mode
                     if (yCoordinate == 208 && screenHeight == NumVisibleLinesLow) break;
