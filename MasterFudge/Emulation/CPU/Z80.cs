@@ -28,11 +28,6 @@ namespace MasterFudge.Emulation.CPU
         // http://stackoverflow.com/a/30411377
         // http://www.retrogames.com/cgi-bin/wwwthreads/showpost.pl?Board=retroemuprog&Number=3997&page=&view=&mode=flat&sb=
 
-        /* sft/rot [ix,iy]+1        6ce04092  exp b40e85cb
-         * cpd[r]                   c2276883  exp 6b7eb6bf
-         * shf/rot [bcdehl(hl)a]    48a6e557  exp ee0c828b
-         */
-
         [Flags]
         enum Flags : byte
         {

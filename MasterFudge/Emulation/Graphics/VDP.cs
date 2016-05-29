@@ -97,10 +97,14 @@ namespace MasterFudge.Emulation.Graphics
             currentScanline = vCounter = hCounter = 0;
             screenHeight = NumVisibleLinesLow;
             nametableHeight = 224;
+            lineInterruptCounter = 255;
+            backgroundVScroll = 0;
         }
 
         public void Execute(int currentCycles, int cyclesPerFrame)
         {
+            AdjustVCounter();
+
             int cyclesPerLine = (cyclesPerFrame / numScanlines) * 3;
             int currentHCounter = hCounter;
             bool nextLine = false;
@@ -326,13 +330,13 @@ namespace MasterFudge.Emulation.Graphics
                 int numSprites = 0;
                 for (int sprite = 0; sprite < 64; sprite++)
                 {
-                    int yCoordinate = vram[spriteAttribTableBaseAddress + sprite] + 1;
+                    int yCoordinate = vram[spriteAttribTableBaseAddress + sprite];
 
                     // Ignore following if Y coord is 208 in 192-line mode
                     if (yCoordinate == 208 && screenHeight == NumVisibleLinesLow) break;
 
                     // Y coord equals current scanline
-                    if (yCoordinate == line)
+                    if (yCoordinate + 1 == line)
                     {
                         if (numSprites < spriteBuffer.Length)
                             spriteBuffer[numSprites] = sprite;
@@ -421,7 +425,6 @@ namespace MasterFudge.Emulation.Graphics
 
         public byte ReadVCounter()
         {
-            AdjustVCounter();
             return (byte)vCounter;
         }
 

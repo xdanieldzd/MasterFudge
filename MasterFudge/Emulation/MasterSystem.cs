@@ -59,7 +59,7 @@ namespace MasterFudge.Emulation
 
             memoryMapper.AddMemoryArea(wram.GetMemoryAreaDescriptor());
 
-            mainThread = new Thread(new ThreadStart(Execute)) { Priority = ThreadPriority.AboveNormal, Name = "SMS" };
+            mainThread = new Thread(new ThreadStart(Execute)) { Priority = ThreadPriority.Normal, Name = "SMS" };
 
             isStopped = false;
             LimitFPS = false;
@@ -142,10 +142,11 @@ namespace MasterFudge.Emulation
                     {
                         double currentCycles = cpu.Execute();
 
+                        HandleInterrupts();
+
                         currentCycles *= 3.0;
 
                         vdp.Execute((int)(currentCycles / 2.0), cyclesPerFrame);
-                        HandleInterrupts();
                         // TODO: sound stuff here, too!
 
                         totalCycles += (int)currentCycles;
