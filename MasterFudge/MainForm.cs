@@ -44,6 +44,7 @@ namespace MasterFudge
             pALToolStripMenuItem.DataBindings.Add("Checked", emulator, "IsPalSystem");
             exportToolStripMenuItem.DataBindings.Add("Checked", emulator, "IsExportSystem");
             japaneseToolStripMenuItem.DataBindings.Add("Checked", emulator, "IsJapaneseSystem");
+            limitFPSToolStripMenuItem.DataBindings.Add("Checked", emulator, "LimitFPS");
 
             SetFormTitle();
             tsslStatus.Text = "Ready";
@@ -131,7 +132,7 @@ namespace MasterFudge
             string romFile = @"D:\ROMs\SMS\Hang-On_(UE)_[!].sms";
             romFile = @"D:\ROMs\SMS\Sonic_the_Hedgehog_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\Y's_-_The_Vanished_Omen_(UE)_[!].sms";
-            //romFile = @"D:\ROMs\SMS\VDPTEST.sms";
+            romFile = @"D:\ROMs\SMS\VDPTEST.sms";
             //romFile = @"D:\ROMs\SMS\[BIOS] Sega Master System (USA, Europe) (v1.3).sms";
             //romFile = @"D:\ROMs\SMS\Teddy_Boy_(UE)_[!].sms";
 
@@ -225,11 +226,6 @@ namespace MasterFudge
                 // TODO: path selection? or just dump into executable or ROM folder?
                 logWriter = new StreamWriter(@"E:\temp\sms\log.txt", false);
             }
-        }
-
-        private void limitFPSToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            emulator.LimitFPS = (sender as ToolStripMenuItem).Checked;
         }
 
         private void logOpcodesToolStripMenuItem_Click(object sender, EventArgs e)

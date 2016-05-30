@@ -40,6 +40,7 @@ namespace MasterFudge.Emulation
         BaseCartridge cartridge;
 
         byte portMemoryControl, portIoControl, portIoAB, portIoBMisc;
+        byte lastHCounter;
 
         bool isNtscSystem, isExportSystem;
 
@@ -139,6 +140,7 @@ namespace MasterFudge.Emulation
             vdp.Reset();
             portMemoryControl = 0x00;
             portIoControl = portIoAB = portIoBMisc = 0xFF;
+            lastHCounter = 0x00;
         }
 
         public void PowerOn()
@@ -225,7 +227,7 @@ namespace MasterFudge.Emulation
                     if ((port & 0x01) == 0)
                         return vdp.ReadVCounter();      // V counter
                     else
-                        return vdp.ReadHCounter();      // H counter
+                        return lastHCounter;            // H counter
 
                 case 0x80:
                     // VDP
@@ -266,7 +268,12 @@ namespace MasterFudge.Emulation
                     if ((port & 0x01) == 0)
                         portMemoryControl = value;      // Memory control
                     else
-                        portIoControl = value;          // I/O control
+                    {
+                        // I/O control
+                        if ((portIoControl & 0x0A) == 0x00 && ((value & 0x02) == 0x02 || (value & 0x08) == 0x08))
+                            lastHCounter = vdp.ReadHCounter();
+                        portIoControl = value;
+                    }
                     break;
 
                 case 0x40:

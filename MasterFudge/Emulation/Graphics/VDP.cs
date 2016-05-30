@@ -32,7 +32,7 @@ namespace MasterFudge.Emulation.Graphics
         ushort addressRegister
         {
             get { return (ushort)(controlWord & 0x3FFF); }
-            set { controlWord = (ushort)((codeRegister << 14) | ((addressRegister + 1) & 0x3FFF)); }
+            set { controlWord = (ushort)((codeRegister << 14) | (value & 0x3FFF)); }
         }
 
         public bool InterruptPending { get; private set; }
@@ -206,7 +206,7 @@ namespace MasterFudge.Emulation.Graphics
                     }
                 }
 
-                if (currentScanline == (screenHeight + 1))
+                if (vCounter == (screenHeight + 1))
                 {
                     // Frame interrupt
                     statusFlags |= 0x80;
@@ -248,7 +248,7 @@ namespace MasterFudge.Emulation.Graphics
         private void ClearFramebuffer()
         {
             for (int i = 0; i < screenDrawnPixels.Length; i++)
-                screenDrawnPixels[i] = 0x00;
+                screenDrawnPixels[i] = PixelDrawn.None;
 
             for (int i = 0; i < OutputFramebuffer.Length; i += 4)
                 Buffer.BlockCopy(overscanBgColorArgb, 0, OutputFramebuffer, i, 4);
@@ -300,7 +300,7 @@ namespace MasterFudge.Emulation.Graphics
                     int outputY = ((line % screenHeight) * NumPixelsPerLine);
                     int outputX = ((hScroll + (tile * 8) + pixel) % NumPixelsPerLine);
 
-                    if (screenDrawnPixels[outputY + outputX] == 0x00)
+                    if (screenDrawnPixels[outputY + outputX] == PixelDrawn.None)
                     {
                         screenDrawnPixels[outputY + outputX] |= ((c != 0 && priority) ? PixelDrawn.BackgroundHighPriority : PixelDrawn.BackgroundLowPriority);
                         int outputAddress = outputFramebufferStartAddress + ((outputY + outputX) * 4);
@@ -368,10 +368,12 @@ namespace MasterFudge.Emulation.Graphics
                     else if ((screenDrawnPixels[outputY + outputX] & PixelDrawn.BackgroundHighPriority) != PixelDrawn.BackgroundHighPriority)
                     {
                         // Draw if pixel isn't occupied by high-priority BG
-                        screenDrawnPixels[outputY + outputX] |= PixelDrawn.Sprite;
                         int outputAddress = outputFramebufferStartAddress + ((outputY + outputX) * 4);
                         Buffer.BlockCopy(GetColorAsArgb8888(1, c), 0, OutputFramebuffer, outputAddress, 4);
                     }
+
+                    // Note that there is a sprite here regardless
+                    screenDrawnPixels[outputY + outputX] |= PixelDrawn.Sprite;
                 }
             }
         }

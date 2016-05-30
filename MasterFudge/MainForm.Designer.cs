@@ -38,7 +38,7 @@
             this.toolStripMenuItem3 = new System.Windows.Forms.ToolStripSeparator();
             this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.optionsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.limitFPSToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.limitFPSToolStripMenuItem = new Controls.BindableToolStripMenuItem();
             this.toolStripMenuItem2 = new System.Windows.Forms.ToolStripSeparator();
             this.tVSystemToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.nTSCToolStripMenuItem = new Controls.ToolStripRadioButtonMenuItem();
@@ -148,7 +148,6 @@
             this.limitFPSToolStripMenuItem.Name = "limitFPSToolStripMenuItem";
             this.limitFPSToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.limitFPSToolStripMenuItem.Text = "&Limit FPS";
-            this.limitFPSToolStripMenuItem.Click += new System.EventHandler(this.limitFPSToolStripMenuItem_Click);
             // 
             // toolStripMenuItem2
             // 
@@ -296,7 +295,7 @@
         private System.Windows.Forms.ToolStripSeparator toolStripMenuItem1;
         private System.Windows.Forms.ToolStripMenuItem exitToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem debugToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem limitFPSToolStripMenuItem;
+        private Controls.BindableToolStripMenuItem limitFPSToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem logOpcodesToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem enableLogToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem helpToolStripMenuItem;
