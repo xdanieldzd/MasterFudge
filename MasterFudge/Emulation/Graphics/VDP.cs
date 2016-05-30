@@ -175,7 +175,7 @@ namespace MasterFudge.Emulation.Graphics
 
             nextLine = ((currentHCounter + currentCycles) > GetVDPClockCyclesPerScanline(isNtsc));
             hCounter = ((hCounter + currentCycles) % (GetVDPClockCyclesPerScanline(isNtsc) + 1));
-            
+
             if (nextLine)
             {
                 /* Clear screen */
@@ -516,19 +516,7 @@ namespace MasterFudge.Emulation.Graphics
             statusFlags = 0;
 
             byte data = readBuffer;
-
-            switch (codeRegister)
-            {
-                case 0x00:
-                case 0x01:
-                case 0x02:
-                    readBuffer = vram[addressRegister];
-                    break;
-                case 0x03:
-                    readBuffer = cram[(addressRegister & 0x001F)];
-                    break;
-            }
-
+            readBuffer = vram[addressRegister];
             addressRegister++;
 
             return data;
