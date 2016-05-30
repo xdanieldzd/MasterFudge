@@ -44,6 +44,7 @@ namespace MasterFudge.Emulation.Graphics
 
         bool isDisplayBlanked { get { return !MasterSystem.IsBitSet(registers[0x01], 6); } }
         bool isMode4 { get { return MasterSystem.IsBitSet(registers[0x00], 2); } }
+        bool isColumn0MaskEnabled { get { return MasterSystem.IsBitSet(registers[0x00], 5); } }
 
         bool isVScrollPartiallyDisabled { get { return MasterSystem.IsBitSet(registers[0x00], 7); } }   // columns 24-31, i.e. pixels 192-256(?)
         bool isHScrollPartiallyDisabled { get { return MasterSystem.IsBitSet(registers[0x00], 6); } }   // rows 0-1, i.e. pixels 0-16(?)
@@ -125,8 +126,6 @@ namespace MasterFudge.Emulation.Graphics
         {
             // TODO: all the timing!
 
-            AdjustVCounter();
-
             int currentHCounter = hCounter;
             bool nextLine = false;
 
@@ -137,6 +136,32 @@ namespace MasterFudge.Emulation.Graphics
 
             if (nextLine)
             {
+                // Clear screen
+                if (currentScanline == 0)
+                {
+                    overscanBgColorArgb = GetColorAsArgb8888(1, overscanBgColor);
+                    ClearFramebuffer();
+                }
+
+                // Active screen area, render line
+                if (currentScanline < screenHeight)
+                {
+                    if (!isDisplayBlanked)
+                    {
+                        if (isMode4)
+                        {
+                            RenderBackgroundMode4(currentScanline);
+                            RenderSpritesMode4(currentScanline);
+                        }
+                        else
+                        {
+                            // TODO: Modes 0-3, used by "non-SMS" games (SG-1000, SC-3000) ?
+                        }
+                    }
+                }
+
+                // Adjust counters
+                vCounter = AdjustVCounter(currentScanline);
                 currentScanline++;
                 hCounter = 0;
 
@@ -168,7 +193,7 @@ namespace MasterFudge.Emulation.Graphics
                     }
                     else
                     {
-                        // TODO: Modes 0-3, used by "non-SMS" games (SG-1000, SC-3000) ?
+                        // TODO: Modes 0-3 rendering
                     }
                 }
                 else
@@ -188,245 +213,22 @@ namespace MasterFudge.Emulation.Graphics
                 }
                 else if (currentScanline == numScanlines)
                 {
-                    currentScanline = 0;
-                    Render();
+                    // Mask column 0 with overscan color
+                    if (isColumn0MaskEnabled)
+                    {
+                        for (int i = 0; i < OutputFramebuffer.Length; i += (NumPixelsPerLine * 4))
+                        {
+                            for (int j = 0; j < (8 * 4); j += 4)
+                                Buffer.BlockCopy(overscanBgColorArgb, 0, OutputFramebuffer, i + j, 4);
+                        }
+                    }
 
+                    currentScanline = 0;
                     return true;
                 }
             }
 
             return false;
-        }
-
-        private void AdjustVCounter()
-        {
-            vCounter = currentScanline;
-
-            // TODO: odd thing, verify this is correct http://www.smspower.org/Development/ScanlineCounter
-            if (isNtsc)
-            {
-                if (screenHeight == NumVisibleLinesHigh)
-                {
-                    // Invalid on NTSC?
-                    if (currentScanline > 0xFF)
-                        vCounter = (currentScanline - 0xFF);
-                }
-                else if (screenHeight == NumVisibleLinesMed)
-                {
-                    if (currentScanline > 0xEA)
-                        vCounter = (currentScanline - 0x05);
-                }
-                else
-                {
-                    if (currentScanline > 0xDA)
-                        vCounter = (currentScanline - 0x05);
-                }
-            }
-            else
-            {
-                if (screenHeight == NumVisibleLinesHigh)
-                {
-                    if (currentScanline > 0xFF && currentScanline < 0xFF + 0x0A)
-                        vCounter = (currentScanline - 0xFF);
-                    else
-                        vCounter = (currentScanline - 0x37);
-                }
-                else if (screenHeight == NumVisibleLinesMed)
-                {
-                    if (currentScanline > 0xFF && currentScanline < 0xFF + 0x02)
-                        vCounter = (currentScanline - 0xFF);
-                    else
-                        vCounter = (currentScanline - 0x37);
-                }
-                else
-                {
-                    if (currentScanline > 0xF2)
-                        vCounter = (currentScanline - 0x38);
-                }
-            }
-        }
-
-        private void Render()
-        {
-            overscanBgColorArgb = GetColorAsArgb8888(1, overscanBgColor);
-
-            ClearFramebuffer();
-
-            if (!isDisplayBlanked)
-            {
-                if (isMode4)
-                {
-                    RenderBackgroundMode4();
-                    RenderSpritesMode4();
-                }
-                else
-                {
-                    // TODO: Modes 0-3 rendering
-                }
-
-                // Mask column 0 with overscan color
-                if (MasterSystem.IsBitSet(registers[0x00], 5))
-                {
-                    for (int i = 0; i < OutputFramebuffer.Length; i += (NumPixelsPerLine * 4))
-                    {
-                        for (int j = 0; j < (8 * 4); j += 4)
-                            Buffer.BlockCopy(overscanBgColorArgb, 0, OutputFramebuffer, i + j, 4);
-                    }
-                }
-            }
-        }
-
-        private void ClearFramebuffer()
-        {
-            for (int i = 0; i < screenDrawnPixels.Length; i++)
-                screenDrawnPixels[i] = 0x00;
-
-            for (int i = 0; i < OutputFramebuffer.Length; i += 4)
-                Buffer.BlockCopy(overscanBgColorArgb, 0, OutputFramebuffer, i, 4);
-        }
-
-        private void RenderBackgroundMode4()
-        {
-            // TODO: scrolling is kinda wrong, especially vertically, but really both
-
-            int numTilesPerLine = (NumPixelsPerLine / 8);
-
-            for (int line = 0; line < screenHeight; line++)
-            {
-                for (int tile = 0; tile < numTilesPerLine; tile++)
-                {
-                    /* Vertical scrolling */
-                    int scrolledLine = line;
-                    if (!(isVScrollPartiallyDisabled && tile >= 24))
-                    {
-                        scrolledLine = (line + backgroundVScroll);
-                        if (scrolledLine >= nametableHeight) scrolledLine -= nametableHeight;
-                    }
-
-                    /* Horizontal scrolling */
-                    int hScroll = (isHScrollPartiallyDisabled && line < 16 ? 0 : backgroundHScroll);
-
-                    /* Get tile data */
-                    ushort nametableAddress = (ushort)(nametableBaseAddress + ((scrolledLine / 8) * (numTilesPerLine * 2)));
-                    ushort ntData = (ushort)((vram[nametableAddress + (tile * 2) + 1] << 8) | vram[nametableAddress + (tile * 2)]);
-
-                    int tileIndex = (ntData & 0x01FF);
-                    bool hFlip = ((ntData & 0x200) == 0x200);
-                    bool vFlip = ((ntData & 0x400) == 0x400);
-                    int palette = ((ntData & 0x800) >> 11);
-                    bool priority = ((ntData & 0x1000) == 0x1000);
-
-                    /* For vertical flip */
-                    int tileLine = (vFlip ? ((scrolledLine / 8) * 8) + (-(scrolledLine % 8) + 7) : scrolledLine);
-
-                    ushort tileAddress = (ushort)((tileIndex * 0x20) + ((tileLine % 8) * 4));
-                    for (int pixel = 0; pixel < 8; pixel++)
-                    {
-                        /* For horizontal flip */
-                        int hShift = (hFlip ? pixel : (7 - pixel));
-
-                        int c = (((vram[tileAddress + 0] >> hShift) & 0x1) << 0);
-                        c |= (((vram[tileAddress + 1] >> hShift) & 0x1) << 1);
-                        c |= (((vram[tileAddress + 2] >> hShift) & 0x1) << 2);
-                        c |= (((vram[tileAddress + 3] >> hShift) & 0x1) << 3);
-
-                        int outputY = ((line % screenHeight) * NumPixelsPerLine);
-                        int outputX = ((hScroll + (tile * 8) + pixel) % NumPixelsPerLine);
-
-                        if (screenDrawnPixels[outputY + outputX] == 0x00)
-                        {
-                            screenDrawnPixels[outputY + outputX] |= ((c != 0 && priority) ? PixelDrawn.BackgroundHighPriority : PixelDrawn.BackgroundLowPriority);
-                            int outputAddress = outputFramebufferStartAddress + ((outputY + outputX) * 4);
-                            Buffer.BlockCopy(GetColorAsArgb8888(palette, c), 0, OutputFramebuffer, outputAddress, 4);
-                        }
-                    }
-                }
-            }
-        }
-
-        private void RenderSpritesMode4()
-        {
-            int spriteSize = (isLargeSprites ? 16 : 8);
-
-            for (int line = 0; line < screenHeight; line++)
-            {
-                int numSprites = 0;
-                for (int sprite = 0; sprite < 64; sprite++)
-                {
-                    int yCoordinate = vram[spriteAttribTableBaseAddress + sprite];
-
-                    // Ignore following if Y coord is 208 in 192-line mode
-                    if (yCoordinate == 208 && screenHeight == NumVisibleLinesLow) break;
-
-                    // Y coord equals current scanline
-                    if (yCoordinate + 1 == line)
-                    {
-                        if (numSprites < spriteBuffer.Length)
-                            spriteBuffer[numSprites] = sprite;
-                        numSprites++;
-                    }
-                }
-
-                // Sprite overflow
-                if (numSprites > spriteBuffer.Length)
-                {
-                    statusFlags |= 0x40;
-                    numSprites = spriteBuffer.Length;
-                }
-
-                for (int i = 0; i < numSprites; i++)
-                {
-                    int sprite = spriteBuffer[i];
-                    int xCoordinate = vram[spriteAttribTableBaseAddress + 0x80 + (sprite * 2)];
-                    int tileIndex = vram[spriteAttribTableBaseAddress + 0x80 + (sprite * 2) + 1];
-
-                    if (isLargeSprites) tileIndex &= ~0x01;
-                    if (isSpriteShiftLeft8) xCoordinate -= 8;
-
-                    for (int y = line; y < line + spriteSize; y++)
-                    {
-                        if (y >= screenHeight) continue;
-
-                        ushort tileAddress = (ushort)(spritePatternGenBaseAddress + (tileIndex * 0x20) + (((y - line) % spriteSize) * 4));
-
-                        for (int pixel = 0; pixel < 8; pixel++)
-                        {
-                            int c = (((vram[tileAddress + 0] >> (7 - pixel)) & 0x1) << 0);
-                            c |= (((vram[tileAddress + 1] >> (7 - pixel)) & 0x1) << 1);
-                            c |= (((vram[tileAddress + 2] >> (7 - pixel)) & 0x1) << 2);
-                            c |= (((vram[tileAddress + 3] >> (7 - pixel)) & 0x1) << 3);
-
-                            if (c == 0 || xCoordinate + pixel >= NumPixelsPerLine) continue;
-
-                            int outputY = ((y % screenHeight) * NumPixelsPerLine);
-                            int outputX = ((xCoordinate + pixel) % NumPixelsPerLine);
-
-                            if ((screenDrawnPixels[outputY + outputX] & PixelDrawn.Sprite) == PixelDrawn.Sprite)
-                            {
-                                // Sprite collision
-                                statusFlags |= 0x20;
-                            }
-                            else if ((screenDrawnPixels[outputY + outputX] & PixelDrawn.BackgroundHighPriority) != PixelDrawn.BackgroundHighPriority)
-                            {
-                                // Draw if pixel isn't occupied by high-priority BG
-                                screenDrawnPixels[outputY + outputX] |= PixelDrawn.Sprite;
-                                int outputAddress = outputFramebufferStartAddress + ((outputY + outputX) * 4);
-                                Buffer.BlockCopy(GetColorAsArgb8888(1, c), 0, OutputFramebuffer, outputAddress, 4);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        public byte[] DumpVideoRam()
-        {
-            return vram;
-        }
-
-        public byte[] DumpColorRam()
-        {
-            return cram;
         }
 
         public byte[] GetColorAsArgb8888(int palette, int color)
@@ -441,6 +243,187 @@ namespace MasterFudge.Emulation.Graphics
             b |= (byte)((b << 6) | (b << 4) | (b << 2));
 
             return new byte[] { b, g, r, 0xFF };
+        }
+
+        private void ClearFramebuffer()
+        {
+            for (int i = 0; i < screenDrawnPixels.Length; i++)
+                screenDrawnPixels[i] = 0x00;
+
+            for (int i = 0; i < OutputFramebuffer.Length; i += 4)
+                Buffer.BlockCopy(overscanBgColorArgb, 0, OutputFramebuffer, i, 4);
+        }
+
+        private void RenderBackgroundMode4(int line)
+        {
+            // TODO: scrolling is kinda wrong, especially vertically, but really both
+
+            int numTilesPerLine = (NumPixelsPerLine / 8);
+
+            for (int tile = 0; tile < numTilesPerLine; tile++)
+            {
+                /* Vertical scrolling */
+                int scrolledLine = line;
+                if (!(isVScrollPartiallyDisabled && tile >= 24))
+                {
+                    scrolledLine = (line + backgroundVScroll);
+                    if (scrolledLine >= nametableHeight) scrolledLine -= nametableHeight;
+                }
+
+                /* Horizontal scrolling */
+                int hScroll = (isHScrollPartiallyDisabled && line < 16 ? 0 : backgroundHScroll);
+
+                /* Get tile data */
+                ushort nametableAddress = (ushort)(nametableBaseAddress + ((scrolledLine / 8) * (numTilesPerLine * 2)));
+                ushort ntData = (ushort)((vram[nametableAddress + (tile * 2) + 1] << 8) | vram[nametableAddress + (tile * 2)]);
+
+                int tileIndex = (ntData & 0x01FF);
+                bool hFlip = ((ntData & 0x200) == 0x200);
+                bool vFlip = ((ntData & 0x400) == 0x400);
+                int palette = ((ntData & 0x800) >> 11);
+                bool priority = ((ntData & 0x1000) == 0x1000);
+
+                /* For vertical flip */
+                int tileLine = (vFlip ? ((scrolledLine / 8) * 8) + (-(scrolledLine % 8) + 7) : scrolledLine);
+
+                ushort tileAddress = (ushort)((tileIndex * 0x20) + ((tileLine % 8) * 4));
+                for (int pixel = 0; pixel < 8; pixel++)
+                {
+                    /* For horizontal flip */
+                    int hShift = (hFlip ? pixel : (7 - pixel));
+
+                    int c = (((vram[tileAddress + 0] >> hShift) & 0x1) << 0);
+                    c |= (((vram[tileAddress + 1] >> hShift) & 0x1) << 1);
+                    c |= (((vram[tileAddress + 2] >> hShift) & 0x1) << 2);
+                    c |= (((vram[tileAddress + 3] >> hShift) & 0x1) << 3);
+
+                    int outputY = ((line % screenHeight) * NumPixelsPerLine);
+                    int outputX = ((hScroll + (tile * 8) + pixel) % NumPixelsPerLine);
+
+                    if (screenDrawnPixels[outputY + outputX] == 0x00)
+                    {
+                        screenDrawnPixels[outputY + outputX] |= ((c != 0 && priority) ? PixelDrawn.BackgroundHighPriority : PixelDrawn.BackgroundLowPriority);
+                        int outputAddress = outputFramebufferStartAddress + ((outputY + outputX) * 4);
+                        Buffer.BlockCopy(GetColorAsArgb8888(palette, c), 0, OutputFramebuffer, outputAddress, 4);
+                    }
+                }
+            }
+        }
+
+        private void RenderSpritesMode4(int line)
+        {
+            int spriteSize = (isLargeSprites ? 16 : 8);
+
+            int numSprites = 0;
+            for (int sprite = 0; sprite < 64; sprite++)
+            {
+                int yCoordinate = vram[spriteAttribTableBaseAddress + sprite];
+
+                // Ignore following if Y coord is 208 in 192-line mode
+                if (yCoordinate == 208 && screenHeight == NumVisibleLinesLow) break;
+
+                // Modify Y coord as needed
+                yCoordinate++;
+                if (yCoordinate > screenHeight)
+                    yCoordinate -= 256;
+
+                // Ignore this sprite if on incorrect lines
+                if (line < yCoordinate || line >= (yCoordinate + spriteSize)) continue;
+
+                // Check for sprite overflow
+                numSprites++;
+                if (numSprites > 8)
+                {
+                    statusFlags |= 0x40;
+                    break;
+                }
+
+                int xCoordinate = vram[spriteAttribTableBaseAddress + 0x80 + (sprite * 2)];
+                int tileIndex = vram[spriteAttribTableBaseAddress + 0x80 + (sprite * 2) + 1];
+
+                // Adjust according to registers
+                if (isSpriteShiftLeft8) xCoordinate -= 8;
+                if (isLargeSprites) tileIndex &= ~0x01;
+
+                ushort tileAddress = (ushort)(spritePatternGenBaseAddress + (tileIndex * 0x20) + (((line - yCoordinate) % spriteSize) * 4));
+
+                // Draw sprite line
+                for (int pixel = 0; pixel < 8; pixel++)
+                {
+                    int c = (((vram[tileAddress + 0] >> (7 - pixel)) & 0x1) << 0);
+                    c |= (((vram[tileAddress + 1] >> (7 - pixel)) & 0x1) << 1);
+                    c |= (((vram[tileAddress + 2] >> (7 - pixel)) & 0x1) << 2);
+                    c |= (((vram[tileAddress + 3] >> (7 - pixel)) & 0x1) << 3);
+
+                    if (c == 0 || xCoordinate + pixel >= NumPixelsPerLine) continue;
+
+                    int outputY = ((line % screenHeight) * NumPixelsPerLine);
+                    int outputX = ((xCoordinate + pixel) % NumPixelsPerLine);
+
+                    if ((screenDrawnPixels[outputY + outputX] & PixelDrawn.Sprite) == PixelDrawn.Sprite)
+                    {
+                        // Set sprite collision flag
+                        statusFlags |= 0x20;
+                    }
+                    else if ((screenDrawnPixels[outputY + outputX] & PixelDrawn.BackgroundHighPriority) != PixelDrawn.BackgroundHighPriority)
+                    {
+                        // Draw if pixel isn't occupied by high-priority BG
+                        screenDrawnPixels[outputY + outputX] |= PixelDrawn.Sprite;
+                        int outputAddress = outputFramebufferStartAddress + ((outputY + outputX) * 4);
+                        Buffer.BlockCopy(GetColorAsArgb8888(1, c), 0, OutputFramebuffer, outputAddress, 4);
+                    }
+                }
+            }
+        }
+
+        private int AdjustVCounter(int scanline)
+        {
+            int counter = scanline;
+
+            // TODO: odd thing, verify this is correct http://www.smspower.org/Development/ScanlineCounter
+            if (isNtsc)
+            {
+                if (screenHeight == NumVisibleLinesHigh)
+                {
+                    // Invalid on NTSC?
+                    if (scanline > 0xFF)
+                        counter = (scanline - 0x100);
+                }
+                else if (screenHeight == NumVisibleLinesMed)
+                {
+                    if (scanline > 0xEA)
+                        counter = (scanline - 0x06);
+                }
+                else
+                {
+                    if (scanline > 0xDA)
+                        counter = (scanline - 0x06);
+                }
+            }
+            else
+            {
+                if (screenHeight == NumVisibleLinesHigh)
+                {
+                    if (scanline > 0xFF && scanline < 0xFF + 0x0A)
+                        counter = (scanline - 0x100);
+                    else
+                        counter = (scanline - 0x38);
+                }
+                else if (screenHeight == NumVisibleLinesMed)
+                {
+                    if (scanline > 0xFF && scanline < 0xFF + 0x02)
+                        counter = (scanline - 0x100);
+                    else
+                        counter = (scanline - 0x38);
+                }
+                else
+                {
+                    if (scanline > 0xF2)
+                        counter = (scanline - 0x39);
+                }
+            }
+
+            return counter;
         }
 
         public byte ReadVCounter()
@@ -533,6 +516,16 @@ namespace MasterFudge.Emulation.Graphics
         private void WriteRegister(byte register, byte value)
         {
             registers[register] = value;
+        }
+
+        public byte[] DumpVideoRam()
+        {
+            return vram;
+        }
+
+        public byte[] DumpColorRam()
+        {
+            return cram;
         }
     }
 }
