@@ -155,7 +155,9 @@ namespace MasterFudge.Emulation
 
         public void Execute()
         {
-            //try
+#if !DEBUG
+            try
+#endif
             {
                 // TODO: fix timing
 
@@ -186,13 +188,15 @@ namespace MasterFudge.Emulation
                         Thread.Sleep(1);
                 }
             }
-            /*catch (Exception ex)
+#if !DEBUG
+            catch (Exception ex)
             {
                 string message = string.Format("Exception occured: {0}\n\nEmulation thread has been stopped.", ex.Message);
                 System.Windows.Forms.MessageBox.Show(message);
 
                 isStopped = true;
-            }*/
+            }
+#endif
         }
 
         private void HandleInterrupts()

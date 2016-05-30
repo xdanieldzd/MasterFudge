@@ -41,13 +41,16 @@ namespace MasterFudge.Emulation.Graphics
 
         bool isLineInterruptEnabled { get { return MasterSystem.IsBitSet(registers[0x00], 4); } }
         bool isFrameInterruptEnabled { get { return MasterSystem.IsBitSet(registers[0x01], 5); } }
+
         bool isDisplayBlanked { get { return !MasterSystem.IsBitSet(registers[0x01], 6); } }
-        bool isVScrollPartiallyDisabled { get { return MasterSystem.IsBitSet(registers[0x01], 5); } }   // columns 24-31, i.e. pixels 192-256(?)
-        bool isHScrollPartiallyDisabled { get { return MasterSystem.IsBitSet(registers[0x01], 5); } }   // rows 0-1, i.e. pixels 0-16(?)
+        bool isMode4 { get { return MasterSystem.IsBitSet(registers[0x00], 2); } }
+
+        bool isVScrollPartiallyDisabled { get { return MasterSystem.IsBitSet(registers[0x00], 7); } }   // columns 24-31, i.e. pixels 192-256(?)
+        bool isHScrollPartiallyDisabled { get { return MasterSystem.IsBitSet(registers[0x00], 6); } }   // rows 0-1, i.e. pixels 0-16(?)
+
         bool isLargeSprites { get { return MasterSystem.IsBitSet(registers[0x01], 1); } }
         bool isZoomedSprites { get { return MasterSystem.IsBitSet(registers[0x01], 0); } }
-
-        bool isMode4 { get { return MasterSystem.IsBitSet(registers[0x00], 2); } }
+        bool isSpriteShiftLeft8 { get { return MasterSystem.IsBitSet(registers[0x00], 3); } }
 
         ushort nametableBaseAddress { get { return (ushort)((registers[0x02] & 0x0E) << 10); } }
         ushort spriteAttribTableBaseAddress { get { return (ushort)((registers[0x05] & 0x7E) << 7); } }
@@ -58,7 +61,6 @@ namespace MasterFudge.Emulation.Graphics
 
         byte[] overscanBgColorArgb;
 
-        int[] backgroundXScrollCache;
         int[] spriteBuffer;
 
         enum PixelDrawn : byte
@@ -81,7 +83,6 @@ namespace MasterFudge.Emulation.Graphics
             vram = new byte[0x4000];
             cram = new byte[0x20];
 
-            backgroundXScrollCache = new int[NumVisibleLinesHigh];
             spriteBuffer = new int[8];
             screenDrawnPixels = new PixelDrawn[NumPixelsPerLine * NumVisibleLinesHigh];
 
@@ -129,7 +130,7 @@ namespace MasterFudge.Emulation.Graphics
             int currentHCounter = hCounter;
             bool nextLine = false;
 
-            InterruptPending = (MasterSystem.IsBitSet(statusFlags, 7) && MasterSystem.IsBitSet(registers[0x01], 5));
+            InterruptPending = (MasterSystem.IsBitSet(statusFlags, 7) && isFrameInterruptEnabled);
 
             nextLine = ((currentHCounter + currentCycles) > GetVDPClockCyclesPerScanline(isNtsc));
             hCounter = ((hCounter + currentCycles) % (GetVDPClockCyclesPerScanline(isNtsc) + 1));
@@ -172,8 +173,6 @@ namespace MasterFudge.Emulation.Graphics
                 }
                 else
                 {
-                    backgroundXScrollCache[currentScanline] = backgroundHScroll;
-
                     lineInterruptCounter--;
                     if (lineInterruptCounter < 0)
                     {
@@ -258,7 +257,7 @@ namespace MasterFudge.Emulation.Graphics
                 if (isMode4)
                 {
                     RenderBackgroundMode4();
-                    RenderSpritesMode2();
+                    RenderSpritesMode4();
                 }
                 else
                 {
@@ -296,15 +295,18 @@ namespace MasterFudge.Emulation.Graphics
             {
                 for (int tile = 0; tile < numTilesPerLine; tile++)
                 {
+                    /* Vertical scrolling */
                     int scrolledLine = line;
-                    if (!(MasterSystem.IsBitSet(registers[0x00], 7) && tile >= 24))
+                    if (!(isVScrollPartiallyDisabled && tile >= 24))
                     {
                         scrolledLine = (line + backgroundVScroll);
                         if (scrolledLine >= nametableHeight) scrolledLine -= nametableHeight;
                     }
 
-                    int hScroll = (MasterSystem.IsBitSet(registers[0x00], 6) && line < 16 ? 0 : backgroundXScrollCache[line]);
+                    /* Horizontal scrolling */
+                    int hScroll = (isHScrollPartiallyDisabled && line < 16 ? 0 : backgroundHScroll);
 
+                    /* Get tile data */
                     ushort nametableAddress = (ushort)(nametableBaseAddress + ((scrolledLine / 8) * (numTilesPerLine * 2)));
                     ushort ntData = (ushort)((vram[nametableAddress + (tile * 2) + 1] << 8) | vram[nametableAddress + (tile * 2)]);
 
@@ -314,11 +316,13 @@ namespace MasterFudge.Emulation.Graphics
                     int palette = ((ntData & 0x800) >> 11);
                     bool priority = ((ntData & 0x1000) == 0x1000);
 
+                    /* For vertical flip */
                     int tileLine = (vFlip ? ((scrolledLine / 8) * 8) + (-(scrolledLine % 8) + 7) : scrolledLine);
 
                     ushort tileAddress = (ushort)((tileIndex * 0x20) + ((tileLine % 8) * 4));
                     for (int pixel = 0; pixel < 8; pixel++)
                     {
+                        /* For horizontal flip */
                         int hShift = (hFlip ? pixel : (7 - pixel));
 
                         int c = (((vram[tileAddress + 0] >> hShift) & 0x1) << 0);
@@ -340,15 +344,12 @@ namespace MasterFudge.Emulation.Graphics
             }
         }
 
-        private void RenderSpritesMode2()
+        private void RenderSpritesMode4()
         {
             int spriteSize = (isLargeSprites ? 16 : 8);
 
             for (int line = 0; line < screenHeight; line++)
             {
-                for (int i = 0; i < spriteBuffer.Length; i++)
-                    spriteBuffer[i] = 0;
-
                 int numSprites = 0;
                 for (int sprite = 0; sprite < 64; sprite++)
                 {
@@ -379,17 +380,14 @@ namespace MasterFudge.Emulation.Graphics
                     int xCoordinate = vram[spriteAttribTableBaseAddress + 0x80 + (sprite * 2)];
                     int tileIndex = vram[spriteAttribTableBaseAddress + 0x80 + (sprite * 2) + 1];
 
-                    if (MasterSystem.IsBitSet(registers[0x00], 3))
-                        xCoordinate -= 8;
-
-                    if (MasterSystem.IsBitSet(registers[0x06], 2))
-                        tileIndex |= 0x100;
+                    if (isLargeSprites) tileIndex &= ~0x01;
+                    if (isSpriteShiftLeft8) xCoordinate -= 8;
 
                     for (int y = line; y < line + spriteSize; y++)
                     {
                         if (y >= screenHeight) continue;
 
-                        ushort tileAddress = (ushort)((tileIndex * 0x20) + (((y - line) % spriteSize) * 4));
+                        ushort tileAddress = (ushort)(spritePatternGenBaseAddress + (tileIndex * 0x20) + (((y - line) % spriteSize) * 4));
 
                         for (int pixel = 0; pixel < 8; pixel++)
                         {

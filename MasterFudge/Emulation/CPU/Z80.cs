@@ -70,9 +70,13 @@ namespace MasterFudge.Emulation.CPU
         IOPortReadDelegate ioReadDelegate;
         IOPortWriteDelegate ioWriteDelegate;
 
+        Random random;
+
         protected Z80()
         {
             DebugLogOpcodes = false;
+
+            random = new Random();
         }
 
         public Z80(MemoryMapper memMap, IOPortReadDelegate ioRead, IOPortWriteDelegate ioWrite) : this()
@@ -102,8 +106,7 @@ namespace MasterFudge.Emulation.CPU
 
         public void Reset()
         {
-            // crude refresh register random number thingy
-            r = (byte)(GetHashCode() >> 10);
+            r = (byte)(random.Next() & 0x7F);
 
             pc = 0;
             IFF1 = iff2 = eiDelay = halted = false;
@@ -130,8 +133,8 @@ namespace MasterFudge.Emulation.CPU
 
             if (!halted)
             {
-                // more crude refresh reg stuff
-                r = (byte)((r + 1) & 0x7F);
+                for (int i = 0; i < random.Next(10); i++)
+                    r = (byte)((r + random.Next()) & 0x7F);
 
                 byte op = memoryMapper.Read8(pc++);
                 switch (op)
