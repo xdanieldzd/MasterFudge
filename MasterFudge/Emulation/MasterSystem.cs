@@ -112,8 +112,9 @@ namespace MasterFudge.Emulation
 
             cartridge = BaseCartridge.LoadCartridge<BaseCartridge>(filename);
             memoryMapper.AddMemoryArea(cartridge.GetMemoryAreaDescriptor());
-            memoryMapper.AddMemoryArea(cartridge.GetMappingRegisterAreaDescriptor());
-            memoryMapper.AddMemoryArea(cartridge.GetMappingRegisterMirrorAreaDescriptor());
+
+            foreach (MemoryAreaDescriptor areaDescriptor in cartridge.GetAdditionalMemoryAreaDescriptors())
+                memoryMapper.AddMemoryArea(areaDescriptor);
         }
 
         public RomHeader GetCartridgeHeader()

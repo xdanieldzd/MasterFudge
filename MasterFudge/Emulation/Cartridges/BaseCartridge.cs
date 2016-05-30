@@ -36,14 +36,9 @@ namespace MasterFudge.Emulation.Cartridges
             return cartridge;
         }
 
-        public virtual MemoryAreaDescriptor GetMappingRegisterAreaDescriptor()
+        public virtual MemoryAreaDescriptor[] GetAdditionalMemoryAreaDescriptors()
         {
-            return null;
-        }
-
-        public virtual MemoryAreaDescriptor GetMappingRegisterMirrorAreaDescriptor()
-        {
-            return null;
+            return new MemoryAreaDescriptor[0];
         }
 
         private static byte[] ReadRomData(string filename)

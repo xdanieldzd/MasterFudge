@@ -11,7 +11,7 @@ namespace MasterFudge.Emulation.Cartridges
     {
         // TODO: the other FFFC/reg0 stuff? http://www.smspower.org/Development/Mappers?from=Development.Mapper
 
-        byte[] pagingRegisters;
+        byte[] pagingRegisters, registerMirror;
         byte[][] ramData;
         byte bankMask;
 
@@ -22,6 +22,8 @@ namespace MasterFudge.Emulation.Cartridges
             pagingRegisters[1] = 0; // Page 0 ROM bank
             pagingRegisters[2] = 1; // Page 1 ROM bank
             pagingRegisters[3] = 2; // Page 2 ROM/RAM bank
+
+            registerMirror = new byte[] { pagingRegisters[0], pagingRegisters[1], pagingRegisters[2], pagingRegisters[3] };
 
             ramData = new byte[0x02][];
             for (int i = 0; i < ramData.Length; i++) ramData[i] = new byte[0x4000];
@@ -49,16 +51,16 @@ namespace MasterFudge.Emulation.Cartridges
                     if (address < 0x400)
                         return romData[address];
                     else
-                        return romData[(((pagingRegisters[1] & bankMask) << 14) | (address & 0x3FFF))];
+                        return romData[((pagingRegisters[1] << 14) | (address & 0x3FFF))];
 
                 case 0x4000:
-                    return romData[(((pagingRegisters[2] & bankMask) << 14) | (address & 0x3FFF))];
+                    return romData[((pagingRegisters[2] << 14) | (address & 0x3FFF))];
 
                 case 0x8000:
                     if (MasterSystem.IsBitSet(pagingRegisters[0], 3))
                         return ramData[((pagingRegisters[0] >> 2) & 0x01)][(address & 0x3FFF)];
                     else
-                        return romData[(((pagingRegisters[3] & bankMask) << 14) | (address & 0x3FFF))];
+                        return romData[((pagingRegisters[3] << 14) | (address & 0x3FFF))];
 
                 default:
                     throw new Exception(string.Format("Cannot read from cartridge address 0x{0:X4}", address));
@@ -76,18 +78,17 @@ namespace MasterFudge.Emulation.Cartridges
             {
                 // ROM write enabled...?
             }
-            /*else
-                throw new Exception(string.Format("Cannot write to cartridge address 0x{0:X4}", address));*/
+            else
+                throw new Exception(string.Format("Cannot write to cartridge address 0x{0:X4}", address));
         }
 
-        public override MemoryAreaDescriptor GetMappingRegisterAreaDescriptor()
+        public override MemoryAreaDescriptor[] GetAdditionalMemoryAreaDescriptors()
         {
-            return new MemoryAreaDescriptor(0xFFFC, 0xFFFF, ReadRegister, WriteRegister);
-        }
-
-        public override MemoryAreaDescriptor GetMappingRegisterMirrorAreaDescriptor()
-        {
-            return new MemoryAreaDescriptor(0xDFFC, 0xDFFF, ReadRegister, WriteRegister);
+            return new MemoryAreaDescriptor[]
+            {
+                 new MemoryAreaDescriptor(0xFFFC, 0xFFFF, ReadRegister, WriteRegister),
+                 new MemoryAreaDescriptor(0xDFFC, 0xDFFF, ReadRegister, WriteRegisterMirrored)
+            };
         }
 
         private byte ReadRegister(ushort address)
@@ -97,8 +98,13 @@ namespace MasterFudge.Emulation.Cartridges
 
         private void WriteRegister(ushort address, byte value)
         {
+            if ((address & 0x0003) != 0x00) value &= bankMask;
             pagingRegisters[address & 0x0003] = value;
-            //Program.Log.WriteEvent("## Cartridge mapper write (address 0x{0:X4}, value 0x{1:X2})", address, value);
+        }
+
+        private void WriteRegisterMirrored(ushort address, byte value)
+        {
+            registerMirror[address & 0x0003] = value;
         }
     }
 }
