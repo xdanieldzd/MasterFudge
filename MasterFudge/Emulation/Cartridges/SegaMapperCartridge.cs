@@ -85,6 +85,11 @@ namespace MasterFudge.Emulation.Cartridges
             return new MemoryAreaDescriptor(0xFFFC, 0xFFFF, ReadRegister, WriteRegister);
         }
 
+        public override MemoryAreaDescriptor GetMappingRegisterMirrorAreaDescriptor()
+        {
+            return new MemoryAreaDescriptor(0xDFFC, 0xDFFF, ReadRegister, WriteRegister);
+        }
+
         private byte ReadRegister(ushort address)
         {
             return pagingRegisters[address & 0x0003];

@@ -41,6 +41,11 @@ namespace MasterFudge.Emulation.Cartridges
             return null;
         }
 
+        public virtual MemoryAreaDescriptor GetMappingRegisterMirrorAreaDescriptor()
+        {
+            return null;
+        }
+
         private static byte[] ReadRomData(string filename)
         {
             using (FileStream file = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read))

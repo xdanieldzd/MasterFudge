@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace MasterFudge.Emulation.Memory
 {
@@ -20,8 +17,12 @@ namespace MasterFudge.Emulation.Memory
         public MemoryMapper()
         {
             memoryAreas = new List<MemoryAreaDescriptor>();
+
             readMap = new MemoryReadDelegate[memoryUpperBound + 1];
+            for (int i = 0; i < readMap.Length; i++) readMap[i] = DummyRead;
+
             writeMap = new MemoryWriteDelegate[memoryUpperBound + 1];
+            for (int i = 0; i < writeMap.Length; i++) writeMap[i] = DummyWrite;
         }
 
         public void AddMemoryArea(ushort startAddress, ushort endAddress, MemoryReadDelegate readHandler, MemoryWriteDelegate writeHandler)
@@ -58,39 +59,37 @@ namespace MasterFudge.Emulation.Memory
             memoryAreas.RemoveAll(x => x.StartAddress == area.StartAddress && x.EndAddress == area.EndAddress);
         }
 
+        private byte DummyRead(ushort address)
+        {
+            throw new Exception(string.Format("Unsupported read from address 0x{0:X4}", address));
+        }
+
+        private void DummyWrite(ushort address, byte value)
+        {
+            throw new Exception(string.Format("Unsupported write to address 0x{0:X4}, value 0x{1:X2}", address, value));
+        }
+
         public byte Read8(ushort address)
         {
-            if (readMap[address] == null)
-                throw new Exception(string.Format("Unsupported 8-bit read from address 0x{0:X4}", address));
-            else
-                return readMap[address](address);
+            return readMap[address](address);
         }
 
         public ushort Read16(ushort address)
         {
-            if (readMap[address] == null || readMap[address + 1] == null)
-                throw new Exception(string.Format("Unsupported 16-bit read from address 0x{0:X4}", address));
-            else
-                return (ushort)((readMap[address + 1]((ushort)(address + 1)) << 8) + readMap[address](address));
+            byte low = readMap[address](address);
+            byte high = readMap[address + 1]((ushort)(address + 1));
+            return (ushort)((high << 8) | low);
         }
 
         public void Write8(ushort address, byte value)
         {
-            if (writeMap[address] == null)
-                throw new Exception(string.Format("Unsupported 8-bit write to address 0x{0:X4}, value 0x{1:X2}", address, value));
-            else
-                writeMap[address](address, value);
+            writeMap[address](address, value);
         }
 
         public void Write16(ushort address, ushort value)
         {
-            if (writeMap[address] == null || writeMap[address + 1] == null)
-                throw new Exception(string.Format("Unsupported 16-bit write to address 0x{0:X4}, value 0x{1:X4}", address, value));
-            else
-            {
-                writeMap[address](address, (byte)(value & 0xFF));
-                writeMap[address + 1]((ushort)(address + 1), (byte)(value >> 8));
-            }
+            writeMap[address](address, (byte)(value & 0xFF));
+            writeMap[address + 1]((ushort)(address + 1), (byte)(value >> 8));
         }
     }
 }
