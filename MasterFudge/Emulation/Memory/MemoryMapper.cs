@@ -37,8 +37,8 @@ namespace MasterFudge.Emulation.Memory
             memoryAreas.Add(area);
             for (int i = area.StartAddress; i <= area.EndAddress; i++)
             {
-                readMap[i] = area.Read;
-                writeMap[i] = area.Write;
+                if (area.Read != null) readMap[i] = area.Read;
+                if (area.Write != null) writeMap[i] = area.Write;
             }
         }
 
@@ -53,8 +53,8 @@ namespace MasterFudge.Emulation.Memory
 
             for (int i = area.StartAddress; i <= area.EndAddress; i++)
             {
-                readMap[i] = null;
-                writeMap[i] = null;
+                readMap[i] = DummyRead;
+                writeMap[i] = DummyWrite;
             }
             memoryAreas.RemoveAll(x => x.StartAddress == area.StartAddress && x.EndAddress == area.EndAddress);
         }

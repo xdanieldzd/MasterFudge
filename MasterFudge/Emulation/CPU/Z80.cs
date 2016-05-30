@@ -128,11 +128,11 @@ namespace MasterFudge.Emulation.CPU
 
             //if (pc == 0xA4C) DebugLogOpcodes = true;
 
-            if (DebugLogOpcodes)
-                Program.Log.WriteEvent(string.Format("{0} | {1} | {2}", DisassembleOpcode(pc).PadRight(48), PrintRegisters(), PrintFlags()));
-
             if (!halted)
             {
+                if (DebugLogOpcodes)
+                    Program.Log.WriteEvent(string.Format("{0} | {1} | {2}", DisassembleOpcode(pc).PadRight(48), PrintRegisters(), PrintFlags()));
+
                 for (int i = 0; i < random.Next(10); i++)
                     r = (byte)((r + random.Next()) & 0x7F);
 
