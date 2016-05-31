@@ -8,32 +8,33 @@ using NAudio.Wave;
 
 namespace MasterFudge.Emulation.Sound
 {
-    // TODO: actually make this process and output sound from the PSG
+    // TODO: nope, this seems all wrong...
 
-    // http://mark-dot-net.blogspot.de/2009/10/playback-of-sine-wave-in-naudio.html
-    public class WaveProvider : WaveProvider32
+    public class WaveProvider : WaveProvider16
     {
-        int sample;
+        short[] samples;
+        int position;
 
         public WaveProvider()
         {
-            Frequency = 1000;
-            Amplitude = 0.25f; // let's not hurt our ears            
+            samples = new short[32768];
+            position = 0;
         }
 
-        public float Frequency { get; set; }
-        public float Amplitude { get; set; }
-
-        public override int Read(float[] buffer, int offset, int sampleCount)
+        public void AddSample(short sample)
         {
-            int sampleRate = WaveFormat.SampleRate;
-            for (int n = 0; n < sampleCount; n++)
+            samples[position] = sample;
+            position++;
+            if (position >= samples.Length) position = 0;
+        }
+
+        public override int Read(short[] buffer, int offset, int sampleCount)
+        {
+            for (int i = 0; i < sampleCount; i++)
             {
-                buffer[n + offset] = (float)(Amplitude * Math.Sin((2 * Math.PI * sample * Frequency) / sampleRate));
-                sample++;
-                if (sample >= sampleRate) sample = 0;
+                buffer[i + offset] = samples[i % samples.Length];
             }
-            return sampleCount;
+            return samples.Length;
         }
     }
 }

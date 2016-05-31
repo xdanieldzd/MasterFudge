@@ -102,6 +102,7 @@ namespace MasterFudge.Emulation
             isExportSystem = isExport;
 
             vdp?.SetTVSystem(isNtsc);
+            psg?.SetTVSystem(isNtsc);
         }
 
         public static bool IsBitSet(byte value, int bit)

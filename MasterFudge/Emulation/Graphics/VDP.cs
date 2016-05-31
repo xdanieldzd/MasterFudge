@@ -119,7 +119,7 @@ namespace MasterFudge.Emulation.Graphics
 
         public VDP()
         {
-            SetTVSystem(false);
+            SetTVSystem(true);
 
             registers = new byte[0x10];
             vram = new byte[0x4000];
