@@ -12,6 +12,8 @@ using MasterFudge.Emulation.Cartridges;
 using MasterFudge.Emulation.Graphics;
 using MasterFudge.Emulation.Sound;
 
+using NAudio.Wave;
+
 namespace MasterFudge.Emulation
 {
     public delegate void RenderScreenHandler(object sender, RenderEventArgs e);
@@ -126,9 +128,9 @@ namespace MasterFudge.Emulation
             return cartridge.Header;
         }
 
-        public WaveProvider GetPSGWaveProvider()
+        public IWaveProvider GetPSGWaveProvider()
         {
-            return psg.WaveProvider;
+            return (psg as IWaveProvider);
         }
 
         // TODO: IO port control (the active high/low stuff)
@@ -192,7 +194,7 @@ namespace MasterFudge.Emulation
                                 OnRenderScreen?.Invoke(this, new RenderEventArgs(vdp.OutputFramebuffer));
                         }
 
-                        psg.Execute((int)currentCycles);
+                        psg.Execute((int)(currentCycles * (Z80.ClockDivider / VDP.ClockDivider)));
 
                         totalCycles += (int)currentCycles;
                     }

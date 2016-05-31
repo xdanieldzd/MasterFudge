@@ -70,7 +70,6 @@
     <Compile Include="Emulation\CPU\Z80.cs" />
     <Compile Include="Emulation\Graphics\VDP.cs" />
     <Compile Include="Emulation\Sound\PSG.cs" />
-    <Compile Include="Emulation\Sound\WaveProvider.cs" />
     <Compile Include="Logger.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>

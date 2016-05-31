@@ -4,11 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-using MasterFudge.Emulation.CPU;
+using NAudio.Wave;
 
 namespace MasterFudge.Emulation.Sound
 {
-    public class PSG
+    public class PSG : WaveProvider16
     {
         /* http://www.smspower.org/Development/SN76489 */
 
@@ -22,20 +22,23 @@ namespace MasterFudge.Emulation.Sound
         short[] channelCounters;        /* 10-bit counters, output bit in bit 14 */
 
         /* Volume attenuation table */
-        double[] volumeTable;           /* 2dB change per volume register step */
+        short[] volumeTable;            /* 2dB change per volume register step */
 
         /* Latched channel/type */
         byte latchedChannel, latchedType;
 
         /* Clock-related values */
         bool isNtsc;
-        double inputClock;
+        int cyclesInLine;
 
-        /* Output wave provider (NAudio) */
-        public WaveProvider WaveProvider { get; private set; }
+        /* Generated samples */
+        List<short> samples;
 
         public PSG()
         {
+            /* For NAudio WaveProvider16 */
+            SetWaveFormat(44100, 2);
+
             SetTVSystem(false);
 
             volumeRegisters = new ushort[numChannels];
@@ -43,20 +46,18 @@ namespace MasterFudge.Emulation.Sound
 
             channelCounters = new short[numChannels];
 
-            double volume = 1024.0;
-            volumeTable = new double[16];
+            double volume = 8191.0;
+            volumeTable = new short[16];
             for (int i = 0; i < volumeTable.Length; i++)
             {
-                volumeTable[i] = volume;
+                volumeTable[i] = (short)volume;
                 volume *= 0.79432823;
             }
             volumeTable[15] = 0;
 
-            Reset();
+            samples = new List<short>();
 
-            // TODO: make this sample thingy do PSG!
-            WaveProvider = new WaveProvider();
-            WaveProvider.SetWaveFormat(44100, 1);
+            Reset();
         }
 
         public void Reset()
@@ -73,40 +74,67 @@ namespace MasterFudge.Emulation.Sound
         public void SetTVSystem(bool ntsc)
         {
             isNtsc = ntsc;
-            inputClock = ((isNtsc ? MasterSystem.MasterClockNTSC : MasterSystem.MasterClockPAL) / Z80.ClockDivider);
         }
 
         public void Execute(int currentCycles)
         {
-            double[] channelOutputs = new double[numChannels];
+            // TODO: timing is garbage, I guess
 
-            /* Process channels */
-            for (int ch = 0; ch < numChannels; ch++)
+            cyclesInLine += currentCycles;
+
+            if (cyclesInLine >= MasterSystem.GetMasterClockCyclesPerScanline(isNtsc) / (2 * 16))
             {
-                /* Check for counter underflow */
-                if ((channelCounters[ch] & 0x03FF) > 0)
-                    channelCounters[ch]--;
+                cyclesInLine = 0;
 
-                /* Counter underflowed, reload and flip output bit */
-                if ((channelCounters[ch] & 0x03FF) == 0)
-                    channelCounters[ch] = (short)(((channelCounters[ch] & 0x4000) ^ 0x4000) | toneRegisters[ch] & 0x3FF);
+                short[] channelOutputs = new short[numChannels];
 
-                if (ch < 3)
+                /* Process channels */
+                for (int ch = 0; ch < numChannels; ch++)
                 {
-                    /* Tone channel */
-                    channelOutputs[ch] = (inputClock / ((2 * toneRegisters[ch]) * 16));
-                    //channelOutputs[ch] *= (((channelCounters[ch] & 0x4000) == 0x4000) ? -1 : 1);
-                    channelOutputs[ch] *= volumeTable[volumeRegisters[ch]];
+                    /* Check for counter underflow */
+                    if ((channelCounters[ch] & 0x03FF) > 0)
+                        channelCounters[ch]--;
 
-                    // TODO: verify and fix this, also... what do I do now? -.-
+                    /* Counter underflowed, reload and flip output bit */
+                    if ((channelCounters[ch] & 0x03FF) == 0)
+                        channelCounters[ch] = (short)(((channelCounters[ch] & 0x4000) ^ 0x4000) | toneRegisters[ch] & 0x3FF);
+
+                    if (ch < 3)
+                    {
+                        /* Tone channel */
+                        channelOutputs[ch] = (short)(volumeTable[volumeRegisters[ch]] * ((channelCounters[ch] & 0x4000) == 0x4000 ? 1 : -1));
+                    }
+                    else
+                    {
+                        /* Noise channel */
+                    }
                 }
-                else
+
+                /* Mix output together */
+                short mixed = 0;
+                for (int i = 0; i < numChannels; i++)
+                    mixed += channelOutputs[i];
+
+                samples.Add(mixed);
+            }
+        }
+
+        /* For NAudio WaveProvider16 */
+        public override int Read(short[] buffer, int offset, int sampleCount)
+        {
+            // TODO: make not sound scratchy and generally shitty
+
+            if (samples.Count != 0)
+            {
+                for (int i = 0; i < sampleCount; i++)
                 {
-                    /* Noise channel */
+                    if (i >= samples.Count) break;
+                    buffer[i + offset] = samples[i];
                 }
+                samples.Clear();
             }
 
-            //WaveProvider.AddSample((short)channelOutputs[0]);
+            return sampleCount;
         }
 
         public void WriteData(byte data)

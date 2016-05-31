@@ -146,6 +146,7 @@ namespace MasterFudge
             //romFile = @"D:\ROMs\SMS\R-Type_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\Alex_Kidd_in_Miracle_World_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\Psycho_Fox_(UE)_[!].sms";
+            //romFile = @"D:\ROMs\SMS\SMS Sound Test 1.1.sms";
 
             LoadCartridge(romFile);
         }
