@@ -8,6 +8,8 @@ using System.Runtime.InteropServices;
 using System.Reflection;
 using System.IO;
 
+using NAudio.Wave;
+
 using MasterFudge.Emulation;
 using MasterFudge.Emulation.Cartridges;
 using MasterFudge.Emulation.Graphics;
@@ -19,6 +21,7 @@ namespace MasterFudge
         MasterSystem emulator;
         TaskWrapper taskWrapper;
         Bitmap screenBitmap;
+        WaveOut waveOut;
 
         Version programVersion;
         bool logEnabled;
@@ -28,13 +31,18 @@ namespace MasterFudge
         {
             InitializeComponent();
 
-            /* Create task wrapper & SMS instance */
+            /* Create emulator instance & task wrapper */
             emulator = new MasterSystem();
             emulator.OnRenderScreen += Emulator_OnRenderScreen;
             emulator.SetRegion(true, true);
             taskWrapper = new TaskWrapper();
             taskWrapper.Start(emulator);
+
+            /* Create output instances */
             screenBitmap = new Bitmap(VDP.NumPixelsPerLine, VDP.NumVisibleLinesHigh, PixelFormat.Format32bppArgb);
+            waveOut = new WaveOut();
+            waveOut.Init(emulator.GetPSGWaveProvider());
+            waveOut.Play();
 
             /* Misc variables */
             programVersion = new Version(Application.ProductVersion);
@@ -130,14 +138,14 @@ namespace MasterFudge
             if (Environment.MachineName != "NANAMI-X") return;
 
             string romFile = @"D:\ROMs\SMS\Hang-On_(UE)_[!].sms";
-            //romFile = @"D:\ROMs\SMS\Sonic_the_Hedgehog_(UE)_[!].sms";
+            romFile = @"D:\ROMs\SMS\Sonic_the_Hedgehog_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\Y's_-_The_Vanished_Omen_(UE)_[!].sms";
-            romFile = @"D:\ROMs\SMS\VDPTEST.sms";
+            //romFile = @"D:\ROMs\SMS\VDPTEST.sms";
             //romFile = @"D:\ROMs\SMS\[BIOS] Sega Master System (USA, Europe) (v1.3).sms";
             //romFile = @"D:\ROMs\SMS\Teddy_Boy_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\R-Type_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\Alex_Kidd_in_Miracle_World_(UE)_[!].sms";
-            romFile = @"D:\ROMs\SMS\Psycho_Fox_(UE)_[!].sms";
+            //romFile = @"D:\ROMs\SMS\Psycho_Fox_(UE)_[!].sms";
 
             LoadCartridge(romFile);
         }

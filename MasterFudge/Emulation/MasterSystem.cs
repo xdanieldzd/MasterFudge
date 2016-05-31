@@ -10,6 +10,7 @@ using MasterFudge.Emulation.Memory;
 using MasterFudge.Emulation.CPU;
 using MasterFudge.Emulation.Cartridges;
 using MasterFudge.Emulation.Graphics;
+using MasterFudge.Emulation.Sound;
 
 namespace MasterFudge.Emulation
 {
@@ -37,6 +38,7 @@ namespace MasterFudge.Emulation
         Z80 cpu;
         WRAM wram;
         VDP vdp;
+        PSG psg;
         BaseCartridge cartridge;
 
         byte portMemoryControl, portIoControl, portIoAB, portIoBMisc;
@@ -66,6 +68,7 @@ namespace MasterFudge.Emulation
             cpu = new Z80(memoryMapper, ReadIOPort, WriteIOPort);
             wram = new WRAM();
             vdp = new VDP();
+            psg = new PSG();
 
             memoryMapper.AddMemoryArea(wram.GetMemoryAreaDescriptor());
 
@@ -120,6 +123,11 @@ namespace MasterFudge.Emulation
         public RomHeader GetCartridgeHeader()
         {
             return cartridge.Header;
+        }
+
+        public WaveProvider GetPSGWaveProvider()
+        {
+            return psg.WaveProvider;
         }
 
         // TODO: IO port control (the active high/low stuff)
@@ -183,7 +191,7 @@ namespace MasterFudge.Emulation
                                 OnRenderScreen?.Invoke(this, new RenderEventArgs(vdp.OutputFramebuffer));
                         }
 
-                        // TODO: sound stuff here, too!
+                        psg.Execute((int)currentCycles);
 
                         totalCycles += (int)currentCycles;
                     }
@@ -280,6 +288,7 @@ namespace MasterFudge.Emulation
 
                 case 0x40:
                     // PSG
+                    psg.WriteData(value);
                     break;
 
                 case 0x80:
