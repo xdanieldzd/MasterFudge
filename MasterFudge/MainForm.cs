@@ -9,6 +9,7 @@ using System.Reflection;
 using System.IO;
 
 using NAudio.Wave;
+using NAudio.Utils;
 
 using MasterFudge.Emulation;
 using MasterFudge.Emulation.Cartridges;
@@ -27,6 +28,14 @@ namespace MasterFudge
         bool logEnabled;
         TextWriter logWriter;
 
+        const float defaultVolume = 0.5f;
+
+        public bool soundEnabled
+        {
+            get { return (waveOut?.Volume == defaultVolume); }
+            set { waveOut.Volume = (value ? defaultVolume : 0.0f); }
+        }
+
         public MainForm()
         {
             InitializeComponent();
@@ -43,6 +52,7 @@ namespace MasterFudge
             waveOut = new WaveOut();
             waveOut.Init(emulator.GetPSGWaveProvider());
             waveOut.Play();
+            waveOut.Volume = defaultVolume;
 
             /* Misc variables */
             programVersion = new Version(Application.ProductVersion);
@@ -53,6 +63,7 @@ namespace MasterFudge
             exportToolStripMenuItem.DataBindings.Add("Checked", emulator, "IsExportSystem");
             japaneseToolStripMenuItem.DataBindings.Add("Checked", emulator, "IsJapaneseSystem");
             limitFPSToolStripMenuItem.DataBindings.Add("Checked", emulator, "LimitFPS");
+            enableSoundToolStripMenuItem.DataBindings.Add("Checked", this, "soundEnabled");
 
             SetFormTitle();
             tsslStatus.Text = "Ready";
@@ -326,6 +337,11 @@ namespace MasterFudge
         private void limitFPSToolStripMenuItem_Click(object sender, EventArgs e)
         {
             emulator.LimitFPS = (sender as ToolStripMenuItem).Checked;
+        }
+
+        private void enableSoundToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            soundEnabled = (sender as ToolStripMenuItem).Checked;
         }
     }
 }

@@ -53,6 +53,8 @@
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.statusStrip = new System.Windows.Forms.StatusStrip();
             this.tsslStatus = new System.Windows.Forms.ToolStripStatusLabel();
+            this.enableSoundToolStripMenuItem = new Controls.BindableToolStripMenuItem();
+            this.toolStripMenuItem4 = new System.Windows.Forms.ToolStripSeparator();
             ((System.ComponentModel.ISupportInitialize)(this.pbRenderOutput)).BeginInit();
             this.menuStrip.SuspendLayout();
             this.statusStrip.SuspendLayout();
@@ -136,6 +138,8 @@
             this.optionsToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.limitFPSToolStripMenuItem,
             this.toolStripMenuItem2,
+            this.enableSoundToolStripMenuItem,
+            this.toolStripMenuItem4,
             this.tVSystemToolStripMenuItem,
             this.regionToolStripMenuItem});
             this.optionsToolStripMenuItem.Name = "optionsToolStripMenuItem";
@@ -193,7 +197,7 @@
             // 
             this.japaneseToolStripMenuItem.CheckOnClick = true;
             this.japaneseToolStripMenuItem.Name = "japaneseToolStripMenuItem";
-            this.japaneseToolStripMenuItem.Size = new System.Drawing.Size(121, 22);
+            this.japaneseToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.japaneseToolStripMenuItem.Text = "&Japanese";
             this.japaneseToolStripMenuItem.Click += new System.EventHandler(this.japaneseToolStripMenuItem_Click);
             // 
@@ -201,7 +205,7 @@
             // 
             this.exportToolStripMenuItem.CheckOnClick = true;
             this.exportToolStripMenuItem.Name = "exportToolStripMenuItem";
-            this.exportToolStripMenuItem.Size = new System.Drawing.Size(121, 22);
+            this.exportToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.exportToolStripMenuItem.Text = "&Export";
             this.exportToolStripMenuItem.Click += new System.EventHandler(this.exportToolStripMenuItem_Click);
             // 
@@ -262,6 +266,19 @@
             this.tsslStatus.Spring = true;
             this.tsslStatus.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
+            // enableSoundToolStripMenuItem
+            // 
+            this.enableSoundToolStripMenuItem.CheckOnClick = true;
+            this.enableSoundToolStripMenuItem.Name = "enableSoundToolStripMenuItem";
+            this.enableSoundToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.enableSoundToolStripMenuItem.Text = "Enable &Sound";
+            this.enableSoundToolStripMenuItem.Click += new System.EventHandler(this.enableSoundToolStripMenuItem_Click);
+            // 
+            // toolStripMenuItem4
+            // 
+            this.toolStripMenuItem4.Name = "toolStripMenuItem4";
+            this.toolStripMenuItem4.Size = new System.Drawing.Size(149, 6);
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -312,6 +329,8 @@
         private Controls.ToolStripRadioButtonMenuItem exportToolStripMenuItem;
         private System.Windows.Forms.ToolStripSeparator toolStripMenuItem2;
         private System.Windows.Forms.ToolStripMenuItem regionToolStripMenuItem;
+        private Controls.BindableToolStripMenuItem enableSoundToolStripMenuItem;
+        private System.Windows.Forms.ToolStripSeparator toolStripMenuItem4;
     }
 }
 
