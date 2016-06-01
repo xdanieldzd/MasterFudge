@@ -82,7 +82,7 @@ namespace MasterFudge.Emulation.Sound
 
             cyclesInLine += currentCycles;
 
-            if (cyclesInLine >= MasterSystem.GetMasterClockCyclesPerScanline(isNtsc) / (2 * 16))
+            if (cyclesInLine > MasterSystem.GetMasterClockCyclesPerScanline(isNtsc) / (4 * 16))
             {
                 cyclesInLine = 0;
 
@@ -97,12 +97,12 @@ namespace MasterFudge.Emulation.Sound
 
                     /* Counter underflowed, reload and flip output bit */
                     if ((channelCounters[ch] & 0x03FF) == 0)
-                        channelCounters[ch] = (short)(((channelCounters[ch] & 0x4000) ^ 0x4000) | toneRegisters[ch] & 0x3FF);
+                        channelCounters[ch] = (short)(((channelCounters[ch] & 0x4000) ^ 0x4000) | ((toneRegisters[ch] & 0x3FF) / 2));
 
                     if (ch < 3)
                     {
                         /* Tone channel */
-                        channelOutputs[ch] = (short)(volumeTable[volumeRegisters[ch]] * ((channelCounters[ch] & 0x4000) == 0x4000 ? 1 : -1));
+                        channelOutputs[ch] = (short)(volumeTable[volumeRegisters[ch]] * (((channelCounters[ch] & 0x4000) == 0x4000) ? 1 : -1));
                     }
                     else
                     {
@@ -156,7 +156,7 @@ namespace MasterFudge.Emulation.Sound
                 if (latchedType == 0)
                 {
                     /* Data is tone/noise */
-                    toneRegisters[latchedChannel] = data;
+                    toneRegisters[latchedChannel] = (ushort)((toneRegisters[latchedChannel] & 0x03F0) | data);
                 }
                 else
                 {
@@ -172,15 +172,22 @@ namespace MasterFudge.Emulation.Sound
                 /* Write to register */
                 if (latchedType == 0)
                 {
-                    /* Data is tone/noise; write to high bits of register */
-                    toneRegisters[latchedChannel] = (ushort)((toneRegisters[latchedChannel] & 0x0F) | (data << 4));
+                    /* Data is tone/noise */
+                    if (latchedChannel == 3)
+                    {
+                        /* Target is channel 3 noise, mask off excess bits and write to low bits of register */
+                        toneRegisters[latchedChannel] = (ushort)(data & 0x07);
+                    }
+                    else
+                    {
+                        /* Target is not channel 3 noise, write to high bits of register */
+                        toneRegisters[latchedChannel] = (ushort)((toneRegisters[latchedChannel] & 0x000F) | (data << 4));
+                    }
                 }
                 else
                 {
-                    /* Data is volume; mask off excess bits, then write to low bits of register */
-                    if (latchedChannel == 3) data &= 0x07;
-                    else data &= 0x0F;
-                    volumeRegisters[latchedChannel] = data;
+                    /* Data is volume; mask off excess bits and write to low bits of register */
+                    volumeRegisters[latchedChannel] = (ushort)(data & 0x0F);
                 }
             }
         }

@@ -38,14 +38,14 @@
             this.toolStripMenuItem3 = new System.Windows.Forms.ToolStripSeparator();
             this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.optionsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.limitFPSToolStripMenuItem = new Controls.BindableToolStripMenuItem();
+            this.limitFPSToolStripMenuItem = new MasterFudge.Controls.BindableToolStripMenuItem();
             this.toolStripMenuItem2 = new System.Windows.Forms.ToolStripSeparator();
             this.tVSystemToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.nTSCToolStripMenuItem = new Controls.ToolStripRadioButtonMenuItem();
-            this.pALToolStripMenuItem = new Controls.ToolStripRadioButtonMenuItem();
+            this.nTSCToolStripMenuItem = new MasterFudge.Controls.ToolStripRadioButtonMenuItem();
+            this.pALToolStripMenuItem = new MasterFudge.Controls.ToolStripRadioButtonMenuItem();
             this.regionToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.japaneseToolStripMenuItem = new Controls.ToolStripRadioButtonMenuItem();
-            this.exportToolStripMenuItem = new Controls.ToolStripRadioButtonMenuItem();
+            this.japaneseToolStripMenuItem = new MasterFudge.Controls.ToolStripRadioButtonMenuItem();
+            this.exportToolStripMenuItem = new MasterFudge.Controls.ToolStripRadioButtonMenuItem();
             this.debugToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.enableLogToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.logOpcodesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -148,6 +148,7 @@
             this.limitFPSToolStripMenuItem.Name = "limitFPSToolStripMenuItem";
             this.limitFPSToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.limitFPSToolStripMenuItem.Text = "&Limit FPS";
+            this.limitFPSToolStripMenuItem.Click += new System.EventHandler(this.limitFPSToolStripMenuItem_Click);
             // 
             // toolStripMenuItem2
             // 
@@ -167,7 +168,7 @@
             // 
             this.nTSCToolStripMenuItem.CheckOnClick = true;
             this.nTSCToolStripMenuItem.Name = "nTSCToolStripMenuItem";
-            this.nTSCToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.nTSCToolStripMenuItem.Size = new System.Drawing.Size(104, 22);
             this.nTSCToolStripMenuItem.Text = "&NTSC";
             this.nTSCToolStripMenuItem.Click += new System.EventHandler(this.nTSCToolStripMenuItem_Click);
             // 
@@ -175,7 +176,7 @@
             // 
             this.pALToolStripMenuItem.CheckOnClick = true;
             this.pALToolStripMenuItem.Name = "pALToolStripMenuItem";
-            this.pALToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.pALToolStripMenuItem.Size = new System.Drawing.Size(104, 22);
             this.pALToolStripMenuItem.Text = "&PAL";
             this.pALToolStripMenuItem.Click += new System.EventHandler(this.pALToolStripMenuItem_Click);
             // 
@@ -192,7 +193,7 @@
             // 
             this.japaneseToolStripMenuItem.CheckOnClick = true;
             this.japaneseToolStripMenuItem.Name = "japaneseToolStripMenuItem";
-            this.japaneseToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.japaneseToolStripMenuItem.Size = new System.Drawing.Size(121, 22);
             this.japaneseToolStripMenuItem.Text = "&Japanese";
             this.japaneseToolStripMenuItem.Click += new System.EventHandler(this.japaneseToolStripMenuItem_Click);
             // 
@@ -200,7 +201,7 @@
             // 
             this.exportToolStripMenuItem.CheckOnClick = true;
             this.exportToolStripMenuItem.Name = "exportToolStripMenuItem";
-            this.exportToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.exportToolStripMenuItem.Size = new System.Drawing.Size(121, 22);
             this.exportToolStripMenuItem.Text = "&Export";
             this.exportToolStripMenuItem.Click += new System.EventHandler(this.exportToolStripMenuItem_Click);
             // 

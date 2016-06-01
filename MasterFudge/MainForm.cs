@@ -322,5 +322,10 @@ namespace MasterFudge
         {
             emulator.SetRegion(emulator.IsNtscSystem, (sender as ToolStripMenuItem).Checked);
         }
+
+        private void limitFPSToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            emulator.LimitFPS = (sender as ToolStripMenuItem).Checked;
+        }
     }
 }
