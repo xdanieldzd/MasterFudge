@@ -43,7 +43,8 @@ namespace MasterFudge
             /* Create emulator instance & task wrapper */
             emulator = new MasterSystem();
             emulator.OnRenderScreen += Emulator_OnRenderScreen;
-            emulator.SetRegion(true, true);
+            emulator.SetRegion(Properties.Settings.Default.IsNtscSystem, Properties.Settings.Default.IsExportSystem);
+            emulator.LimitFPS = Properties.Settings.Default.LimitFPS;
             taskWrapper = new TaskWrapper();
             taskWrapper.Start(emulator);
 
@@ -52,7 +53,7 @@ namespace MasterFudge
             waveOut = new WaveOut();
             waveOut.Init(emulator.GetPSGWaveProvider());
             waveOut.Play();
-            waveOut.Volume = defaultVolume;
+            soundEnabled = Properties.Settings.Default.SoundEnabled;
 
             /* Misc variables */
             programVersion = new Version(Application.ProductVersion);
@@ -112,6 +113,8 @@ namespace MasterFudge
             emulator?.PowerOff();
             taskWrapper.Stop();
 
+            Properties.Settings.Default.Save();
+
             logWriter?.Close();
 
             // TODO: make menu options for dumps, I guess
@@ -148,10 +151,12 @@ namespace MasterFudge
         {
             if (Environment.MachineName != "NANAMI-X") return;
 
+            soundEnabled = false;
+
             string romFile = @"D:\ROMs\SMS\Hang-On_(UE)_[!].sms";
             romFile = @"D:\ROMs\SMS\Sonic_the_Hedgehog_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\Y's_-_The_Vanished_Omen_(UE)_[!].sms";
-            //romFile = @"D:\ROMs\SMS\VDPTEST.sms";
+            romFile = @"D:\ROMs\SMS\VDPTEST.sms";
             //romFile = @"D:\ROMs\SMS\[BIOS] Sega Master System (USA, Europe) (v1.3).sms";
             //romFile = @"D:\ROMs\SMS\Teddy_Boy_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\R-Type_(UE)_[!].sms";
@@ -317,31 +322,39 @@ namespace MasterFudge
         private void nTSCToolStripMenuItem_Click(object sender, EventArgs e)
         {
             emulator.SetRegion((sender as ToolStripMenuItem).Checked, emulator.IsExportSystem);
+
+            Properties.Settings.Default.IsNtscSystem = (sender as ToolStripMenuItem).Checked;
         }
 
         private void pALToolStripMenuItem_Click(object sender, EventArgs e)
         {
             emulator.SetRegion(!(sender as ToolStripMenuItem).Checked, emulator.IsExportSystem);
+
+            Properties.Settings.Default.IsNtscSystem = !(sender as ToolStripMenuItem).Checked;
         }
 
         private void japaneseToolStripMenuItem_Click(object sender, EventArgs e)
         {
             emulator.SetRegion(emulator.IsNtscSystem, !(sender as ToolStripMenuItem).Checked);
+
+            Properties.Settings.Default.IsExportSystem = !(sender as ToolStripMenuItem).Checked;
         }
 
         private void exportToolStripMenuItem_Click(object sender, EventArgs e)
         {
             emulator.SetRegion(emulator.IsNtscSystem, (sender as ToolStripMenuItem).Checked);
+
+            Properties.Settings.Default.IsExportSystem = (sender as ToolStripMenuItem).Checked;
         }
 
         private void limitFPSToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            emulator.LimitFPS = (sender as ToolStripMenuItem).Checked;
+            Properties.Settings.Default.LimitFPS = emulator.LimitFPS = (sender as ToolStripMenuItem).Checked;
         }
 
         private void enableSoundToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            soundEnabled = (sender as ToolStripMenuItem).Checked;
+            Properties.Settings.Default.SoundEnabled = soundEnabled = (sender as ToolStripMenuItem).Checked;
         }
     }
 }

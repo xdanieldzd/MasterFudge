@@ -38,14 +38,10 @@
             this.toolStripMenuItem3 = new System.Windows.Forms.ToolStripSeparator();
             this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.optionsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.limitFPSToolStripMenuItem = new MasterFudge.Controls.BindableToolStripMenuItem();
             this.toolStripMenuItem2 = new System.Windows.Forms.ToolStripSeparator();
+            this.toolStripMenuItem4 = new System.Windows.Forms.ToolStripSeparator();
             this.tVSystemToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.nTSCToolStripMenuItem = new MasterFudge.Controls.ToolStripRadioButtonMenuItem();
-            this.pALToolStripMenuItem = new MasterFudge.Controls.ToolStripRadioButtonMenuItem();
             this.regionToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.japaneseToolStripMenuItem = new MasterFudge.Controls.ToolStripRadioButtonMenuItem();
-            this.exportToolStripMenuItem = new MasterFudge.Controls.ToolStripRadioButtonMenuItem();
             this.debugToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.enableLogToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.logOpcodesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -53,8 +49,12 @@
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.statusStrip = new System.Windows.Forms.StatusStrip();
             this.tsslStatus = new System.Windows.Forms.ToolStripStatusLabel();
-            this.enableSoundToolStripMenuItem = new Controls.BindableToolStripMenuItem();
-            this.toolStripMenuItem4 = new System.Windows.Forms.ToolStripSeparator();
+            this.limitFPSToolStripMenuItem = new MasterFudge.Controls.BindableToolStripMenuItem();
+            this.enableSoundToolStripMenuItem = new MasterFudge.Controls.BindableToolStripMenuItem();
+            this.nTSCToolStripMenuItem = new MasterFudge.Controls.ToolStripRadioButtonMenuItem();
+            this.pALToolStripMenuItem = new MasterFudge.Controls.ToolStripRadioButtonMenuItem();
+            this.japaneseToolStripMenuItem = new MasterFudge.Controls.ToolStripRadioButtonMenuItem();
+            this.exportToolStripMenuItem = new MasterFudge.Controls.ToolStripRadioButtonMenuItem();
             ((System.ComponentModel.ISupportInitialize)(this.pbRenderOutput)).BeginInit();
             this.menuStrip.SuspendLayout();
             this.statusStrip.SuspendLayout();
@@ -146,18 +146,15 @@
             this.optionsToolStripMenuItem.Size = new System.Drawing.Size(61, 20);
             this.optionsToolStripMenuItem.Text = "&Options";
             // 
-            // limitFPSToolStripMenuItem
-            // 
-            this.limitFPSToolStripMenuItem.CheckOnClick = true;
-            this.limitFPSToolStripMenuItem.Name = "limitFPSToolStripMenuItem";
-            this.limitFPSToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
-            this.limitFPSToolStripMenuItem.Text = "&Limit FPS";
-            this.limitFPSToolStripMenuItem.Click += new System.EventHandler(this.limitFPSToolStripMenuItem_Click);
-            // 
             // toolStripMenuItem2
             // 
             this.toolStripMenuItem2.Name = "toolStripMenuItem2";
-            this.toolStripMenuItem2.Size = new System.Drawing.Size(149, 6);
+            this.toolStripMenuItem2.Size = new System.Drawing.Size(143, 6);
+            // 
+            // toolStripMenuItem4
+            // 
+            this.toolStripMenuItem4.Name = "toolStripMenuItem4";
+            this.toolStripMenuItem4.Size = new System.Drawing.Size(143, 6);
             // 
             // tVSystemToolStripMenuItem
             // 
@@ -165,24 +162,8 @@
             this.nTSCToolStripMenuItem,
             this.pALToolStripMenuItem});
             this.tVSystemToolStripMenuItem.Name = "tVSystemToolStripMenuItem";
-            this.tVSystemToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.tVSystemToolStripMenuItem.Size = new System.Drawing.Size(146, 22);
             this.tVSystemToolStripMenuItem.Text = "&TV System";
-            // 
-            // nTSCToolStripMenuItem
-            // 
-            this.nTSCToolStripMenuItem.CheckOnClick = true;
-            this.nTSCToolStripMenuItem.Name = "nTSCToolStripMenuItem";
-            this.nTSCToolStripMenuItem.Size = new System.Drawing.Size(104, 22);
-            this.nTSCToolStripMenuItem.Text = "&NTSC";
-            this.nTSCToolStripMenuItem.Click += new System.EventHandler(this.nTSCToolStripMenuItem_Click);
-            // 
-            // pALToolStripMenuItem
-            // 
-            this.pALToolStripMenuItem.CheckOnClick = true;
-            this.pALToolStripMenuItem.Name = "pALToolStripMenuItem";
-            this.pALToolStripMenuItem.Size = new System.Drawing.Size(104, 22);
-            this.pALToolStripMenuItem.Text = "&PAL";
-            this.pALToolStripMenuItem.Click += new System.EventHandler(this.pALToolStripMenuItem_Click);
             // 
             // regionToolStripMenuItem
             // 
@@ -190,24 +171,8 @@
             this.japaneseToolStripMenuItem,
             this.exportToolStripMenuItem});
             this.regionToolStripMenuItem.Name = "regionToolStripMenuItem";
-            this.regionToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.regionToolStripMenuItem.Size = new System.Drawing.Size(146, 22);
             this.regionToolStripMenuItem.Text = "&Region";
-            // 
-            // japaneseToolStripMenuItem
-            // 
-            this.japaneseToolStripMenuItem.CheckOnClick = true;
-            this.japaneseToolStripMenuItem.Name = "japaneseToolStripMenuItem";
-            this.japaneseToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
-            this.japaneseToolStripMenuItem.Text = "&Japanese";
-            this.japaneseToolStripMenuItem.Click += new System.EventHandler(this.japaneseToolStripMenuItem_Click);
-            // 
-            // exportToolStripMenuItem
-            // 
-            this.exportToolStripMenuItem.CheckOnClick = true;
-            this.exportToolStripMenuItem.Name = "exportToolStripMenuItem";
-            this.exportToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
-            this.exportToolStripMenuItem.Text = "&Export";
-            this.exportToolStripMenuItem.Click += new System.EventHandler(this.exportToolStripMenuItem_Click);
             // 
             // debugToolStripMenuItem
             // 
@@ -266,18 +231,53 @@
             this.tsslStatus.Spring = true;
             this.tsslStatus.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
+            // limitFPSToolStripMenuItem
+            // 
+            this.limitFPSToolStripMenuItem.CheckOnClick = true;
+            this.limitFPSToolStripMenuItem.Name = "limitFPSToolStripMenuItem";
+            this.limitFPSToolStripMenuItem.Size = new System.Drawing.Size(146, 22);
+            this.limitFPSToolStripMenuItem.Text = "&Limit FPS";
+            this.limitFPSToolStripMenuItem.Click += new System.EventHandler(this.limitFPSToolStripMenuItem_Click);
+            // 
             // enableSoundToolStripMenuItem
             // 
             this.enableSoundToolStripMenuItem.CheckOnClick = true;
             this.enableSoundToolStripMenuItem.Name = "enableSoundToolStripMenuItem";
-            this.enableSoundToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.enableSoundToolStripMenuItem.Size = new System.Drawing.Size(146, 22);
             this.enableSoundToolStripMenuItem.Text = "Enable &Sound";
             this.enableSoundToolStripMenuItem.Click += new System.EventHandler(this.enableSoundToolStripMenuItem_Click);
             // 
-            // toolStripMenuItem4
+            // nTSCToolStripMenuItem
             // 
-            this.toolStripMenuItem4.Name = "toolStripMenuItem4";
-            this.toolStripMenuItem4.Size = new System.Drawing.Size(149, 6);
+            this.nTSCToolStripMenuItem.CheckOnClick = true;
+            this.nTSCToolStripMenuItem.Name = "nTSCToolStripMenuItem";
+            this.nTSCToolStripMenuItem.Size = new System.Drawing.Size(104, 22);
+            this.nTSCToolStripMenuItem.Text = "&NTSC";
+            this.nTSCToolStripMenuItem.Click += new System.EventHandler(this.nTSCToolStripMenuItem_Click);
+            // 
+            // pALToolStripMenuItem
+            // 
+            this.pALToolStripMenuItem.CheckOnClick = true;
+            this.pALToolStripMenuItem.Name = "pALToolStripMenuItem";
+            this.pALToolStripMenuItem.Size = new System.Drawing.Size(104, 22);
+            this.pALToolStripMenuItem.Text = "&PAL";
+            this.pALToolStripMenuItem.Click += new System.EventHandler(this.pALToolStripMenuItem_Click);
+            // 
+            // japaneseToolStripMenuItem
+            // 
+            this.japaneseToolStripMenuItem.CheckOnClick = true;
+            this.japaneseToolStripMenuItem.Name = "japaneseToolStripMenuItem";
+            this.japaneseToolStripMenuItem.Size = new System.Drawing.Size(121, 22);
+            this.japaneseToolStripMenuItem.Text = "&Japanese";
+            this.japaneseToolStripMenuItem.Click += new System.EventHandler(this.japaneseToolStripMenuItem_Click);
+            // 
+            // exportToolStripMenuItem
+            // 
+            this.exportToolStripMenuItem.CheckOnClick = true;
+            this.exportToolStripMenuItem.Name = "exportToolStripMenuItem";
+            this.exportToolStripMenuItem.Size = new System.Drawing.Size(121, 22);
+            this.exportToolStripMenuItem.Text = "&Export";
+            this.exportToolStripMenuItem.Click += new System.EventHandler(this.exportToolStripMenuItem_Click);
             // 
             // MainForm
             // 

@@ -181,22 +181,30 @@ namespace MasterFudge.Emulation
                     long startTime = stopWatch.ElapsedMilliseconds;
                     long interval = (long)TimeSpan.FromSeconds(1.0 / GetFrameRate(isNtscSystem)).TotalMilliseconds;
 
-                    int totalCycles = 0;
+                    int totalCycles = 0, cycleDiff = 0;
                     while (totalCycles < Z80.GetCPUClockCyclesPerFrame(isNtscSystem))
                     {
-                        double currentCycles = cpu.Execute();
-
-                        HandleInterrupts();
-
-                        if (vdp.Execute((int)(currentCycles * (Z80.ClockDivider / VDP.ClockDivider))))
+                        int cyclesInLine = cycleDiff;
+                        while (cyclesInLine < Z80.GetCPUClockCyclesPerScanline(isNtscSystem))
                         {
-                            if (!isStopped)
-                                OnRenderScreen?.Invoke(this, new RenderEventArgs(vdp.OutputFramebuffer));
+                            int currentCycles = cpu.Execute();
+
+                            HandleInterrupts();
+
+                            if (vdp.Execute(currentCycles))
+                            {
+                                if (!isStopped)
+                                    OnRenderScreen?.Invoke(this, new RenderEventArgs(vdp.OutputFramebuffer));
+                            }
+
+                            // TODO: verify
+                            psg.Execute((int)(currentCycles * (Z80.ClockDivider / VDP.ClockDivider)));
+
+                            cyclesInLine += currentCycles;
                         }
 
-                        psg.Execute((int)(currentCycles * (Z80.ClockDivider / VDP.ClockDivider)));
-
-                        totalCycles += (int)currentCycles;
+                        cycleDiff = (cyclesInLine - Z80.GetCPUClockCyclesPerScanline(isNtscSystem));
+                        totalCycles += cyclesInLine;
                     }
 
                     while (LimitFPS && stopWatch.ElapsedMilliseconds - startTime < interval)
@@ -218,7 +226,7 @@ namespace MasterFudge.Emulation
         {
             // TODO: pause button NMI
 
-            if (vdp.InterruptPending && cpu.IFF1 && cpu.InterruptMode == 0x01)
+            if (vdp.IrqLineAsserted && cpu.IFF1 && cpu.InterruptMode == 0x01)
                 cpu.ServiceInterrupt(0x0038);
         }
 

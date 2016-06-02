@@ -88,6 +88,7 @@ namespace MasterFudge.Emulation.CPU
             af = bc = de = hl = new Register();
             afShadow = bcShadow = deShadow = hlShadow = new Register();
             ix = iy = new Register();
+
             i = r = 0;
             sp = pc = 0;
 
@@ -106,9 +107,16 @@ namespace MasterFudge.Emulation.CPU
 
         public void Reset()
         {
+            af.Word = bc.Word = de.Word = hl.Word = 0x0000;
+            afShadow.Word = bcShadow.Word = deShadow.Word = hlShadow.Word = 0x0000;
+            ix.Word = iy.Word = 0x0000;
+
+            i = 0;
             r = (byte)(random.Next() & 0x7F);
 
+            sp = 0xDFF0;
             pc = 0;
+
             IFF1 = iff2 = eiDelay = halted = false;
             InterruptMode = 0;
         }
@@ -126,15 +134,12 @@ namespace MasterFudge.Emulation.CPU
         {
             currentCycles = 0;
 
-            //if (pc == 0xA4C) DebugLogOpcodes = true;
-
             if (!halted)
             {
                 if (DebugLogOpcodes)
                     Program.Log.WriteEvent(string.Format("{0} | {1} | {2}", DisassembleOpcode(pc).PadRight(48), PrintRegisters(), PrintFlags()));
 
-                for (int i = 0; i < random.Next(10); i++)
-                    r = (byte)((r + random.Next()) & 0x7F);
+                r = (byte)((r + random.Next()) & 0x7F);
 
                 byte op = memoryMapper.Read8(pc++);
                 switch (op)
