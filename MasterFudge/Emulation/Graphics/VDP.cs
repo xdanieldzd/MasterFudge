@@ -380,7 +380,16 @@ namespace MasterFudge.Emulation.Graphics
 
         private void RenderSpritesMode4(int line)
         {
-            int spriteSize = (isLargeSprites ? 16 : 8);
+            /* Determine sprite size */
+            int spriteWidth = 8;
+            int spriteHeight = (isLargeSprites ? 16 : 8);
+
+            /* Check and adjust for zoomed sprites */
+            if (isZoomedSprites)
+            {
+                spriteWidth *= 2;
+                spriteHeight *= 2;
+            }
 
             int numSprites = 0;
             for (int sprite = 0; sprite < 64; sprite++)
@@ -396,7 +405,7 @@ namespace MasterFudge.Emulation.Graphics
                     yCoordinate -= 256;
 
                 /* Ignore this sprite if on incorrect lines */
-                if (line < yCoordinate || line >= (yCoordinate + spriteSize)) continue;
+                if (line < yCoordinate || line >= (yCoordinate + spriteHeight)) continue;
 
                 /* Check for sprite overflow */
                 numSprites++;
@@ -411,20 +420,21 @@ namespace MasterFudge.Emulation.Graphics
                 {
                     int xCoordinate = vram[spriteAttribTableBaseAddress + 0x80 + (sprite * 2)];
                     int tileIndex = vram[spriteAttribTableBaseAddress + 0x80 + (sprite * 2) + 1];
+                    int zoomShift = (isZoomedSprites ? 1 : 0);
 
                     /* Adjust according to registers */
                     if (isSpriteShiftLeft8) xCoordinate -= 8;
                     if (isLargeSprites) tileIndex &= ~0x01;
 
-                    ushort tileAddress = (ushort)(spritePatternGenBaseAddress + (tileIndex * 0x20) + (((line - yCoordinate) % spriteSize) * 4));
+                    ushort tileAddress = (ushort)(spritePatternGenBaseAddress + (tileIndex * 0x20) + ((((line - yCoordinate) >> zoomShift) % spriteHeight) * 4));
 
                     /* Draw sprite line */
-                    for (int pixel = 0; pixel < 8; pixel++)
+                    for (int pixel = 0; pixel < spriteWidth; pixel++)
                     {
-                        int c = (((vram[tileAddress + 0] >> (7 - pixel)) & 0x1) << 0);
-                        c |= (((vram[tileAddress + 1] >> (7 - pixel)) & 0x1) << 1);
-                        c |= (((vram[tileAddress + 2] >> (7 - pixel)) & 0x1) << 2);
-                        c |= (((vram[tileAddress + 3] >> (7 - pixel)) & 0x1) << 3);
+                        int c = (((vram[tileAddress + 0] >> (7 - (pixel >> zoomShift))) & 0x1) << 0);
+                        c |= (((vram[tileAddress + 1] >> (7 - (pixel >> zoomShift))) & 0x1) << 1);
+                        c |= (((vram[tileAddress + 2] >> (7 - (pixel >> zoomShift))) & 0x1) << 2);
+                        c |= (((vram[tileAddress + 3] >> (7 - (pixel >> zoomShift))) & 0x1) << 3);
 
                         if (c == 0 || xCoordinate + pixel >= NumPixelsPerLine) continue;
 
