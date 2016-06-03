@@ -313,42 +313,36 @@ namespace MasterFudge
 
         private void MainForm_KeyDown(object sender, KeyEventArgs e)
         {
-            byte keyBit = 0, keyBitGG = 0;
+            Buttons button = Buttons.None;
             switch (e.KeyCode)
             {
-                case Keys.Up: keyBit = (1 << 0); break;         //Up
-                case Keys.Down: keyBit = (1 << 1); break;       //Down
-                case Keys.Left: keyBit = (1 << 2); break;       //Left
-                case Keys.Right: keyBit = (1 << 3); break;      //Right
-                case Keys.A: keyBit = (1 << 4); break;          //Button1
-                case Keys.S: keyBit = (1 << 5); break;          //Button2
-                case Keys.Enter: keyBitGG = (1 << 7); break;    //GG Start
+                case Keys.Up: button = Buttons.Up; break;
+                case Keys.Down: button = Buttons.Down; break;
+                case Keys.Left: button = Buttons.Left; break;
+                case Keys.Right: button = Buttons.Right; break;
+                case Keys.A: button = Buttons.Button1; break;
+                case Keys.S: button = Buttons.Button2; break;
+                case Keys.Enter: button = Buttons.StartPause; break;
+                case Keys.Back: button = Buttons.Reset; break;
             }
-
-            if (keyBit != 0)
-                emulator?.SetJoypadPressed(keyBit);
-
-            emulator?.SetGameGearStartPressed(keyBitGG);
+            emulator?.SetButtonData(button, 0, true);
         }
 
         private void MainForm_KeyUp(object sender, KeyEventArgs e)
         {
-            byte keyBit = 0, keyBitGG = 0;
+            Buttons button = Buttons.None;
             switch (e.KeyCode)
             {
-                case Keys.Up: keyBit = (1 << 0); break;         //Up
-                case Keys.Down: keyBit = (1 << 1); break;       //Down
-                case Keys.Left: keyBit = (1 << 2); break;       //Left
-                case Keys.Right: keyBit = (1 << 3); break;      //Right
-                case Keys.A: keyBit = (1 << 4); break;          //Button1
-                case Keys.S: keyBit = (1 << 5); break;          //Button2
-                case Keys.Enter: keyBitGG = (1 << 7); break;    //GG Start
+                case Keys.Up: button = Buttons.Up; break;
+                case Keys.Down: button = Buttons.Down; break;
+                case Keys.Left: button = Buttons.Left; break;
+                case Keys.Right: button = Buttons.Right; break;
+                case Keys.A: button = Buttons.Button1; break;
+                case Keys.S: button = Buttons.Button2; break;
+                case Keys.Enter: button = Buttons.StartPause; break;
+                case Keys.Back: button = Buttons.Reset; break;
             }
-
-            if (keyBit != 0)
-                emulator?.SetJoypadReleased(keyBit);
-
-            emulator?.SetGameGearStartReleased(keyBitGG);
+            emulator?.SetButtonData(button, 0, false);
         }
 
         private void nTSCToolStripMenuItem_Click(object sender, EventArgs e)

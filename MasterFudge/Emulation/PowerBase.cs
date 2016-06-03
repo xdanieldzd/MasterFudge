@@ -41,6 +41,49 @@ namespace MasterFudge.Emulation
         ExportPAL
     }
 
+    [Flags]
+    public enum Buttons
+    {
+        None = 0,
+        Up = (1 << 0),
+        Down = (1 << 1),
+        Left = (1 << 2),
+        Right = (1 << 3),
+        Button1 = (1 << 4),
+        Button2 = (1 << 5),
+        StartPause = (1 << 6),  /* Start on GG, Pause on SMS */
+        Reset = (1 << 7)
+    }
+
+    [Flags]
+    enum PortIoABButtons : byte
+    {
+        P1Up = (1 << 0),
+        P1Down = (1 << 1),
+        P1Left = (1 << 2),
+        P1Right = (1 << 3),
+        P1Button1 = (1 << 4),
+        P1Button2 = (1 << 5),
+        P2Up = (1 << 6),
+        P2Down = (1 << 7)
+    }
+
+    [Flags]
+    enum PortIoBMiscButtons : byte
+    {
+        P2Left = (1 << 0),
+        P2Right = (1 << 1),
+        P2Button1 = (1 << 2),
+        P2Button2 = (1 << 3),
+        Reset = (1 << 4)
+    }
+
+    [Flags]
+    enum PortIoCButtons : byte
+    {
+        Start = (1 << 7)
+    }
+
     public partial class PowerBase
     {
         public const double MasterClockPAL = 53203424;
@@ -61,9 +104,10 @@ namespace MasterFudge.Emulation
 
         byte portMemoryControl, portIoControl, portIoAB, portIoBMisc;
         byte lastHCounter;
+        bool pausePressed;
 
         /* Game Gear-only */
-        byte portInputC, portParallelData, portDataDirNMI, portTxBuffer, portRxBuffer, portSerialControl, portStereoControl;
+        byte portIoC, portParallelData, portDataDirNMI, portTxBuffer, portRxBuffer, portSerialControl, portStereoControl;
 
         // TODO: actually make memory accesses depend on these
         public bool isExpansionSlotEnabled { get { return !IsBitSet(portMemoryControl, 7); } }
@@ -168,32 +212,52 @@ namespace MasterFudge.Emulation
             return (psg as IWaveProvider);
         }
 
-        // TODO: IO port control (the active high/low stuff); consolidate SMS/GG functions
-        public void SetJoypadPressed(byte keyBit)
+        // TODO: IO port control (the active high/low stuff)
+        public void SetButtonData(Buttons buttons, int player, bool pressed)
         {
-            // TODO: player 2 buttons
-            portIoAB &= (byte)~keyBit;
-        }
+            byte maskAB = 0, maskBMisc = 0, maskC = 0;
 
-        public void SetJoypadReleased(byte keyBit)
-        {
-            // TODO: player 2 buttons
-            portIoAB |= keyBit;
-        }
-
-        public void SetGameGearStartPressed(byte keyBit)
-        {
-            if (baseUnitType == BaseUnitType.GameGear)
+            if (player == 0)
             {
-                portInputC &= (byte)~keyBit;
+                /* Player 1 */
+                if (buttons.HasFlag(Buttons.Up)) maskAB |= (byte)PortIoABButtons.P1Up;
+                if (buttons.HasFlag(Buttons.Down)) maskAB |= (byte)PortIoABButtons.P1Down;
+                if (buttons.HasFlag(Buttons.Left)) maskAB |= (byte)PortIoABButtons.P1Left;
+                if (buttons.HasFlag(Buttons.Right)) maskAB |= (byte)PortIoABButtons.P1Right;
+                if (buttons.HasFlag(Buttons.Button1)) maskAB |= (byte)PortIoABButtons.P1Button1;
+                if (buttons.HasFlag(Buttons.Button2)) maskAB |= (byte)PortIoABButtons.P1Button2;
             }
-        }
-
-        public void SetGameGearStartReleased(byte keyBit)
-        {
-            if (baseUnitType == BaseUnitType.GameGear)
+            else if (player == 1)
             {
-                portInputC |= keyBit;
+                /* Player 2 */
+                if (buttons.HasFlag(Buttons.Up)) maskAB |= (byte)PortIoABButtons.P2Up;
+                if (buttons.HasFlag(Buttons.Down)) maskAB |= (byte)PortIoABButtons.P2Down;
+                if (buttons.HasFlag(Buttons.Left)) maskBMisc |= (byte)PortIoBMiscButtons.P2Left;
+                if (buttons.HasFlag(Buttons.Right)) maskBMisc |= (byte)PortIoBMiscButtons.P2Right;
+                if (buttons.HasFlag(Buttons.Button1)) maskBMisc |= (byte)PortIoBMiscButtons.P2Button1;
+                if (buttons.HasFlag(Buttons.Button2)) maskBMisc |= (byte)PortIoBMiscButtons.P2Button2;
+            }
+
+            if (buttons.HasFlag(Buttons.StartPause))
+            {
+                if (baseUnitType == BaseUnitType.GameGear)
+                    maskC |= (byte)PortIoCButtons.Start;
+                else
+                    pausePressed = pressed;
+            }
+            if (buttons.HasFlag(Buttons.Reset)) maskBMisc |= (byte)PortIoBMiscButtons.Reset;
+
+            if (pressed)
+            {
+                portIoAB &= (byte)~maskAB;
+                portIoBMisc &= (byte)~maskBMisc;
+                portIoC &= (byte)~maskC;
+            }
+            else
+            {
+                portIoAB |= maskAB;
+                portIoBMisc |= maskBMisc;
+                portIoC |= maskC;
             }
         }
 
@@ -207,7 +271,7 @@ namespace MasterFudge.Emulation
             portIoControl = portIoAB = portIoBMisc = 0xFF;
             lastHCounter = 0x00;
 
-            portInputC = 0xC0;
+            portIoC = 0xC0;
             portParallelData = 0x7F;
             portDataDirNMI = 0xFF;
             portTxBuffer = 0x00;
@@ -284,7 +348,11 @@ namespace MasterFudge.Emulation
 
         private void HandleInterrupts()
         {
-            // TODO: pause button NMI
+            if (pausePressed && cpu.IFF1 && cpu.InterruptMode == 0x01)
+            {
+                pausePressed = false;
+                cpu.ServiceInterrupt(0x0066);
+            }
 
             if (vdp.IrqLineAsserted && cpu.IFF1 && cpu.InterruptMode == 0x01)
                 cpu.ServiceInterrupt(0x0038);
@@ -296,7 +364,7 @@ namespace MasterFudge.Emulation
             {
                 switch (port)
                 {
-                    case 0x00: return portInputC;
+                    case 0x00: return portIoC;
                     case 0x01: return portParallelData;
                     case 0x02: return portDataDirNMI;
                     case 0x03: return portTxBuffer;
