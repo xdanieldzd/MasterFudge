@@ -14,8 +14,9 @@ namespace MasterFudge.Emulation.Cartridges
         // TODO: remove the mirror kludge somehow? registerMirror is basically WRAM, but in *here* for the whole (DFFC-DFFF == FFFC-FFFF) mirroring...
 
         byte[] pagingRegisters, wramPagingRegistersMirror;
-        byte[][] ramData;
+        byte[] ramData;
         byte bankMask;
+        bool hasCartRam;
 
         public SegaMapperCartridge(byte[] romData) : base(romData)
         {
@@ -27,10 +28,24 @@ namespace MasterFudge.Emulation.Cartridges
 
             wramPagingRegistersMirror = new byte[] { pagingRegisters[0], pagingRegisters[1], pagingRegisters[2], pagingRegisters[3] };
 
-            ramData = new byte[0x02][];
-            for (int i = 0; i < ramData.Length; i++) ramData[i] = new byte[0x4000];
+            ramData = new byte[0x8000];
 
             bankMask = (byte)((romData.Length >> 14) - 1);
+        }
+
+        public override bool HasCartridgeRam()
+        {
+            return hasCartRam;
+        }
+
+        public override void SetRamData(byte[] data)
+        {
+            Buffer.BlockCopy(data, 0, ramData, 0, Math.Min(data.Length, ramData.Length));
+        }
+
+        public override byte[] GetRamData()
+        {
+            return ramData;
         }
 
         public override ushort GetStartAddress()
@@ -60,7 +75,7 @@ namespace MasterFudge.Emulation.Cartridges
 
                 case 0x8000:
                     if (PowerBase.IsBitSet(pagingRegisters[0], 3))
-                        return ramData[((pagingRegisters[0] >> 2) & 0x01)][(address & 0x3FFF)];
+                        return ramData[((pagingRegisters[0] >> 2) & 0x01) << 14 | (address & 0x3FFF)];
                     else
                         return romData[((pagingRegisters[3] << 14) | (address & 0x3FFF))];
 
@@ -74,7 +89,7 @@ namespace MasterFudge.Emulation.Cartridges
             if ((address & 0xC000) == 0x8000 && PowerBase.IsBitSet(pagingRegisters[0], 3))
             {
                 /* Cartridge RAM */
-                ramData[((pagingRegisters[0] >> 2) & 0x01)][(address & 0x3FFF)] = value;
+                ramData[((pagingRegisters[0] >> 2) & 0x01) << 14 | (address & 0x3FFF)] = value;
             }
             else if (PowerBase.IsBitSet(pagingRegisters[0], 7))
             {
@@ -111,6 +126,10 @@ namespace MasterFudge.Emulation.Cartridges
             wramPagingRegistersMirror[address & 0x0003] = value;
             if ((address & 0x0003) != 0x00) value &= bankMask;
             pagingRegisters[address & 0x0003] = value;
+
+            /* Check if RAM ever gets enabled; if it is, indicate that we'll need to save the RAM */
+            if (!hasCartRam && (address & 0x0003) == 0x0000 && PowerBase.IsBitSet(pagingRegisters[address & 0x0003], 3))
+                hasCartRam = true;
         }
 
         private void WriteRegisterMirror(ushort address, byte value)

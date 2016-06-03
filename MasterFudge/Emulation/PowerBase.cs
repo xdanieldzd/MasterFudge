@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
 using System.Diagnostics;
+using System.IO;
 
 using MasterFudge.Emulation.Memory;
 using MasterFudge.Emulation.CPU;
@@ -202,6 +203,30 @@ namespace MasterFudge.Emulation
 
             foreach (MemoryAreaDescriptor areaDescriptor in cartridge.GetAdditionalMemoryAreaDescriptors())
                 memoryMapper.AddMemoryArea(areaDescriptor);
+        }
+
+        public void LoadCartridgeRam(string filename)
+        {
+            if (!File.Exists(filename)) return;
+
+            using (FileStream file = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            {
+                byte[] data = new byte[file.Length];
+                file.Read(data, 0, data.Length);
+                cartridge.SetRamData(data);
+            }
+        }
+
+        public void SaveCartridgeRam(string filename)
+        {
+            if (cartridge.HasCartridgeRam())
+            {
+                byte[] cartRam = cartridge.GetRamData();
+                using (FileStream file = new FileStream(filename, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite))
+                {
+                    file.Write(cartRam, 0, cartRam.Length);
+                }
+            }
         }
 
         public RomHeader GetCartridgeHeader()

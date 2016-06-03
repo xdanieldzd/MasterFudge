@@ -9,7 +9,6 @@ using System.Reflection;
 using System.IO;
 
 using NAudio.Wave;
-using NAudio.Utils;
 
 using MasterFudge.Emulation;
 using MasterFudge.Emulation.Cartridges;
@@ -19,14 +18,18 @@ namespace MasterFudge
 {
     public partial class MainForm : Form
     {
-        Emulation.PowerBase emulator;
+        PowerBase emulator;
         TaskWrapper taskWrapper;
         Bitmap screenBitmap;
         WaveOut waveOut;
 
+        string saveDirectory;
+
         Version programVersion;
         bool logEnabled;
         TextWriter logWriter;
+
+        const string saveDirectoryName = "Saves";
 
         const float defaultVolume = 0.5f;
 
@@ -54,6 +57,9 @@ namespace MasterFudge
             waveOut.Init(emulator.GetPSGWaveProvider());
             waveOut.Play();
             soundEnabled = Properties.Settings.Default.SoundEnabled;
+
+            saveDirectory = Path.Combine(Application.StartupPath, saveDirectoryName);
+            if (!Directory.Exists(saveDirectory)) Directory.CreateDirectory(saveDirectory);
 
             /* Misc variables */
             programVersion = new Version(Application.ProductVersion);
@@ -106,11 +112,18 @@ namespace MasterFudge
             ClientSize = new Size(pbRenderOutput.Width * 2, (pbRenderOutput.Height * 2) + menuStrip.Height);
         }
 
+        private string GetSaveFilePath(string cartFile)
+        {
+            return Path.Combine(saveDirectory, Path.GetFileName(Path.ChangeExtension(cartFile, "sav")));
+        }
+
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             emulator.OnRenderScreen -= Emulator_OnRenderScreen;
 
             emulator?.PowerOff();
+            if (emulator != null && emulator.CartridgeLoaded)
+                emulator.SaveCartridgeRam(Path.Combine(saveDirectory, Path.GetFileName(Path.ChangeExtension(emulator.CartridgeFilename, "sav"))));
             taskWrapper.Stop();
 
             Properties.Settings.Default.Save();
@@ -150,9 +163,12 @@ namespace MasterFudge
         private void LoadCartridge(string filename)
         {
             emulator.PowerOff();
+            if (emulator.CartridgeLoaded)
+                emulator.SaveCartridgeRam(GetSaveFilePath(emulator.CartridgeFilename));
             Program.Log.ClearEvents();
 
             emulator.LoadCartridge(filename);
+            emulator.LoadCartridgeRam(GetSaveFilePath(filename));
             LogCartridgeInformation(emulator, filename);
 
             // TODO: make this better again, but SMS Chase HQ is set to GG in header...?
@@ -173,7 +189,7 @@ namespace MasterFudge
         private void DebugLoadRomShim()
         {
             if (Environment.MachineName != "NANAMI-X") return;
-            
+
             string romFile = @"D:\ROMs\SMS\Hang-On_(UE)_[!].sms";
             romFile = @"D:\ROMs\SMS\Sonic_the_Hedgehog_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\Y's_-_The_Vanished_Omen_(UE)_[!].sms";

@@ -36,6 +36,21 @@ namespace MasterFudge.Emulation.Cartridges
             return cartridge;
         }
 
+        public virtual bool HasCartridgeRam()
+        {
+            return false;
+        }
+
+        public virtual void SetRamData(byte[] data)
+        {
+            return;
+        }
+
+        public virtual byte[] GetRamData()
+        {
+            return new byte[0];
+        }
+
         public virtual MemoryAreaDescriptor[] GetAdditionalMemoryAreaDescriptors()
         {
             return new MemoryAreaDescriptor[0];
