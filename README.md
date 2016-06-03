@@ -13,7 +13,7 @@ MasterFudge is an incomplete Sega Master System and Game Gear emulator written i
 Otherwise, if it's not listed above, it's probably not there yet at all.
 
 ## Known Issues
-Known issues as of [this commit](https://github.com/xdanieldzd/MasterFudge/tree/1a3e14b00325431cce4aff36e204a9849536522e); there's most likely more:
+Known issues as of [this commit](https://github.com/xdanieldzd/MasterFudge/tree/53e02aa9e45cdd688efaa5a790f260b064c27d6f); there's most likely more:
 
 * __Master System__
  * __Chase H.Q.__: Doesn't react to buttons on title screen
