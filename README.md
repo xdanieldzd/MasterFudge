@@ -13,7 +13,7 @@ MasterFudge is an incomplete Sega Master System and Game Gear emulator written i
 Otherwise, if it's not listed above, it's probably not there yet at all.
 
 ## Known Issues
-Known issues as of [this commit](https://github.com/xdanieldzd/MasterFudge/tree/53e02aa9e45cdd688efaa5a790f260b064c27d6f); there's most likely more:
+Known issues as of [this commit](https://github.com/xdanieldzd/MasterFudge/tree/c36eb1da2d8de7b6d20c43bbfe070f5466e25137); there's most likely more:
 
 * __Master System__
  * __Chase H.Q.__: Doesn't react to buttons on title screen
@@ -21,8 +21,7 @@ Known issues as of [this commit](https://github.com/xdanieldzd/MasterFudge/tree/
  * __[VDP Test ROM](http://www.smspower.org/Homebrew/SMSVDPTest-SMS)__: Fails most HCounter tests, sprite off-screen Y collision test
 * __Game Gear__
  * __Fantasy Zone Gear__: Crash during startup; memory mapping issues?
- * __GG Shinobi__: Crash during intro; memory mapping issues?
- * __Gunstar Heroes__: Crash during startup; memory mapping issues?
+ * __Gunstar Heroes__: Crash during intro; memory mapping issues?
 
 ## Screenshots
 * __Sonic the Hedgehog__:<br>
