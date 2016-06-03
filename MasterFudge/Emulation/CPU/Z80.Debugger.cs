@@ -10,7 +10,7 @@ namespace MasterFudge.Emulation.CPU
     {
         public bool DebugLogOpcodes { get; set; }
 
-        // TODO: verify again, also add all the other crap (CB/DD/FD/etc)
+        // TODO: add undocumented ops if implemented in the core
 
         static readonly string[] opcodeMnemonic_Main = new string[]
         {

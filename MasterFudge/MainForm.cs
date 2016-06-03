@@ -188,6 +188,7 @@ namespace MasterFudge
             //romFile = @"D:\ROMs\SMS\SMS Sound Test 1.1.sms";
 
             romFile = @"D:\ROMs\GG\Sonic_the_Hedgehog_(JUE).gg";
+            romFile = @"D:\ROMs\GG\Gunstar_Heroes_(J).gg";
 
             LoadCartridge(romFile);
         }

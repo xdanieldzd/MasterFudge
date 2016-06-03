@@ -850,14 +850,38 @@ namespace MasterFudge.Emulation.CPU
                 case 0x36: LoadMemory8(CalculateIXIYAddress(register), memoryMapper.Read8(pc++)); break;
                 case 0x39: Add16(ref register, sp, false); break;
 
+                case 0x44: /* XXX */ LoadRegister8(ref bc.High, register.High, false); break;
+                case 0x45: /* XXX */ LoadRegister8(ref bc.High, register.Low, false); break;
                 case 0x46: bc.High = memoryMapper.Read8(CalculateIXIYAddress(register)); break;
+                case 0x4C: /* XXX */ LoadRegister8(ref bc.Low, register.High, false); break;
+                case 0x4D: /* XXX */ LoadRegister8(ref bc.Low, register.Low, false); break;
                 case 0x4E: bc.Low = memoryMapper.Read8(CalculateIXIYAddress(register)); break;
 
+                case 0x54: /* XXX */ LoadRegister8(ref de.High, register.High, false); break;
+                case 0x55: /* XXX */ LoadRegister8(ref de.High, register.Low, false); break;
                 case 0x56: de.High = memoryMapper.Read8(CalculateIXIYAddress(register)); break;
+                case 0x5C: /* XXX */ LoadRegister8(ref de.Low, register.High, false); break;
+                case 0x5D: /* XXX */ LoadRegister8(ref de.Low, register.Low, false); break;
                 case 0x5E: de.Low = memoryMapper.Read8(CalculateIXIYAddress(register)); break;
 
+                // 60-65,67-6D,6F
+
+                case 0x60: /* XXX */ LoadRegister8(ref register.High, bc.High, false); break;
+                case 0x61: /* XXX */ LoadRegister8(ref register.High, bc.Low, false); break;
+                case 0x62: /* XXX */ LoadRegister8(ref register.High, de.High, false); break;
+                case 0x63: /* XXX */ LoadRegister8(ref register.High, de.Low, false); break;
+                case 0x64: /* XXX */ LoadRegister8(ref register.High, register.High, false); break;
+                case 0x65: /* XXX */ LoadRegister8(ref register.High, register.Low, false); break;
                 case 0x66: hl.High = memoryMapper.Read8(CalculateIXIYAddress(register)); break;
+                case 0x67: /* XXX */ LoadRegister8(ref register.High, af.High, false); break;
+                case 0x68: /* XXX */ LoadRegister8(ref register.Low, bc.High, false); break;
+                case 0x69: /* XXX */ LoadRegister8(ref register.Low, bc.Low, false); break;
+                case 0x6A: /* XXX */ LoadRegister8(ref register.Low, de.High, false); break;
+                case 0x6B: /* XXX */ LoadRegister8(ref register.Low, de.Low, false); break;
+                case 0x6C: /* XXX */ LoadRegister8(ref register.Low, register.High, false); break;
+                case 0x6D: /* XXX */ LoadRegister8(ref register.Low, register.Low, false); break;
                 case 0x6E: hl.Low = memoryMapper.Read8(CalculateIXIYAddress(register)); break;
+                case 0x6F: /* XXX */ LoadRegister8(ref register.Low, af.High, false); break;
 
                 case 0x70: LoadMemory8(CalculateIXIYAddress(register), bc.High); break;
                 case 0x71: LoadMemory8(CalculateIXIYAddress(register), bc.Low); break;
@@ -866,18 +890,36 @@ namespace MasterFudge.Emulation.CPU
                 case 0x74: LoadMemory8(CalculateIXIYAddress(register), hl.High); break;
                 case 0x75: LoadMemory8(CalculateIXIYAddress(register), hl.Low); break;
                 case 0x77: LoadMemory8(CalculateIXIYAddress(register), af.High); break;
+                case 0x7C: /* XXX */ LoadRegister8(ref af.High, register.High, false); break;
+                case 0x7D: /* XXX */ LoadRegister8(ref af.High, register.Low, false); break;
                 case 0x7E: af.High = memoryMapper.Read8(CalculateIXIYAddress(register)); break;
 
+                case 0x84: Add8(register.High, false); break;
+                case 0x85: Add8(register.Low, false); break;
                 case 0x86: Add8(memoryMapper.Read8(CalculateIXIYAddress(register)), false); break;
+                case 0x8C: Add8(register.High, true); break;
+                case 0x8D: Add8(register.Low, true); break;
                 case 0x8E: Add8(memoryMapper.Read8(CalculateIXIYAddress(register)), true); break;
 
+                case 0x94: Subtract8(register.High, false); break;
+                case 0x95: Subtract8(register.Low, false); break;
                 case 0x96: Subtract8(memoryMapper.Read8(CalculateIXIYAddress(register)), false); break;
+                case 0x9C: Subtract8(register.High, true); break;
+                case 0x9D: Subtract8(register.Low, true); break;
                 case 0x9E: Subtract8(memoryMapper.Read8(CalculateIXIYAddress(register)), true); break;
 
+                case 0xA4: And8(register.High); break;
+                case 0xA5: And8(register.Low); break;
                 case 0xA6: And8(memoryMapper.Read8(CalculateIXIYAddress(register))); break;
+                case 0xAC: Xor8(register.High); break;
+                case 0xAD: Xor8(register.Low); break;
                 case 0xAE: Xor8(memoryMapper.Read8(CalculateIXIYAddress(register))); break;
 
+                case 0xB4: Or8(register.High); break;
+                case 0xB5: Or8(register.Low); break;
                 case 0xB6: Or8(memoryMapper.Read8(CalculateIXIYAddress(register))); break;
+                case 0xBC: Cp8(register.High); break;
+                case 0xBD: Cp8(register.Low); break;
                 case 0xBE: Cp8(memoryMapper.Read8(CalculateIXIYAddress(register))); break;
 
                 case 0xCB: ExecuteOpDDFDCB(memoryMapper.Read8((ushort)(pc + 1)), ref register); break;
