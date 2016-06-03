@@ -19,7 +19,7 @@ namespace MasterFudge
 {
     public partial class MainForm : Form
     {
-        MasterSystem emulator;
+        Emulation.PowerBase emulator;
         TaskWrapper taskWrapper;
         Bitmap screenBitmap;
         WaveOut waveOut;
@@ -41,9 +41,9 @@ namespace MasterFudge
             InitializeComponent();
 
             /* Create emulator instance & task wrapper */
-            emulator = new MasterSystem();
+            emulator = new PowerBase();
             emulator.OnRenderScreen += Emulator_OnRenderScreen;
-            emulator.SetRegion(Properties.Settings.Default.IsNtscSystem, Properties.Settings.Default.IsExportSystem);
+            emulator.SetRegion(Properties.Settings.Default.BaseUnitRegion);
             emulator.LimitFPS = Properties.Settings.Default.LimitFPS;
             taskWrapper = new TaskWrapper();
             taskWrapper.Start(emulator);
@@ -122,21 +122,44 @@ namespace MasterFudge
             {
                 try
                 {
-                    File.WriteAllBytes(@"E:\temp\sms\wram.bin", MasterSystem.Debugging.DumpMemory(emulator, MasterSystem.Debugging.DumpRegion.WorkRam));
-                    File.WriteAllBytes(@"E:\temp\sms\vram.sms", MasterSystem.Debugging.DumpMemory(emulator, MasterSystem.Debugging.DumpRegion.VideoRam));
-                    File.WriteAllBytes(@"E:\temp\sms\cram.bin", MasterSystem.Debugging.DumpMemory(emulator, MasterSystem.Debugging.DumpRegion.ColorRam));
+                    File.WriteAllBytes(@"E:\temp\sms\wram.bin", Emulation.PowerBase.Debugging.DumpMemory(emulator, Emulation.PowerBase.Debugging.DumpRegion.WorkRam));
+                    File.WriteAllBytes(@"E:\temp\sms\vram.sms", Emulation.PowerBase.Debugging.DumpMemory(emulator, Emulation.PowerBase.Debugging.DumpRegion.VideoRam));
+                    File.WriteAllBytes(@"E:\temp\sms\cram.bin", Emulation.PowerBase.Debugging.DumpMemory(emulator, Emulation.PowerBase.Debugging.DumpRegion.ColorRam));
                 }
                 catch (IOException) { /* just ignore this one, happens if I have any of these open in ex. a hexeditor */ }
             }
         }
 
+        private void SetRegion(bool isNtsc, bool isExport)
+        {
+            BaseUnitRegion regionToSet;
+            if (isExport)
+            {
+                if (isNtsc)
+                    regionToSet = BaseUnitRegion.ExportNTSC;
+                else
+                    regionToSet = BaseUnitRegion.ExportPAL;
+            }
+            else
+                regionToSet = BaseUnitRegion.JapanNTSC;
+
+            emulator.SetRegion(regionToSet);
+            Properties.Settings.Default.BaseUnitRegion = regionToSet;
+        }
+
         private void LoadCartridge(string filename)
         {
+            emulator.PowerOff();
             Program.Log.ClearEvents();
 
-            emulator.PowerOff();
             emulator.LoadCartridge(filename);
             LogCartridgeInformation(emulator, filename);
+
+            RomHeader header = emulator.GetCartridgeHeader();
+            if (header.IsGameGear)
+                emulator.SetUnitType(BaseUnitType.GameGear);
+            else
+                emulator.SetUnitType(BaseUnitType.MasterSystem);
 
             SetFormTitle();
             tsslStatus.Text = string.Format("Cartridge '{0}' loaded", Path.GetFileName(filename));
@@ -164,10 +187,12 @@ namespace MasterFudge
             //romFile = @"D:\ROMs\SMS\Psycho_Fox_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\SMS Sound Test 1.1.sms";
 
+            romFile = @"D:\ROMs\GG\Sonic_the_Hedgehog_(JUE).gg";
+
             LoadCartridge(romFile);
         }
 
-        private void LogCartridgeInformation(MasterSystem ms, string romFile)
+        private void LogCartridgeInformation(Emulation.PowerBase ms, string romFile)
         {
             Program.Log.WriteEvent("--- ROM INFORMATION ---");
 
@@ -288,7 +313,7 @@ namespace MasterFudge
 
         private void MainForm_KeyDown(object sender, KeyEventArgs e)
         {
-            byte keyBit = 0;
+            byte keyBit = 0, keyBitGG = 0;
             switch (e.KeyCode)
             {
                 case Keys.Up: keyBit = (1 << 0); break;         //Up
@@ -297,15 +322,18 @@ namespace MasterFudge
                 case Keys.Right: keyBit = (1 << 3); break;      //Right
                 case Keys.A: keyBit = (1 << 4); break;          //Button1
                 case Keys.S: keyBit = (1 << 5); break;          //Button2
+                case Keys.Enter: keyBitGG = (1 << 7); break;    //GG Start
             }
 
             if (keyBit != 0)
                 emulator?.SetJoypadPressed(keyBit);
+
+            emulator?.SetGameGearStartPressed(keyBitGG);
         }
 
         private void MainForm_KeyUp(object sender, KeyEventArgs e)
         {
-            byte keyBit = 0;
+            byte keyBit = 0, keyBitGG = 0;
             switch (e.KeyCode)
             {
                 case Keys.Up: keyBit = (1 << 0); break;         //Up
@@ -314,37 +342,33 @@ namespace MasterFudge
                 case Keys.Right: keyBit = (1 << 3); break;      //Right
                 case Keys.A: keyBit = (1 << 4); break;          //Button1
                 case Keys.S: keyBit = (1 << 5); break;          //Button2
+                case Keys.Enter: keyBitGG = (1 << 7); break;    //GG Start
             }
+
             if (keyBit != 0)
                 emulator?.SetJoypadReleased(keyBit);
+
+            emulator?.SetGameGearStartReleased(keyBitGG);
         }
 
         private void nTSCToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            emulator.SetRegion((sender as ToolStripMenuItem).Checked, emulator.IsExportSystem);
-
-            Properties.Settings.Default.IsNtscSystem = (sender as ToolStripMenuItem).Checked;
+            SetRegion((sender as ToolStripMenuItem).Checked, emulator.IsExportSystem);
         }
 
         private void pALToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            emulator.SetRegion(!(sender as ToolStripMenuItem).Checked, emulator.IsExportSystem);
-
-            Properties.Settings.Default.IsNtscSystem = !(sender as ToolStripMenuItem).Checked;
+            SetRegion(!(sender as ToolStripMenuItem).Checked, emulator.IsExportSystem);
         }
 
         private void japaneseToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            emulator.SetRegion(emulator.IsNtscSystem, !(sender as ToolStripMenuItem).Checked);
-
-            Properties.Settings.Default.IsExportSystem = !(sender as ToolStripMenuItem).Checked;
+            SetRegion(emulator.IsNtscSystem, !(sender as ToolStripMenuItem).Checked);
         }
 
         private void exportToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            emulator.SetRegion(emulator.IsNtscSystem, (sender as ToolStripMenuItem).Checked);
-
-            Properties.Settings.Default.IsExportSystem = (sender as ToolStripMenuItem).Checked;
+            SetRegion(emulator.IsNtscSystem, (sender as ToolStripMenuItem).Checked);
         }
 
         private void limitFPSToolStripMenuItem_Click(object sender, EventArgs e)

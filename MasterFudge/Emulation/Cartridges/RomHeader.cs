@@ -55,6 +55,8 @@ namespace MasterFudge.Emulation.Cartridges
         public bool IsRomSizeCorrect { get; private set; }
         public ushort ChecksumCalculated { get; private set; }
 
+        public bool IsGameGear { get { return (Region == 0x05 || Region == 0x06 || Region == 0x07); } }
+
         public RomHeader(byte[] romData)
         {
             int headerOffset = (romData.Length <= 0x8000 ? romData.Length - 0x10 : 0x7FF0);

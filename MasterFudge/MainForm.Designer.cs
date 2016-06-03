@@ -74,7 +74,7 @@
             // 
             // ofdOpenCartridge
             // 
-            this.ofdOpenCartridge.Filter = "Sega Master System ROM Images (*.sms)|*.sms|All Files (*.*)|*.*";
+            this.ofdOpenCartridge.Filter = "Sega Master System & Game Gear ROMs (*.sms;*.gg)|*.sms;*.gg|All Files (*.*)|*.*";
             // 
             // menuStrip
             // 

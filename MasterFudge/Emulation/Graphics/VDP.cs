@@ -21,10 +21,14 @@ namespace MasterFudge.Emulation.Graphics
 
         public const double ClockDivider = 5.0;
 
-        byte[] registers, vram, cram;
+        BaseUnitType baseUnitType;
+        BaseUnitRegion baseUnitRegion;
 
-        bool isNtsc;
-        public int numScanlines { get { return (isNtsc ? NumScanlinesNTSC : NumScanlinesPAL); } }
+        byte[] registers, vram, cramMS, cramGG;
+        ushort cramLatchGG;
+
+        bool isNtsc { get { return (baseUnitRegion == BaseUnitRegion.JapanNTSC || baseUnitRegion == BaseUnitRegion.ExportNTSC); } }
+        int numScanlines { get { return (isNtsc ? NumScanlinesNTSC : NumScanlinesPAL); } }
 
         /* Control port stuff */
         bool isSecondControlWrite;
@@ -68,21 +72,21 @@ namespace MasterFudge.Emulation.Graphics
 
         /* Interrupt flags */
         public bool IrqLineAsserted { get; private set; }
-        bool isLineInterruptEnabled { get { return MasterSystem.IsBitSet(registers[0x00], 4); } }
-        bool isFrameInterruptEnabled { get { return MasterSystem.IsBitSet(registers[0x01], 5); } }
+        bool isLineInterruptEnabled { get { return PowerBase.IsBitSet(registers[0x00], 4); } }
+        bool isFrameInterruptEnabled { get { return PowerBase.IsBitSet(registers[0x01], 5); } }
         bool isLineInterruptPending;
 
         /* Masking etc. flags */
-        bool isDisplayBlanked { get { return !MasterSystem.IsBitSet(registers[0x01], 6); } }
-        bool isColumn0MaskEnabled { get { return MasterSystem.IsBitSet(registers[0x00], 5); } }
-        bool isVScrollPartiallyDisabled { get { return MasterSystem.IsBitSet(registers[0x00], 7); } }   /* Columns 24-31, i.e. pixels 192-255 */
-        bool isHScrollPartiallyDisabled { get { return MasterSystem.IsBitSet(registers[0x00], 6); } }   /* Rows 0-1, i.e. pixels 0-15 */
+        bool isDisplayBlanked { get { return !PowerBase.IsBitSet(registers[0x01], 6); } }
+        bool isColumn0MaskEnabled { get { return PowerBase.IsBitSet(registers[0x00], 5); } }
+        bool isVScrollPartiallyDisabled { get { return PowerBase.IsBitSet(registers[0x00], 7); } }   /* Columns 24-31, i.e. pixels 192-255 */
+        bool isHScrollPartiallyDisabled { get { return PowerBase.IsBitSet(registers[0x00], 6); } }   /* Rows 0-1, i.e. pixels 0-15 */
 
         /* Display modes */
-        bool isMode4 { get { return MasterSystem.IsBitSet(registers[0x00], 2); } }      /* SMS VDP mode 4 */
-        bool isMode3 { get { return MasterSystem.IsBitSet(registers[0x01], 3); } }      /* TMS9918 mode 3 OR 240-line mode */
-        bool isMode2 { get { return MasterSystem.IsBitSet(registers[0x00], 1); } }      /* TMS9918 mode 2 */
-        bool isMode1 { get { return MasterSystem.IsBitSet(registers[0x01], 4); } }      /* TMS9918 mode 1 OR 224-line mode */
+        bool isMode4 { get { return PowerBase.IsBitSet(registers[0x00], 2); } }      /* SMS VDP mode 4 */
+        bool isMode3 { get { return PowerBase.IsBitSet(registers[0x01], 3); } }      /* TMS9918 mode 3 OR 240-line mode */
+        bool isMode2 { get { return PowerBase.IsBitSet(registers[0x00], 1); } }      /* TMS9918 mode 2 */
+        bool isMode1 { get { return PowerBase.IsBitSet(registers[0x01], 4); } }      /* TMS9918 mode 1 OR 224-line mode */
         bool isMode0 { get { return !(isMode1 || isMode2 || isMode3 || isMode4); } }
 
         bool isSMS240LineMode { get { return (isMode4 && isMode2 && isMode3); } }
@@ -90,9 +94,9 @@ namespace MasterFudge.Emulation.Graphics
         bool isSMS192LineMode { get { return (isMode4 && isMode2); } }
 
         /* Sprite flags */
-        bool isLargeSprites { get { return MasterSystem.IsBitSet(registers[0x01], 1); } }
-        bool isZoomedSprites { get { return MasterSystem.IsBitSet(registers[0x01], 0); } }
-        bool isSpriteShiftLeft8 { get { return MasterSystem.IsBitSet(registers[0x00], 3); } }
+        bool isLargeSprites { get { return PowerBase.IsBitSet(registers[0x01], 1); } }
+        bool isZoomedSprites { get { return PowerBase.IsBitSet(registers[0x01], 0); } }
+        bool isSpriteShiftLeft8 { get { return PowerBase.IsBitSet(registers[0x00], 3); } }
 
         /* Addresses */
         ushort nametableBaseAddress { get { return (ushort)((registers[0x02] & 0x0E) << 10); } }
@@ -142,11 +146,12 @@ namespace MasterFudge.Emulation.Graphics
 
         public VDP()
         {
-            SetTVSystem(true);
+            SetTvSystem(BaseUnitRegion.ExportNTSC);
 
             registers = new byte[0x10];
             vram = new byte[0x4000];
-            cram = new byte[0x20];
+            cramMS = new byte[0x20];
+            cramGG = new byte[0x40];
 
             screenPixelUsage = new ScreenPixelUsage[NumPixelsPerLine * NumVisibleLinesHigh];
 
@@ -157,12 +162,12 @@ namespace MasterFudge.Emulation.Graphics
 
         public static int GetVDPClockCyclesPerFrame(bool isNtsc)
         {
-            return (int)(MasterSystem.GetMasterClockCyclesPerFrame(isNtsc) / ClockDivider);
+            return (int)(PowerBase.GetMasterClockCyclesPerFrame(isNtsc) / ClockDivider);
         }
 
         public static int GetVDPClockCyclesPerScanline(bool isNtsc)
         {
-            return (int)(MasterSystem.GetMasterClockCyclesPerScanline(isNtsc) / ClockDivider);
+            return (int)(PowerBase.GetMasterClockCyclesPerScanline(isNtsc) / ClockDivider);
         }
 
         public void Reset()
@@ -176,7 +181,10 @@ namespace MasterFudge.Emulation.Graphics
             WriteRegister(0x06, 0xFF);
 
             for (int i = 0; i < vram.Length; i++) vram[i] = 0;
-            for (int i = 0; i < cram.Length; i++) cram[i] = 0;
+            for (int i = 0; i < cramMS.Length; i++) cramMS[i] = 0;
+            for (int i = 0; i < cramGG.Length; i++) cramGG[i] = 0;
+
+            cramLatchGG = 0x0000;
 
             isSecondControlWrite = false;
             controlWord = 0x0000;
@@ -192,9 +200,14 @@ namespace MasterFudge.Emulation.Graphics
             backgroundVScroll = 0;
         }
 
-        public void SetTVSystem(bool ntsc)
+        public void SetUnitType(BaseUnitType unitType)
         {
-            isNtsc = ntsc;
+            baseUnitType = unitType;
+        }
+
+        public void SetTvSystem(BaseUnitRegion unitRegion)
+        {
+            baseUnitRegion = unitRegion;
         }
 
         public bool Execute(int currentCycles)
@@ -214,7 +227,7 @@ namespace MasterFudge.Emulation.Graphics
                 /* Clear screen */
                 if (currentScanline == 0)
                 {
-                    overscanBgColorArgb = GetColorAsArgb8888(1, overscanBgColor);
+                    overscanBgColorArgb = (baseUnitType == BaseUnitType.GameGear ? ConvertGameGearColor(1, overscanBgColor) : ConvertMasterSystemColor(1, overscanBgColor));
                     ClearFramebuffer();
                 }
 
@@ -290,6 +303,32 @@ namespace MasterFudge.Emulation.Graphics
                         }
                     }
 
+                    /* Apply Game Gear mask, if applicable */
+                    if (baseUnitType == BaseUnitType.GameGear)
+                    {
+                        // TODO: make this not shitty
+                        byte[] maskColor = new byte[] { 0x00, 0x00, 0x00, 0xFF };
+
+                        for (int i = 0; i < outputFramebufferStartAddress; i += 4)
+                            Buffer.BlockCopy(maskColor, 0, OutputFramebuffer, i, 4);
+
+                        for (int y = 0; y < screenHeight; y++)
+                        {
+                            for (int x = 0; x < NumPixelsPerLine; x++)
+                            {
+                                if ((y >= 24 && y < 144 + 24) && (x >= 48 && x < 160 + 48)) continue;
+
+                                int outputY = (y * NumPixelsPerLine);
+                                int outputX = (x % NumPixelsPerLine);
+
+                                Buffer.BlockCopy(maskColor, 0, OutputFramebuffer, outputFramebufferStartAddress + ((outputY + outputX) * 4), 4);
+                            }
+                        }
+
+                        for (int i = outputFramebufferStartAddress + ((screenHeight * NumPixelsPerLine) * 4); i < OutputFramebuffer.Length; i += 4)
+                            Buffer.BlockCopy(maskColor, 0, OutputFramebuffer, i, 4);
+                    }
+
                     currentScanline = 0;
                     return true;
                 }
@@ -298,16 +337,30 @@ namespace MasterFudge.Emulation.Graphics
             return false;
         }
 
-        public byte[] GetColorAsArgb8888(int palette, int color)
+        public byte[] ConvertMasterSystemColor(int palette, int color)
         {
             int offset = ((palette * 16) + color);
 
-            byte r = (byte)(cram[offset] & 0x3);
+            byte r = (byte)(cramMS[offset] & 0x3);
             r |= (byte)((r << 6) | (r << 4) | (r << 2));
-            byte g = (byte)((cram[offset] >> 2) & 0x3);
+            byte g = (byte)((cramMS[offset] >> 2) & 0x3);
             g |= (byte)((g << 6) | (g << 4) | (g << 2));
-            byte b = (byte)((cram[offset] >> 4) & 0x3);
+            byte b = (byte)((cramMS[offset] >> 4) & 0x3);
             b |= (byte)((b << 6) | (b << 4) | (b << 2));
+
+            return new byte[] { b, g, r, 0xFF };
+        }
+
+        public byte[] ConvertGameGearColor(int palette, int color)
+        {
+            int offset = ((palette * 32) + (color * 2));
+
+            byte r = (byte)((cramGG[offset]) & 0x0F);
+            r |= (byte)(r << 4);
+            byte g = (byte)((cramGG[offset] >> 4) & 0x0F);
+            g |= (byte)(g << 4);
+            byte b = (byte)((cramGG[offset + 1]) & 0x0F);
+            b |= (byte)(b << 4);
 
             return new byte[] { b, g, r, 0xFF };
         }
@@ -371,7 +424,9 @@ namespace MasterFudge.Emulation.Graphics
                         {
                             screenPixelUsage[outputY + outputX] |= ((c != 0 && priority) ? ScreenPixelUsage.HasBackgroundHighPriority : ScreenPixelUsage.HasBackgroundLowPriority);
                             int outputAddress = outputFramebufferStartAddress + ((outputY + outputX) * 4);
-                            Buffer.BlockCopy(GetColorAsArgb8888(palette, c), 0, OutputFramebuffer, outputAddress, 4);
+
+                            byte[] colorData = (baseUnitType == BaseUnitType.GameGear ? ConvertGameGearColor(palette, c) : ConvertMasterSystemColor(palette, c));
+                            Buffer.BlockCopy(colorData, 0, OutputFramebuffer, outputAddress, 4);
                         }
                     }
                 }
@@ -450,7 +505,9 @@ namespace MasterFudge.Emulation.Graphics
                         {
                             /* Draw if pixel isn't occupied by high-priority BG */
                             int outputAddress = outputFramebufferStartAddress + ((outputY + outputX) * 4);
-                            Buffer.BlockCopy(GetColorAsArgb8888(1, c), 0, OutputFramebuffer, outputAddress, 4);
+
+                            byte[] colorData = (baseUnitType == BaseUnitType.GameGear ? ConvertGameGearColor(1, c) : ConvertMasterSystemColor(1, c));
+                            Buffer.BlockCopy(colorData, 0, OutputFramebuffer, outputAddress, 4);
                         }
 
                         /* Note that there is a sprite here regardless */
@@ -578,7 +635,19 @@ namespace MasterFudge.Emulation.Graphics
                     vram[addressRegister] = value;
                     break;
                 case 0x03:
-                    cram[(addressRegister & 0x001F)] = value;
+                    if (baseUnitType == BaseUnitType.GameGear)
+                    {
+                        if ((addressRegister & 0x0001) != 0)
+                        {
+                            cramLatchGG = (ushort)((cramLatchGG & 0x00FF) | (value << 8));
+                            cramGG[(addressRegister & 0x003E) + 0] = (byte)(cramLatchGG & 0xFF);
+                            cramGG[(addressRegister & 0x003E) + 1] = (byte)((cramLatchGG >> 8) & 0xFF);
+                        }
+                        else
+                            cramLatchGG = (ushort)((cramLatchGG & 0xFF00) | value);
+                    }
+                    else
+                        cramMS[(addressRegister & 0x001F)] = value;
                     break;
             }
 
@@ -597,7 +666,10 @@ namespace MasterFudge.Emulation.Graphics
 
         public byte[] DumpColorRam()
         {
-            return cram;
+            if (baseUnitType == BaseUnitType.GameGear)
+                return cramGG;
+            else
+                return cramMS;
         }
     }
 }

@@ -59,8 +59,8 @@
     <Compile Include="Emulation\Cartridges\SegaMapperCartridge.cs" />
     <Compile Include="Emulation\CPU\Z80.CycleCounts.cs" />
     <Compile Include="Emulation\CPU\Z80.Debugger.cs" />
-    <Compile Include="Emulation\MasterSystem.cs" />
-    <Compile Include="Emulation\MasterSystem.Debugger.cs" />
+    <Compile Include="Emulation\PowerBase.cs" />
+    <Compile Include="Emulation\PowerBase.Debugger.cs" />
     <Compile Include="Emulation\Memory\MemoryAreaDescriptor.cs" />
     <Compile Include="Emulation\Memory\MemoryMapper.cs" />
     <Compile Include="Emulation\Memory\SimpleMemoryArea.cs" />

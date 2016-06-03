@@ -59,7 +59,7 @@ namespace MasterFudge.Emulation.Cartridges
                     return romData[((pagingRegisters[2] << 14) | (address & 0x3FFF))];
 
                 case 0x8000:
-                    if (MasterSystem.IsBitSet(pagingRegisters[0], 3))
+                    if (PowerBase.IsBitSet(pagingRegisters[0], 3))
                         return ramData[((pagingRegisters[0] >> 2) & 0x01)][(address & 0x3FFF)];
                     else
                         return romData[((pagingRegisters[3] << 14) | (address & 0x3FFF))];
@@ -71,12 +71,12 @@ namespace MasterFudge.Emulation.Cartridges
 
         public override void Write8(ushort address, byte value)
         {
-            if ((address & 0xC000) == 0x8000 && MasterSystem.IsBitSet(pagingRegisters[0], 3))
+            if ((address & 0xC000) == 0x8000 && PowerBase.IsBitSet(pagingRegisters[0], 3))
             {
                 /* Cartridge RAM */
                 ramData[((pagingRegisters[0] >> 2) & 0x01)][(address & 0x3FFF)] = value;
             }
-            else if (MasterSystem.IsBitSet(pagingRegisters[0], 7))
+            else if (PowerBase.IsBitSet(pagingRegisters[0], 7))
             {
                 /* ROM write enabled...? */
             }

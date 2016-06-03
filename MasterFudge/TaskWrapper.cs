@@ -11,7 +11,7 @@ namespace MasterFudge
 
         public TaskWrapper() { }
 
-        public void Start(MasterSystem emulator)
+        public void Start(PowerBase emulator)
         {
             if (task != null) Stop();
 

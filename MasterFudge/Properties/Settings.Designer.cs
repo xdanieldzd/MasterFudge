@@ -25,30 +25,6 @@ namespace MasterFudge.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool IsNtscSystem {
-            get {
-                return ((bool)(this["IsNtscSystem"]));
-            }
-            set {
-                this["IsNtscSystem"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool IsExportSystem {
-            get {
-                return ((bool)(this["IsExportSystem"]));
-            }
-            set {
-                this["IsExportSystem"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("True")]
         public bool LimitFPS {
             get {
@@ -68,6 +44,18 @@ namespace MasterFudge.Properties {
             }
             set {
                 this["SoundEnabled"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("ExportNTSC")]
+        public global::MasterFudge.Emulation.BaseUnitRegion BaseUnitRegion {
+            get {
+                return ((global::MasterFudge.Emulation.BaseUnitRegion)(this["BaseUnitRegion"]));
+            }
+            set {
+                this["BaseUnitRegion"] = value;
             }
         }
     }

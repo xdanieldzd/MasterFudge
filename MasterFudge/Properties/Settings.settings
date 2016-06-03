@@ -2,17 +2,14 @@
 <SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="MasterFudge.Properties" GeneratedClassName="Settings">
   <Profiles />
   <Settings>
-    <Setting Name="IsNtscSystem" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">False</Value>
-    </Setting>
-    <Setting Name="IsExportSystem" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">True</Value>
-    </Setting>
     <Setting Name="LimitFPS" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
     </Setting>
     <Setting Name="SoundEnabled" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="BaseUnitRegion" Type="MasterFudge.Emulation.BaseUnitRegion" Scope="User">
+      <Value Profile="(Default)">ExportNTSC</Value>
     </Setting>
   </Settings>
 </SettingsFile>

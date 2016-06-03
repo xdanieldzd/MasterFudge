@@ -14,6 +14,11 @@ namespace MasterFudge.Emulation.Sound
 
         const int numChannels = 4;
 
+        /* Base unit stuff */
+        BaseUnitType baseUnitType;
+        BaseUnitRegion baseUnitRegion;
+        bool isNtsc { get { return (baseUnitRegion == BaseUnitRegion.JapanNTSC || baseUnitRegion == BaseUnitRegion.ExportNTSC); } }
+
         /* Channel registers */
         ushort[] volumeRegisters;       /* Channels 0-3: 4 bits */
         ushort[] toneRegisters;         /* Channels 0-2 (tone): 10 bits; channel 3 (noise): 3 bits */
@@ -28,7 +33,6 @@ namespace MasterFudge.Emulation.Sound
         byte latchedChannel, latchedType;
 
         /* Clock-related values */
-        bool isNtsc;
         int cyclesInLine;
 
         /* Generated samples */
@@ -39,7 +43,7 @@ namespace MasterFudge.Emulation.Sound
             /* For NAudio WaveProvider16 */
             SetWaveFormat(44100, 2);
 
-            SetTVSystem(false);
+            SetTvSystem(BaseUnitRegion.ExportNTSC);
 
             volumeRegisters = new ushort[numChannels];
             toneRegisters = new ushort[numChannels];
@@ -71,9 +75,14 @@ namespace MasterFudge.Emulation.Sound
             }
         }
 
-        public void SetTVSystem(bool ntsc)
+        public void SetUnitType(BaseUnitType unitType)
         {
-            isNtsc = ntsc;
+            baseUnitType = unitType;
+        }
+
+        public void SetTvSystem(BaseUnitRegion unitRegion)
+        {
+            baseUnitRegion = unitRegion;
         }
 
         public void Execute(int currentCycles)
@@ -82,7 +91,7 @@ namespace MasterFudge.Emulation.Sound
 
             cyclesInLine += currentCycles;
 
-            if (cyclesInLine > MasterSystem.GetMasterClockCyclesPerScanline(isNtsc) / (4 * 16))
+            if (cyclesInLine > PowerBase.GetMasterClockCyclesPerScanline(isNtsc) / (4 * 16))
             {
                 cyclesInLine = 0;
 
@@ -139,7 +148,7 @@ namespace MasterFudge.Emulation.Sound
 
         public void WriteData(byte data)
         {
-            if (MasterSystem.IsBitSet(data, 7))
+            if (PowerBase.IsBitSet(data, 7))
             {
                 /* LATCH/DATA byte; get channel (0-3) and type (0 is tone/noise, 1 is volume) */
                 latchedChannel = (byte)((data >> 5) & 0x03);

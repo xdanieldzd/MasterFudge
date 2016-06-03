@@ -7,7 +7,7 @@ using System.Drawing;
 
 namespace MasterFudge.Emulation
 {
-    public partial class MasterSystem
+    public partial class PowerBase
     {
         // TODO: more sensible or neater placement of this stuff?
 
@@ -20,7 +20,7 @@ namespace MasterFudge.Emulation
                 ColorRam,
             }
 
-            public static byte[] DumpMemory(MasterSystem ms, DumpRegion memoryRegion)
+            public static byte[] DumpMemory(PowerBase ms, DumpRegion memoryRegion)
             {
                 switch (memoryRegion)
                 {
@@ -31,9 +31,9 @@ namespace MasterFudge.Emulation
                 }
             }
 
-            public static Color GetPaletteColor(MasterSystem ms, int palette, int color)
+            public static Color GetPaletteColor(PowerBase ms, int palette, int color)
             {
-                return Color.FromArgb(BitConverter.ToInt32(ms.vdp.GetColorAsArgb8888(palette, color), 0));
+                return Color.FromArgb(BitConverter.ToInt32(ms.vdp.ConvertMasterSystemColor(palette, color), 0));
             }
         }
     }

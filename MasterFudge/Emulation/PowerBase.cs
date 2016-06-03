@@ -28,12 +28,28 @@ namespace MasterFudge.Emulation
         }
     }
 
-    public partial class MasterSystem
+    public enum BaseUnitType
+    {
+        MasterSystem,
+        GameGear
+    }
+
+    public enum BaseUnitRegion
+    {
+        JapanNTSC,
+        ExportNTSC,
+        ExportPAL
+    }
+
+    public partial class PowerBase
     {
         public const double MasterClockPAL = 53203424;
         public const double MasterClockNTSC = 53693175;
         public const double FramesPerSecPAL = 49.701459;
         public const double FramesPerSecNTSC = 59.922743;
+
+        BaseUnitType baseUnitType;
+        BaseUnitRegion baseUnitRegion;
 
         MemoryMapper memoryMapper;
 
@@ -46,7 +62,19 @@ namespace MasterFudge.Emulation
         byte portMemoryControl, portIoControl, portIoAB, portIoBMisc;
         byte lastHCounter;
 
-        bool isNtscSystem, isExportSystem;
+        /* Game Gear-only */
+        byte portInputC, portParallelData, portDataDirNMI, portTxBuffer, portRxBuffer, portSerialControl, portStereoControl;
+
+        // TODO: actually make memory accesses depend on these
+        public bool isExpansionSlotEnabled { get { return !IsBitSet(portMemoryControl, 7); } }
+        public bool isCartridgeSlotEnabled { get { return !IsBitSet(portMemoryControl, 6); } }
+        public bool isCardSlotEnabled { get { return !IsBitSet(portMemoryControl, 5); } }
+        public bool isWorkRamEnabled { get { return !IsBitSet(portMemoryControl, 4); } }
+        public bool isBiosRomEnabled { get { return !IsBitSet(portMemoryControl, 3); } }
+        public bool isIOChipEnabled { get { return !IsBitSet(portMemoryControl, 2); } }
+
+        bool isNtscSystem { get { return (baseUnitRegion == BaseUnitRegion.JapanNTSC || baseUnitRegion == BaseUnitRegion.ExportNTSC); } }
+        bool isExportSystem { get { return (baseUnitRegion == BaseUnitRegion.ExportNTSC || baseUnitRegion == BaseUnitRegion.ExportPAL); } }
 
         public bool IsNtscSystem { get { return isNtscSystem; } }
         public bool IsPalSystem { get { return !isNtscSystem; } }
@@ -63,7 +91,7 @@ namespace MasterFudge.Emulation
         public bool CartridgeLoaded { get { return (cartridge != null); } }
         public string CartridgeFilename { get; private set; }
 
-        public MasterSystem()
+        public PowerBase()
         {
             memoryMapper = new MemoryMapper();
 
@@ -80,7 +108,7 @@ namespace MasterFudge.Emulation
             isStopped = true;
             LimitFPS = true;
 
-            SetRegion(true, true);
+            SetRegion(BaseUnitRegion.ExportNTSC);
         }
 
         public static double GetFrameRate(bool isNtsc)
@@ -98,13 +126,20 @@ namespace MasterFudge.Emulation
             return (GetMasterClockCyclesPerFrame(isNtsc) / (isNtsc ? VDP.NumScanlinesNTSC : VDP.NumScanlinesPAL));
         }
 
-        public void SetRegion(bool isNtsc, bool isExport)
+        public void SetUnitType(BaseUnitType unitType)
         {
-            isNtscSystem = isNtsc;
-            isExportSystem = isExport;
+            baseUnitType = unitType;
 
-            vdp?.SetTVSystem(isNtsc);
-            psg?.SetTVSystem(isNtsc);
+            vdp?.SetUnitType(baseUnitType);
+            psg?.SetUnitType(baseUnitType);
+        }
+
+        public void SetRegion(BaseUnitRegion unitRegion)
+        {
+            baseUnitRegion = unitRegion;
+
+            vdp?.SetTvSystem(baseUnitRegion);
+            psg?.SetTvSystem(baseUnitRegion);
         }
 
         public static bool IsBitSet(byte value, int bit)
@@ -133,7 +168,7 @@ namespace MasterFudge.Emulation
             return (psg as IWaveProvider);
         }
 
-        // TODO: IO port control (the active high/low stuff)
+        // TODO: IO port control (the active high/low stuff); consolidate SMS/GG functions
         public void SetJoypadPressed(byte keyBit)
         {
             // TODO: player 2 buttons
@@ -146,14 +181,39 @@ namespace MasterFudge.Emulation
             portIoAB |= keyBit;
         }
 
+        public void SetGameGearStartPressed(byte keyBit)
+        {
+            if (baseUnitType == BaseUnitType.GameGear)
+            {
+                portInputC &= (byte)~keyBit;
+            }
+        }
+
+        public void SetGameGearStartReleased(byte keyBit)
+        {
+            if (baseUnitType == BaseUnitType.GameGear)
+            {
+                portInputC |= keyBit;
+            }
+        }
+
         public void Reset()
         {
             // TODO: more resetti things
             cpu.Reset();
             vdp.Reset();
+
             portMemoryControl = 0x00;
             portIoControl = portIoAB = portIoBMisc = 0xFF;
             lastHCounter = 0x00;
+
+            portInputC = 0xC0;
+            portParallelData = 0x7F;
+            portDataDirNMI = 0xFF;
+            portTxBuffer = 0x00;
+            portRxBuffer = 0xFF;
+            portSerialControl = 0x00;
+            portStereoControl = 0xFF;
         }
 
         public void PowerOn()
@@ -181,29 +241,29 @@ namespace MasterFudge.Emulation
                     long startTime = stopWatch.ElapsedMilliseconds;
                     long interval = (long)TimeSpan.FromSeconds(1.0 / GetFrameRate(isNtscSystem)).TotalMilliseconds;
 
+                    int cyclesPerFrame = Z80.GetCPUClockCyclesPerFrame(isNtscSystem);
+                    int cyclesPerLine = Z80.GetCPUClockCyclesPerScanline(isNtscSystem);
+
                     int totalCycles = 0, cycleDiff = 0;
-                    while (totalCycles < Z80.GetCPUClockCyclesPerFrame(isNtscSystem))
+                    while (totalCycles < cyclesPerFrame)
                     {
                         int cyclesInLine = cycleDiff;
-                        while (cyclesInLine < Z80.GetCPUClockCyclesPerScanline(isNtscSystem))
+                        while (cyclesInLine < cyclesPerLine)
                         {
                             int currentCycles = cpu.Execute();
 
                             HandleInterrupts();
 
                             if (vdp.Execute(currentCycles))
-                            {
-                                if (!isStopped)
-                                    OnRenderScreen?.Invoke(this, new RenderEventArgs(vdp.OutputFramebuffer));
-                            }
+                                OnRenderScreen?.Invoke(this, new RenderEventArgs(vdp.OutputFramebuffer));
 
-                            // TODO: verify
+                            // TODO: verify, fix, whatever, I hate sound
                             psg.Execute((int)(currentCycles * (Z80.ClockDivider / VDP.ClockDivider)));
 
                             cyclesInLine += currentCycles;
                         }
 
-                        cycleDiff = (cyclesInLine - Z80.GetCPUClockCyclesPerScanline(isNtscSystem));
+                        cycleDiff = (cyclesInLine - cyclesPerLine);
                         totalCycles += cyclesInLine;
                     }
 
@@ -230,39 +290,50 @@ namespace MasterFudge.Emulation
                 cpu.ServiceInterrupt(0x0038);
         }
 
-        // TODO: all the IO port stuff
-
-        // 0xC1 mask via http://www.smspower.org/uploads/Development/smstech-20021112.txt, ch3 I/O - A7,A6,A0
         private byte ReadIOPort(byte port)
         {
+            if (baseUnitType == BaseUnitType.GameGear)
+            {
+                switch (port)
+                {
+                    case 0x00: return portInputC;
+                    case 0x01: return portParallelData;
+                    case 0x02: return portDataDirNMI;
+                    case 0x03: return portTxBuffer;
+                    case 0x04: return portRxBuffer;
+                    case 0x05: return portSerialControl;
+                    case 0x06: return portStereoControl;
+                }
+            }
+
             port = (byte)(port & 0xC1);
 
             switch (port & 0xF0)
             {
                 case 0x00:
-                    // Uh, behave like SMS2 for now
+                    /* Uh, behave like SMS2 for now */
                     return 0xFF;
 
                 case 0x40:
-                    // Counters
+                    /* Counters */
                     if ((port & 0x01) == 0)
-                        return vdp.ReadVCounter();      // V counter
+                        return vdp.ReadVCounter();      /* V counter */
                     else
-                        return lastHCounter;            // H counter
+                        return lastHCounter;            /* H counter */
 
                 case 0x80:
-                    // VDP
+                    /* VDP */
                     if ((port & 0x01) == 0)
-                        return vdp.ReadDataPort();      // Data port
+                        return vdp.ReadDataPort();      /* Data port */
                     else
-                        return vdp.ReadControlPort();   // Status flags
+                        return vdp.ReadControlPort();   /* Status flags */
 
                 case 0xC0:
                     if ((port & 0x01) == 0)
-                        return portIoAB;                // IO port A/B register
+                        return portIoAB;                /* IO port A/B register */
                     else
                     {
-                        // IO port B/misc register
+                        /* IO port B/misc register */
                         if (isExportSystem)
                         {
                             if (portIoControl == 0xF5)
@@ -280,38 +351,55 @@ namespace MasterFudge.Emulation
 
         private void WriteIOPort(byte port, byte value)
         {
-            port = (byte)(port & 0xC1);
+            byte maskedPort = (byte)(port & 0xC1);
 
-            switch (port & 0xF0)
+            switch (maskedPort & 0xF0)
             {
                 case 0x00:
-                    // System stuff
-                    if ((port & 0x01) == 0)
-                        portMemoryControl = value;      // Memory control
+                    if (baseUnitType == BaseUnitType.GameGear && port >= 0x00 && port < 0x07)
+                    {
+                        /* Game Gear-only stuff */
+                        switch (port)
+                        {
+                            case 0x00: /* Read-only */ break;
+                            case 0x01: portParallelData = value; break;
+                            case 0x02: portDataDirNMI = value; break;
+                            case 0x03: portTxBuffer = value; break;
+                            case 0x04: /* Read-only? */; break;
+                            case 0x05: portSerialControl = (byte)(value & 0xF8); break;
+                            case 0x06: portStereoControl = value; break;    // TODO: write to PSG
+                        }
+                    }
                     else
                     {
-                        // I/O control
-                        if ((portIoControl & 0x0A) == 0x00 && ((value & 0x02) == 0x02 || (value & 0x08) == 0x08))
-                            lastHCounter = vdp.ReadHCounter();
-                        portIoControl = value;
+                        /* System stuff */
+                        if ((maskedPort & 0x01) == 0)
+                            portMemoryControl = value;  /* Memory control */
+                        else
+                        {
+                            /* I/O control */
+                            if ((portIoControl & 0x0A) == 0x00 && ((value & 0x02) == 0x02 || (value & 0x08) == 0x08))
+                                lastHCounter = vdp.ReadHCounter();
+                            portIoControl = value;
+                        }
                     }
                     break;
 
                 case 0x40:
-                    // PSG
+                    /* PSG */
                     psg.WriteData(value);
                     break;
 
                 case 0x80:
-                    // VDP
-                    if ((port & 0x01) == 0)
-                        vdp.WriteDataPort(value);       // Data port
+                    /* VDP */
+                    if ((maskedPort & 0x01) == 0)
+                        vdp.WriteDataPort(value);       /* Data port */
                     else
-                        vdp.WriteControlPort(value);    // Control port
+                        vdp.WriteControlPort(value);    /* Control port */
                     break;
 
                 case 0xC0:
-                    // No effect
+                    /* No effect */
                     break;
             }
         }
