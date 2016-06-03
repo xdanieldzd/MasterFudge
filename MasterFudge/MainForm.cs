@@ -173,9 +173,7 @@ namespace MasterFudge
         private void DebugLoadRomShim()
         {
             if (Environment.MachineName != "NANAMI-X") return;
-
-            soundEnabled = false;
-
+            
             string romFile = @"D:\ROMs\SMS\Hang-On_(UE)_[!].sms";
             romFile = @"D:\ROMs\SMS\Sonic_the_Hedgehog_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\Y's_-_The_Vanished_Omen_(UE)_[!].sms";
@@ -188,7 +186,7 @@ namespace MasterFudge
             //romFile = @"D:\ROMs\SMS\SMS Sound Test 1.1.sms";
 
             romFile = @"D:\ROMs\GG\Sonic_the_Hedgehog_(JUE).gg";
-            romFile = @"D:\ROMs\GG\Gunstar_Heroes_(J).gg";
+            //romFile = @"D:\ROMs\GG\Gunstar_Heroes_(J).gg";
 
             LoadCartridge(romFile);
         }

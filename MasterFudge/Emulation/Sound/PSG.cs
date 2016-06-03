@@ -36,14 +36,15 @@ namespace MasterFudge.Emulation.Sound
         int cyclesInLine;
 
         /* Generated samples */
-        List<short> samples;
+        short[] samples;
+        int currentSamplePosition;
 
         public PSG()
         {
             /* For NAudio WaveProvider16 */
             SetWaveFormat(44100, 2);
 
-            SetTvSystem(BaseUnitRegion.ExportNTSC);
+            SetTvSystem(PowerBase.DefaultBaseUnitRegion);
 
             volumeRegisters = new ushort[numChannels];
             toneRegisters = new ushort[numChannels];
@@ -59,7 +60,8 @@ namespace MasterFudge.Emulation.Sound
             }
             volumeTable[15] = 0;
 
-            samples = new List<short>();
+            samples = new short[65535];
+            currentSamplePosition = 0;
 
             Reset();
         }
@@ -89,9 +91,11 @@ namespace MasterFudge.Emulation.Sound
         {
             // TODO: timing is garbage, I guess
 
+            int cyclesPerLine = (CPU.Z80.GetCPUClockCyclesPerScanline(isNtsc) / 6);
+
             cyclesInLine += currentCycles;
 
-            if (cyclesInLine > PowerBase.GetMasterClockCyclesPerScanline(isNtsc) / (4 * 16))
+            if (cyclesInLine > cyclesPerLine)
             {
                 cyclesInLine = 0;
 
@@ -124,7 +128,7 @@ namespace MasterFudge.Emulation.Sound
                 for (int i = 0; i < numChannels; i++)
                     mixed += channelOutputs[i];
 
-                samples.Add(mixed);
+                samples[currentSamplePosition++] = mixed;
             }
         }
 
@@ -133,16 +137,9 @@ namespace MasterFudge.Emulation.Sound
         {
             // TODO: make not sound scratchy and generally shitty
 
-            if (samples.Count != 0)
-            {
-                for (int i = 0; i < sampleCount; i++)
-                {
-                    if (i >= samples.Count) break;
-                    buffer[i + offset] = samples[i];
-                }
-                samples.Clear();
-            }
-
+            Buffer.BlockCopy(samples, 0, buffer, 0, buffer.Length);
+            for (int i = 0; i < samples.Length; i++) samples[i] = 0;
+            currentSamplePosition = 0;
             return sampleCount;
         }
 

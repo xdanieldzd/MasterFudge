@@ -864,8 +864,6 @@ namespace MasterFudge.Emulation.CPU
                 case 0x5D: /* XXX */ LoadRegister8(ref de.Low, register.Low, false); break;
                 case 0x5E: de.Low = memoryMapper.Read8(CalculateIXIYAddress(register)); break;
 
-                // 60-65,67-6D,6F
-
                 case 0x60: /* XXX */ LoadRegister8(ref register.High, bc.High, false); break;
                 case 0x61: /* XXX */ LoadRegister8(ref register.High, bc.Low, false); break;
                 case 0x62: /* XXX */ LoadRegister8(ref register.High, de.High, false); break;

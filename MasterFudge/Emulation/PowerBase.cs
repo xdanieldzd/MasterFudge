@@ -91,6 +91,8 @@ namespace MasterFudge.Emulation
         public const double FramesPerSecPAL = 49.701459;
         public const double FramesPerSecNTSC = 59.922743;
 
+        public const BaseUnitRegion DefaultBaseUnitRegion = BaseUnitRegion.ExportNTSC;
+
         BaseUnitType baseUnitType;
         BaseUnitRegion baseUnitRegion;
 
@@ -152,7 +154,7 @@ namespace MasterFudge.Emulation
             isStopped = true;
             LimitFPS = true;
 
-            SetRegion(BaseUnitRegion.ExportNTSC);
+            SetRegion(DefaultBaseUnitRegion);
         }
 
         public static double GetFrameRate(bool isNtsc)
@@ -322,7 +324,7 @@ namespace MasterFudge.Emulation
                                 OnRenderScreen?.Invoke(this, new RenderEventArgs(vdp.OutputFramebuffer));
 
                             // TODO: verify, fix, whatever, I hate sound
-                            psg.Execute((int)(currentCycles * (Z80.ClockDivider / VDP.ClockDivider)));
+                            psg.Execute(currentCycles);
 
                             cyclesInLine += currentCycles;
                         }
