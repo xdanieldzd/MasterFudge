@@ -7,6 +7,7 @@ using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Reflection;
 using System.IO;
+using System.Linq;
 
 using NAudio.Wave;
 
@@ -23,15 +24,12 @@ namespace MasterFudge
         Bitmap screenBitmap;
         WaveOut waveOut;
 
-        string saveDirectory;
-
         Version programVersion;
         bool logEnabled;
         TextWriter logWriter;
 
-        const string saveDirectoryName = "Saves";
-
         const float defaultVolume = 0.5f;
+        const int maxRecentFiles = 12;
 
         public bool soundEnabled
         {
@@ -42,6 +40,12 @@ namespace MasterFudge
         public MainForm()
         {
             InitializeComponent();
+
+            if (Properties.Settings.Default.CallUpgrade)
+            {
+                Properties.Settings.Default.Upgrade();
+                Properties.Settings.Default.CallUpgrade = false;
+            }
 
             /* Create emulator instance & task wrapper */
             emulator = new PowerBase();
@@ -58,9 +62,6 @@ namespace MasterFudge
             waveOut.Play();
             soundEnabled = Properties.Settings.Default.SoundEnabled;
 
-            saveDirectory = Path.Combine(Application.StartupPath, saveDirectoryName);
-            if (!Directory.Exists(saveDirectory)) Directory.CreateDirectory(saveDirectory);
-
             /* Misc variables */
             programVersion = new Version(Application.ProductVersion);
 
@@ -71,6 +72,32 @@ namespace MasterFudge
             japaneseToolStripMenuItem.DataBindings.Add("Checked", emulator, "IsJapaneseSystem");
             limitFPSToolStripMenuItem.DataBindings.Add("Checked", emulator, "LimitFPS");
             enableSoundToolStripMenuItem.DataBindings.Add("Checked", this, "soundEnabled");
+
+            /* Default settings stuff */
+            if (Properties.Settings.Default.RecentFiles == null)
+                Properties.Settings.Default.RecentFiles = new string[maxRecentFiles];
+
+            if (Properties.Settings.Default.P1Input == null)
+                Properties.Settings.Default.P1Input = new InputConfig();
+
+            if (Properties.Settings.Default.SaveFilePath == string.Empty)
+            {
+                string userConfigPath = System.Configuration.ConfigurationManager.OpenExeConfiguration(System.Configuration.ConfigurationUserLevel.PerUserRoamingAndLocal).FilePath;
+                Properties.Settings.Default.SaveFilePath = Path.Combine(Directory.GetParent(Path.GetDirectoryName(userConfigPath)).FullName, "Saves");
+            }
+
+            if (Properties.Settings.Default.ScreenshotPath == string.Empty)
+            {
+                string userConfigPath = System.Configuration.ConfigurationManager.OpenExeConfiguration(System.Configuration.ConfigurationUserLevel.PerUserRoamingAndLocal).FilePath;
+                Properties.Settings.Default.ScreenshotPath = Path.Combine(Directory.GetParent(Path.GetDirectoryName(userConfigPath)).FullName, "Screenshots");
+            }
+
+            if (Properties.Settings.Default.LastCartridgePath != string.Empty)
+            {
+                ofdOpenCartridge.InitialDirectory = Properties.Settings.Default.LastCartridgePath;
+            }
+
+            UpdateRecentFilesMenu();
 
             SetFormTitle();
             tsslStatus.Text = "Ready";
@@ -107,6 +134,39 @@ namespace MasterFudge
             Text = builder.ToString();
         }
 
+        private void UpdateRecentFilesMenu()
+        {
+            /* Recent files menu */
+            var oldRecentItems = recentFilesToolStripMenuItem.DropDownItems.Cast<ToolStripItem>().Where(x => x is ToolStripMenuItem && x.Tag is int).ToList();
+            foreach (ToolStripItem item in oldRecentItems)
+                recentFilesToolStripMenuItem.DropDownItems.Remove(item);
+
+            for (int i = 0; i < Properties.Settings.Default.RecentFiles.Length; i++)
+            {
+                string recentFile = Properties.Settings.Default.RecentFiles[i];
+
+                if (recentFile == default(string))
+                {
+                    ToolStripMenuItem menuItem = new ToolStripMenuItem("-");
+                    menuItem.ShortcutKeys = Keys.Control | (Keys.F1 + i);
+                    menuItem.Enabled = false;
+                    menuItem.Tag = -1;
+                    recentFilesToolStripMenuItem.DropDownItems.Add(menuItem);
+                }
+                else
+                {
+                    ToolStripMenuItem menuItem = new ToolStripMenuItem(Path.GetFileName(recentFile));
+                    menuItem.ShortcutKeys = Keys.Control | (Keys.F1 + i);
+                    menuItem.Tag = i;
+                    menuItem.Click += ((s, ev) =>
+                    {
+                        LoadCartridge(Properties.Settings.Default.RecentFiles[(int)(s as ToolStripMenuItem).Tag]);
+                    });
+                    recentFilesToolStripMenuItem.DropDownItems.Add(menuItem);
+                }
+            }
+        }
+
         private void ResizeWindowByOutput()
         {
             ClientSize = new Size(pbRenderOutput.Width * 2, (pbRenderOutput.Height * 2) + menuStrip.Height);
@@ -114,7 +174,7 @@ namespace MasterFudge
 
         private string GetSaveFilePath(string cartFile)
         {
-            return Path.Combine(saveDirectory, Path.GetFileName(Path.ChangeExtension(cartFile, "sav")));
+            return Path.Combine(Properties.Settings.Default.SaveFilePath, Path.GetFileName(Path.ChangeExtension(cartFile, "sav")));
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -123,7 +183,7 @@ namespace MasterFudge
 
             emulator?.PowerOff();
             if (emulator != null && emulator.CartridgeLoaded)
-                emulator.SaveCartridgeRam(Path.Combine(saveDirectory, Path.GetFileName(Path.ChangeExtension(emulator.CartridgeFilename, "sav"))));
+                emulator.SaveCartridgeRam(Path.Combine(Properties.Settings.Default.SaveFilePath, Path.GetFileName(Path.ChangeExtension(emulator.CartridgeFilename, "sav"))));
             taskWrapper.Stop();
 
             Properties.Settings.Default.Save();
@@ -180,9 +240,30 @@ namespace MasterFudge
             SetFormTitle();
             tsslStatus.Text = string.Format("Cartridge '{0}' loaded", Path.GetFileName(filename));
             cartridgeInformationToolStripMenuItem.Enabled = true;
+            AddFileToRecentList(filename);
+            UpdateRecentFilesMenu();
+
+            Properties.Settings.Default.LastCartridgePath = Path.GetDirectoryName(filename);
 
             Program.Log.WriteEvent("--- STARTING EMULATION ---");
             emulator.PowerOn();
+        }
+
+        private void AddFileToRecentList(string filename)
+        {
+            List<string> files = Properties.Settings.Default.RecentFiles.Where(x => x != default(string)).ToList();
+            files.Reverse();
+
+            /* Remove if already exists, so that adding it will make it the most recent entry */
+            if (files.Contains(filename)) files.Remove(filename);
+
+            files.Add(filename);
+            files.Reverse();
+
+            /* Pad with dummy values */
+            while (files.Count < maxRecentFiles) files.Add(default(string));
+
+            Properties.Settings.Default.RecentFiles = files.Take(maxRecentFiles).ToArray();
         }
 
         [System.Diagnostics.Conditional("DEBUG")]
@@ -260,6 +341,19 @@ namespace MasterFudge
             pbRenderOutput.Invalidate();
         }
 
+        private Buttons CheckInput(Keys key)
+        {
+            if (key == Properties.Settings.Default.P1Input.Up) return Buttons.Up;
+            else if (key == Properties.Settings.Default.P1Input.Down) return Buttons.Down;
+            else if (key == Properties.Settings.Default.P1Input.Left) return Buttons.Left;
+            else if (key == Properties.Settings.Default.P1Input.Right) return Buttons.Right;
+            else if (key == Properties.Settings.Default.P1Input.Button1) return Buttons.Button1;
+            else if (key == Properties.Settings.Default.P1Input.Button2) return Buttons.Button2;
+            else if (key == Properties.Settings.Default.P1Input.StartPause) return Buttons.StartPause;
+            else if (key == Properties.Settings.Default.P1Input.Reset) return Buttons.Reset;
+            else return Buttons.None;
+        }
+
         private void openCartridgeToolStripMenuItem_Click(object sender, EventArgs e)
         {
             ofdOpenCartridge.InitialDirectory = Path.GetDirectoryName(emulator.CartridgeFilename);
@@ -328,36 +422,12 @@ namespace MasterFudge
 
         private void MainForm_KeyDown(object sender, KeyEventArgs e)
         {
-            Buttons button = Buttons.None;
-            switch (e.KeyCode)
-            {
-                case Keys.Up: button = Buttons.Up; break;
-                case Keys.Down: button = Buttons.Down; break;
-                case Keys.Left: button = Buttons.Left; break;
-                case Keys.Right: button = Buttons.Right; break;
-                case Keys.A: button = Buttons.Button1; break;
-                case Keys.S: button = Buttons.Button2; break;
-                case Keys.Enter: button = Buttons.StartPause; break;
-                case Keys.Back: button = Buttons.Reset; break;
-            }
-            emulator?.SetButtonData(button, 0, true);
+            emulator?.SetButtonData(CheckInput(e.KeyCode), 0, true);
         }
 
         private void MainForm_KeyUp(object sender, KeyEventArgs e)
         {
-            Buttons button = Buttons.None;
-            switch (e.KeyCode)
-            {
-                case Keys.Up: button = Buttons.Up; break;
-                case Keys.Down: button = Buttons.Down; break;
-                case Keys.Left: button = Buttons.Left; break;
-                case Keys.Right: button = Buttons.Right; break;
-                case Keys.A: button = Buttons.Button1; break;
-                case Keys.S: button = Buttons.Button2; break;
-                case Keys.Enter: button = Buttons.StartPause; break;
-                case Keys.Back: button = Buttons.Reset; break;
-            }
-            emulator?.SetButtonData(button, 0, false);
+            emulator?.SetButtonData(CheckInput(e.KeyCode), 0, false);
         }
 
         private void nTSCToolStripMenuItem_Click(object sender, EventArgs e)
@@ -388,6 +458,13 @@ namespace MasterFudge
         private void enableSoundToolStripMenuItem_Click(object sender, EventArgs e)
         {
             Properties.Settings.Default.SoundEnabled = soundEnabled = (sender as ToolStripMenuItem).Checked;
+        }
+
+        private void clearListToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            for (int i = 0; i < Properties.Settings.Default.RecentFiles.Length; i++)
+                Properties.Settings.Default.RecentFiles[i] = default(string);
+            UpdateRecentFilesMenu();
         }
     }
 }

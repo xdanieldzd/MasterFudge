@@ -11,5 +11,23 @@
     <Setting Name="BaseUnitRegion" Type="MasterFudge.Emulation.BaseUnitRegion" Scope="User">
       <Value Profile="(Default)">ExportNTSC</Value>
     </Setting>
+    <Setting Name="LastCartridgePath" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="SaveFilePath" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="ScreenshotPath" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="RecentFiles" Type="System.String[]" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="P1Input" Type="MasterFudge.InputConfig" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="CallUpgrade" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

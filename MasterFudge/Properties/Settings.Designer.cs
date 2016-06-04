@@ -58,5 +58,75 @@ namespace MasterFudge.Properties {
                 this["BaseUnitRegion"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string LastCartridgePath {
+            get {
+                return ((string)(this["LastCartridgePath"]));
+            }
+            set {
+                this["LastCartridgePath"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string SaveFilePath {
+            get {
+                return ((string)(this["SaveFilePath"]));
+            }
+            set {
+                this["SaveFilePath"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string ScreenshotPath {
+            get {
+                return ((string)(this["ScreenshotPath"]));
+            }
+            set {
+                this["ScreenshotPath"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        public string[] RecentFiles {
+            get {
+                return ((string[])(this["RecentFiles"]));
+            }
+            set {
+                this["RecentFiles"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        public global::MasterFudge.InputConfig P1Input {
+            get {
+                return ((global::MasterFudge.InputConfig)(this["P1Input"]));
+            }
+            set {
+                this["P1Input"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool CallUpgrade {
+            get {
+                return ((bool)(this["CallUpgrade"]));
+            }
+            set {
+                this["CallUpgrade"] = value;
+            }
+        }
     }
 }

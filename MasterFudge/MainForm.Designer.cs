@@ -33,8 +33,9 @@
             this.menuStrip = new System.Windows.Forms.MenuStrip();
             this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.openCartridgeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripSeparator();
             this.cartridgeInformationToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripSeparator();
+            this.recentFilesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem3 = new System.Windows.Forms.ToolStripSeparator();
             this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.optionsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -49,6 +50,8 @@
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.statusStrip = new System.Windows.Forms.StatusStrip();
             this.tsslStatus = new System.Windows.Forms.ToolStripStatusLabel();
+            this.clearListToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripMenuItem5 = new System.Windows.Forms.ToolStripSeparator();
             this.limitFPSToolStripMenuItem = new MasterFudge.Controls.BindableToolStripMenuItem();
             this.enableSoundToolStripMenuItem = new MasterFudge.Controls.BindableToolStripMenuItem();
             this.nTSCToolStripMenuItem = new MasterFudge.Controls.ToolStripRadioButtonMenuItem();
@@ -93,8 +96,9 @@
             // 
             this.fileToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.openCartridgeToolStripMenuItem,
-            this.toolStripMenuItem1,
             this.cartridgeInformationToolStripMenuItem,
+            this.toolStripMenuItem1,
+            this.recentFilesToolStripMenuItem,
             this.toolStripMenuItem3,
             this.exitToolStripMenuItem});
             this.fileToolStripMenuItem.Name = "fileToolStripMenuItem";
@@ -108,11 +112,6 @@
             this.openCartridgeToolStripMenuItem.Text = "&Open Cartridge...";
             this.openCartridgeToolStripMenuItem.Click += new System.EventHandler(this.openCartridgeToolStripMenuItem_Click);
             // 
-            // toolStripMenuItem1
-            // 
-            this.toolStripMenuItem1.Name = "toolStripMenuItem1";
-            this.toolStripMenuItem1.Size = new System.Drawing.Size(186, 6);
-            // 
             // cartridgeInformationToolStripMenuItem
             // 
             this.cartridgeInformationToolStripMenuItem.Enabled = false;
@@ -120,6 +119,20 @@
             this.cartridgeInformationToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
             this.cartridgeInformationToolStripMenuItem.Text = "Cartridge &Information";
             this.cartridgeInformationToolStripMenuItem.Click += new System.EventHandler(this.cartridgeInformationToolStripMenuItem_Click);
+            // 
+            // toolStripMenuItem1
+            // 
+            this.toolStripMenuItem1.Name = "toolStripMenuItem1";
+            this.toolStripMenuItem1.Size = new System.Drawing.Size(186, 6);
+            // 
+            // recentFilesToolStripMenuItem
+            // 
+            this.recentFilesToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.clearListToolStripMenuItem,
+            this.toolStripMenuItem5});
+            this.recentFilesToolStripMenuItem.Name = "recentFilesToolStripMenuItem";
+            this.recentFilesToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.recentFilesToolStripMenuItem.Text = "&Recent Files...";
             // 
             // toolStripMenuItem3
             // 
@@ -231,6 +244,18 @@
             this.tsslStatus.Spring = true;
             this.tsslStatus.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
+            // clearListToolStripMenuItem
+            // 
+            this.clearListToolStripMenuItem.Name = "clearListToolStripMenuItem";
+            this.clearListToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.clearListToolStripMenuItem.Text = "&Clear List";
+            this.clearListToolStripMenuItem.Click += new System.EventHandler(this.clearListToolStripMenuItem_Click);
+            // 
+            // toolStripMenuItem5
+            // 
+            this.toolStripMenuItem5.Name = "toolStripMenuItem5";
+            this.toolStripMenuItem5.Size = new System.Drawing.Size(149, 6);
+            // 
             // limitFPSToolStripMenuItem
             // 
             this.limitFPSToolStripMenuItem.CheckOnClick = true;
@@ -331,6 +356,9 @@
         private System.Windows.Forms.ToolStripMenuItem regionToolStripMenuItem;
         private Controls.BindableToolStripMenuItem enableSoundToolStripMenuItem;
         private System.Windows.Forms.ToolStripSeparator toolStripMenuItem4;
+        private System.Windows.Forms.ToolStripMenuItem recentFilesToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem clearListToolStripMenuItem;
+        private System.Windows.Forms.ToolStripSeparator toolStripMenuItem5;
     }
 }
 
