@@ -13,11 +13,10 @@ using MasterFudge.Emulation.Cartridges;
 using MasterFudge.Emulation.Graphics;
 using MasterFudge.Emulation.Sound;
 
-using NAudio.Wave;
-
 namespace MasterFudge.Emulation
 {
     public delegate void RenderScreenHandler(object sender, RenderEventArgs e);
+    public delegate void SoundBufferReadyHandler(object sender, SoundBufferEventArgs e);
 
     public class RenderEventArgs : EventArgs
     {
@@ -26,6 +25,16 @@ namespace MasterFudge.Emulation
         public RenderEventArgs(byte[] data)
         {
             FrameData = data;
+        }
+    }
+
+    public class SoundBufferEventArgs : EventArgs
+    {
+        public short[] SoundBuffer { get; private set; }
+
+        public SoundBufferEventArgs(short[] data)
+        {
+            SoundBuffer = data;
         }
     }
 
@@ -129,6 +138,7 @@ namespace MasterFudge.Emulation
         public bool IsJapaneseSystem { get { return !isExportSystem; } }
 
         public event RenderScreenHandler OnRenderScreen;
+        public event SoundBufferReadyHandler OnSoundBufferReady;
 
         Stopwatch stopWatch;
         bool isStopped;
@@ -232,11 +242,6 @@ namespace MasterFudge.Emulation
         public RomHeader GetCartridgeHeader()
         {
             return cartridge.Header;
-        }
-
-        public IWaveProvider GetPSGWaveProvider()
-        {
-            return (psg as IWaveProvider);
         }
 
         // TODO: IO port control (the active high/low stuff)
@@ -348,8 +353,8 @@ namespace MasterFudge.Emulation
                             if (vdp.Execute(currentCycles))
                                 OnRenderScreen?.Invoke(this, new RenderEventArgs(vdp.OutputFramebuffer));
 
-                            // TODO: verify, fix, whatever, I hate sound
-                            psg.Execute(currentCycles);
+                            if (psg.Execute(currentCycles))
+                                OnSoundBufferReady?.Invoke(this, new SoundBufferEventArgs(psg.Samples));
 
                             cyclesInLine += currentCycles;
                         }

@@ -4,11 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-using NAudio.Wave;
-
 namespace MasterFudge.Emulation.Sound
 {
-    public class PSG : WaveProvider16
+    public class PSG
     {
         /* http://www.smspower.org/Development/SN76489 */
 
@@ -35,15 +33,13 @@ namespace MasterFudge.Emulation.Sound
         /* Clock-related values */
         int cyclesInLine;
 
-        /* Generated samples */
-        short[] samples;
+        /* Sound output stuff */
+        public short[] Samples { get; private set; }
         int currentSamplePosition;
+        int updateCounter;
 
         public PSG()
         {
-            /* For NAudio WaveProvider16 */
-            SetWaveFormat(44100, 2);
-
             SetTvSystem(PowerBase.DefaultBaseUnitRegion);
 
             volumeRegisters = new ushort[numChannels];
@@ -60,9 +56,6 @@ namespace MasterFudge.Emulation.Sound
             }
             volumeTable[15] = 0;
 
-            samples = new short[65535];
-            currentSamplePosition = 0;
-
             Reset();
         }
 
@@ -75,6 +68,10 @@ namespace MasterFudge.Emulation.Sound
                 volumeRegisters[i] = 0x0001;
                 toneRegisters[i] = 0x0000;
             }
+
+            Samples = new short[2047];
+            currentSamplePosition = 0;
+            updateCounter = 0;
         }
 
         public void SetUnitType(BaseUnitType unitType)
@@ -87,7 +84,7 @@ namespace MasterFudge.Emulation.Sound
             baseUnitRegion = unitRegion;
         }
 
-        public void Execute(int currentCycles)
+        public bool Execute(int currentCycles)
         {
             // TODO: timing is garbage, I guess
 
@@ -124,23 +121,28 @@ namespace MasterFudge.Emulation.Sound
                 }
 
                 /* Mix output together */
-                short mixed = 0;
-                for (int i = 0; i < numChannels; i++)
-                    mixed += channelOutputs[i];
+                if (Samples != null)
+                {
+                    short mixed = 0;
+                    for (int i = 0; i < numChannels; i++)
+                        mixed += channelOutputs[i];
 
-                samples[currentSamplePosition++] = mixed;
+                    if (currentSamplePosition < Samples.Length)
+                        Samples[currentSamplePosition++] = mixed;
+                    else
+                    {
+                        currentSamplePosition = 0;
+                        updateCounter++;
+                        if (updateCounter == 2)
+                        {
+                            updateCounter = 0;
+                            return true;
+                        }
+                    }
+                }
             }
-        }
 
-        /* For NAudio WaveProvider16 */
-        public override int Read(short[] buffer, int offset, int sampleCount)
-        {
-            // TODO: make not sound scratchy and generally shitty
-
-            Buffer.BlockCopy(samples, 0, buffer, 0, buffer.Length);
-            for (int i = 0; i < samples.Length; i++) samples[i] = 0;
-            currentSamplePosition = 0;
-            return sampleCount;
+            return false;
         }
 
         public void WriteData(byte data)

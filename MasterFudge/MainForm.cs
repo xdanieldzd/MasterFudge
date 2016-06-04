@@ -9,8 +9,6 @@ using System.Reflection;
 using System.IO;
 using System.Linq;
 
-using NAudio.Wave;
-
 using MasterFudge.Emulation;
 using MasterFudge.Emulation.Cartridges;
 using MasterFudge.Emulation.Graphics;
@@ -22,7 +20,8 @@ namespace MasterFudge
         PowerBase emulator;
         TaskWrapper taskWrapper;
         Bitmap screenBitmap;
-        WaveOut waveOut;
+        SoundWrapper soundWrapper;
+        MemoryStream soundStream;
 
         Version programVersion;
         bool logEnabled;
@@ -33,8 +32,7 @@ namespace MasterFudge
 
         public bool soundEnabled
         {
-            get { return (waveOut?.Volume == defaultVolume); }
-            set { waveOut.Volume = (value ? defaultVolume : 0.0f); }
+            get; set;
         }
 
         public MainForm()
@@ -50,6 +48,7 @@ namespace MasterFudge
             /* Create emulator instance & task wrapper */
             emulator = new PowerBase();
             emulator.OnRenderScreen += Emulator_OnRenderScreen;
+            emulator.OnSoundBufferReady += Emulator_OnSoundBufferReady;
             emulator.SetRegion(Properties.Settings.Default.BaseUnitRegion);
             emulator.LimitFPS = Properties.Settings.Default.LimitFPS;
             taskWrapper = new TaskWrapper();
@@ -57,9 +56,9 @@ namespace MasterFudge
 
             /* Create output instances */
             screenBitmap = new Bitmap(VDP.NumPixelsPerLine, VDP.NumVisibleLinesHigh, PixelFormat.Format32bppArgb);
-            waveOut = new WaveOut();
-            waveOut.Init(emulator.GetPSGWaveProvider());
-            waveOut.Play();
+            soundWrapper = new SoundWrapper(this);
+            soundStream = new MemoryStream(new byte[soundWrapper.BufferSize]);
+            soundWrapper.StartPlayback(soundStream);
             soundEnabled = Properties.Settings.Default.SoundEnabled;
 
             /* Misc variables */
@@ -185,6 +184,7 @@ namespace MasterFudge
             if (emulator != null && emulator.CartridgeLoaded)
                 emulator.SaveCartridgeRam(Path.Combine(Properties.Settings.Default.SaveFilePath, Path.GetFileName(Path.ChangeExtension(emulator.CartridgeFilename, "sav"))));
             taskWrapper.Stop();
+            soundWrapper.StopThread();
 
             Properties.Settings.Default.Save();
 
@@ -325,6 +325,19 @@ namespace MasterFudge
                 }
             }
             catch (ObjectDisposedException) { /* meh, maybe fix later */ }
+        }
+
+        private void Emulator_OnSoundBufferReady(object sender, SoundBufferEventArgs e)
+        {
+            try
+            {
+                soundStream.Seek(0, SeekOrigin.Begin);
+                BinaryWriter writer = new BinaryWriter(soundStream);
+
+                for (int i = 0; i < e.SoundBuffer.Length; i++)
+                    writer.Write(e.SoundBuffer[i]);
+            }
+            catch (ObjectDisposedException) { /* meh2 */ }
         }
 
         private void RenderScreen(RenderEventArgs e)
