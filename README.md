@@ -12,15 +12,6 @@ MasterFudge is an incomplete Sega Master System and Game Gear emulator written i
 
 Otherwise, if it's not listed above, it's probably not there yet at all.
 
-## Known Issues
-Known issues as of [this commit](https://github.com/xdanieldzd/MasterFudge/tree/010f43f8e850d65944b90d0634a70b6a7da4e0d2); there's most likely more:
-
-* __Master System__
- * __F-16 Fighting Falcon__: Uses non-SMS VDP mode; not implemented
- * __[VDP Test ROM](http://www.smspower.org/Homebrew/SMSVDPTest-SMS)__: Fails most HCounter tests, sprite off-screen Y collision test
-* __Game Gear__
- * __Fantasy Zone Gear__: Bad horizontal scrolling on title screen
-
 ## Screenshots
 * __Sonic the Hedgehog__:<br>
  ![Screenshot 1](http://i.imgur.com/l3dbCzW.png) ![Screenshot 2](http://i.imgur.com/R7wxWex.png)<br><br>
