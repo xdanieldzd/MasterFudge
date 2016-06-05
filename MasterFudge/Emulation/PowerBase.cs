@@ -132,6 +132,9 @@ namespace MasterFudge.Emulation
 
         Stopwatch stopWatch;
         bool isStopped;
+        long startTime;
+        int frameCounter;
+        public double FramesPerSecond { get; private set; }
 
         public bool LimitFPS { get; set; }
         public bool DebugLogOpcodes { get { return cpu.DebugLogOpcodes; } set { cpu.DebugLogOpcodes = value; } }
@@ -153,6 +156,10 @@ namespace MasterFudge.Emulation
             stopWatch.Start();
 
             isStopped = true;
+
+            frameCounter = 0;
+            FramesPerSecond = 0.0;
+
             LimitFPS = true;
 
             SetRegion(DefaultBaseUnitRegion);
@@ -329,7 +336,7 @@ namespace MasterFudge.Emulation
 
                 while (!isStopped)
                 {
-                    long startTime = stopWatch.ElapsedMilliseconds;
+                    startTime = stopWatch.ElapsedMilliseconds;
                     long interval = (long)TimeSpan.FromSeconds(1.0 / GetFrameRate(isNtscSystem)).TotalMilliseconds;
 
                     int cyclesPerFrame = Z80.GetCPUClockCyclesPerFrame(isNtscSystem);
@@ -360,6 +367,14 @@ namespace MasterFudge.Emulation
 
                     while (LimitFPS && stopWatch.ElapsedMilliseconds - startTime < interval)
                         Thread.Sleep(1);
+
+                    frameCounter++;
+                    double timeDifference = (stopWatch.ElapsedMilliseconds - startTime);
+                    if (timeDifference >= 1.0)
+                    {
+                        FramesPerSecond = (frameCounter / (timeDifference / 1000));
+                        frameCounter = 0;
+                    }
                 }
             }
 #if !DEBUG

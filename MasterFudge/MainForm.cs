@@ -319,9 +319,17 @@ namespace MasterFudge
                 if (IsHandleCreated && !Disposing)
                 {
                     if (InvokeRequired)
-                        Invoke(new Action<RenderEventArgs>(RenderScreen), e);
+                    {
+                        Invoke(new Action<RenderEventArgs>((ev) =>
+                        {
+                            RenderScreen(ev);
+                            tsslFps.Text = string.Format("{0:##} FPS", emulator.FramesPerSecond);
+                        }), e);
+                    }
                     else
+                    {
                         RenderScreen(e);
+                    }
                 }
             }
             catch (ObjectDisposedException) { /* meh, maybe fix later */ }
