@@ -10,6 +10,8 @@ namespace MasterFudge.Emulation.Graphics
 {
     public class VDP
     {
+        /* TMS9918 video modes 0-3, http://www.smspower.org/uploads/Development/tms9918a.txt */
+
         public const int NumScanlinesPAL = 313;
         public const int NumScanlinesNTSC = 262;
 
@@ -99,13 +101,42 @@ namespace MasterFudge.Emulation.Graphics
         bool isSpriteShiftLeft8 { get { return PowerBase.IsBitSet(registers[0x00], 3); } }
 
         /* Addresses */
-        ushort nametableBaseAddress { get { return (ushort)((registers[0x02] & 0x0E) << 10); } }
+        ushort nametableBaseAddress
+        {
+            get
+            {
+                if (isMode4) return (ushort)((registers[0x02] & 0x0E) << 10);
+                else return (ushort)((registers[0x02] & 0x0F) << 10);
+            }
+        }
         ushort spriteAttribTableBaseAddress { get { return (ushort)((registers[0x05] & 0x7E) << 7); } }
         ushort spritePatternGenBaseAddress { get { return (ushort)((registers[0x06] & 0x04) << 11); } }
 
         /* Colors, scrolling */
         int overscanBgColor { get { return (registers[0x07] & 0x0F); } }
         int backgroundHScroll { get { return registers[0x08]; } }
+
+        /* Non-mode 4 colors */
+        static byte[][] legacyColorData = new byte[][]
+        {
+            /*             B    G    R    A */
+            new byte[] {   0,   0,   0, 255 },  /* Transparent */
+            new byte[] {   0,   0,   0, 255 },  /* Black */
+            new byte[] {  66, 200,  33, 255 },  /* Medium green */
+            new byte[] { 120, 220,  94, 255 },  /* Light green */
+            new byte[] { 237,  85,  84, 255 },  /* Dark blue */
+            new byte[] { 252, 118, 125, 255 },  /* Light blue */
+            new byte[] {  77,  82, 212, 255 },  /* Dark red */
+            new byte[] { 245, 235,  66, 255 },  /* Cyan */
+            new byte[] {  84,  85, 252, 255 },  /* Medium red */
+            new byte[] { 120, 121, 255, 255 },  /* Light red */
+            new byte[] {  84, 193, 212, 255 },  /* Dark yellow */
+            new byte[] { 128, 206, 230, 255 },  /* Light yellow */
+            new byte[] {  59, 176,  33, 255 },  /* Dark green */
+            new byte[] { 186,  91, 201, 255 },  /* Magenta */
+            new byte[] { 204, 204, 204, 255 },  /* Gray */
+            new byte[] { 255, 255, 255, 255 },  /* White */
+        };
 
         /* For H-counter emulation */
         static byte[] hCounterTable = new byte[]
@@ -239,9 +270,14 @@ namespace MasterFudge.Emulation.Graphics
                         RenderBackgroundMode4(currentScanline);
                         RenderSpritesMode4(currentScanline);
                     }
+                    else if (isMode2)
+                    {
+                        RenderBackgroundMode2(currentScanline);
+                        // TODO: mode 2 sprites, obviously!
+                    }
                     else
                     {
-                        // TODO: TMS9918 modes 0-3, used by "non-SMS" games (SG-1000, SC-3000) and F-16 Fighting Falcon; should I even bother?
+                        // TODO: TMS9918 modes 0, 1 and 3, used by "non-SMS" games (SG-1000, SC-3000); should I even bother?
                     }
                 }
 
@@ -271,9 +307,17 @@ namespace MasterFudge.Emulation.Graphics
                     }
                     else
                     {
-                        // TODO: TMS9918 modes 0-3? Values below probably aren't correct
-                        screenHeight = NumVisibleLinesLow;
-                        nametableHeight = NumVisibleLinesLow;
+                        if (isMode2)
+                        {
+                            screenHeight = NumVisibleLinesLow;
+                            nametableHeight = 192;
+                        }
+                        else
+                        {
+                            // TODO: verify remaining TMS9918 modes, these are probably not correct
+                            screenHeight = NumVisibleLinesLow;
+                            nametableHeight = NumVisibleLinesLow;
+                        }
                     }
                 }
 
@@ -512,6 +556,56 @@ namespace MasterFudge.Emulation.Graphics
 
                         /* Note that there is a sprite here regardless */
                         screenPixelUsage[outputY + outputX] |= ScreenPixelUsage.HasSprite;
+                    }
+                }
+            }
+        }
+
+        private void RenderBackgroundMode2(int line)
+        {
+            if (!isDisplayBlanked)
+            {
+                int numTilesPerLine = (NumPixelsPerLine / 8);
+
+                /* Calculate some base addresses */
+                ushort patternGeneratorBaseAddress = (ushort)((registers[0x04] & 0x04) << 11);
+                ushort colorTableBaseAddress = (ushort)((registers[0x03] & 0x80) << 6);
+
+                for (int tile = 0; tile < numTilesPerLine; tile++)
+                {
+                    /* Calculate nametable address, fetch data byte */
+                    ushort nametableAddress = (ushort)(nametableBaseAddress + ((line / 8) * numTilesPerLine) + tile);
+
+                    byte patternNametableData = vram[nametableAddress];
+
+                    /* Calculate character number and masks */
+                    ushort characterNumber = (ushort)(((line / 64) << 8) | vram[nametableAddress]);
+                    ushort characterNumberDataMask = (ushort)(((registers[0x04] & 0x03) << 8) | 0xFF);
+                    ushort characterNumberColorMask = (ushort)(((registers[0x03] & 0x7F) << 3) | 0x07);
+
+                    /* Fetch pixel and color data for current pixel line (1 byte, 8 pixels) */
+                    byte pixelLineData = vram[patternGeneratorBaseAddress + ((characterNumber & characterNumberDataMask) * 8) + (line % 8)];
+                    byte pixelLineColor = vram[colorTableBaseAddress + ((characterNumber & characterNumberColorMask) * 8) + (line % 8)];
+
+                    /* Extract background and foreground color indices */
+                    byte[] colorIndicesBackgroundForeground = new byte[2];
+                    colorIndicesBackgroundForeground[0] = (byte)(pixelLineColor & 0x0F);
+                    colorIndicesBackgroundForeground[1] = (byte)(pixelLineColor >> 4);
+
+                    /* Draw pixels */
+                    for (int pixel = 0; pixel < 8; pixel++)
+                    {
+                        /* Fetch color index for current pixel (bit clear means background, bit set means foreground color) */
+                        byte c = colorIndicesBackgroundForeground[((pixelLineData >> (7 - pixel)) & 0x01)];
+                        /* Color index 0 is transparent */
+                        if (c == 0) continue;
+
+                        /* Calculate output framebuffer location, get BGRA values from legacy color table, write to framebuffer */
+                        int outputY = ((line % screenHeight) * NumPixelsPerLine);
+                        int outputX = (((tile * 8) + pixel) % NumPixelsPerLine);
+
+                        int outputAddress = outputFramebufferStartAddress + ((outputY + outputX) * 4);
+                        Buffer.BlockCopy(legacyColorData[c & 0x0F], 0, OutputFramebuffer, outputAddress, 4);
                     }
                 }
             }
