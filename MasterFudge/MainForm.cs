@@ -231,8 +231,9 @@ namespace MasterFudge
             emulator.LoadCartridgeRam(GetSaveFilePath(filename));
             LogCartridgeInformation(emulator, filename);
 
-            // TODO: make this better again, but SMS Chase HQ is set to GG in header...?
-            if (Path.GetExtension(filename) == ".gg")
+            // TODO: allow manual override from menu?
+            RomHeader header = emulator.GetCartridgeHeader();
+            if (header.IsGameGear)
                 emulator.SetUnitType(BaseUnitType.GameGear);
             else
                 emulator.SetUnitType(BaseUnitType.MasterSystem);

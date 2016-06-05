@@ -384,8 +384,6 @@ namespace MasterFudge.Emulation.CPU
 
         private string DisassembleOpcode(ushort address)
         {
-            // TODO: make nicer?
-
             byte[] opcode = DisassembleGetOpcodeBytes(address);
             return string.Format("{0:X4} | {1} | {2}", address, DisassembleMakeByteString(opcode).PadRight(15), DisassembleMakeMnemonicString(opcode));
         }
@@ -423,8 +421,6 @@ namespace MasterFudge.Emulation.CPU
 
         private string DisassembleMakeMnemonicString(byte[] opcode)
         {
-            // TODO: handle DD/FD/etc
-
             int len = DisassembleGetOpcodeLen(opcode);
 
             int start = 0;

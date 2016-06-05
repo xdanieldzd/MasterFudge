@@ -521,7 +521,6 @@ namespace MasterFudge.Emulation.Graphics
         {
             int counter = scanline;
 
-            // TODO: odd thing, verify this is correct http://www.smspower.org/Development/ScanlineCounter
             if (isNtsc)
             {
                 if (screenHeight == NumVisibleLinesHigh)
