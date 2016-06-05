@@ -286,6 +286,8 @@ namespace MasterFudge
             //romFile = @"D:\ROMs\GG\Sonic_the_Hedgehog_(JUE).gg";
             //romFile = @"D:\ROMs\GG\Gunstar_Heroes_(J).gg";
 
+            romFile = @"D:\ROMs\SMS\Girl's_Garden_(SC-3000).sg";
+
             LoadCartridge(romFile);
         }
 

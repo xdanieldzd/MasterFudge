@@ -10,7 +10,10 @@ namespace MasterFudge.Emulation.Graphics
 {
     public class VDP
     {
-        /* TMS9918 video modes 0-3, http://www.smspower.org/uploads/Development/tms9918a.txt */
+        /* TMS9918 video modes 0-3:
+         * http://www.smspower.org/uploads/Development/tms9918a.txt 
+         * http://problemkaputt.de/portar.htm#videodisplayprocessor
+         */
 
         public const int NumScanlinesPAL = 313;
         public const int NumScanlinesNTSC = 262;
@@ -110,7 +113,14 @@ namespace MasterFudge.Emulation.Graphics
             }
         }
         ushort spriteAttribTableBaseAddress { get { return (ushort)((registers[0x05] & 0x7E) << 7); } }
-        ushort spritePatternGenBaseAddress { get { return (ushort)((registers[0x06] & 0x04) << 11); } }
+        ushort spritePatternGenBaseAddress
+        {
+            get
+            {
+                if (isMode4) return (ushort)((registers[0x06] & 0x04) << 11);
+                else return (ushort)((registers[0x06] & 0x07) << 11);
+            }
+        }
 
         /* Colors, scrolling */
         int overscanBgColor { get { return (registers[0x07] & 0x0F); } }
@@ -273,7 +283,7 @@ namespace MasterFudge.Emulation.Graphics
                     else if (isMode2)
                     {
                         RenderBackgroundMode2(currentScanline);
-                        // TODO: mode 2 sprites, obviously!
+                        RenderSpritesMode2(currentScanline);
                     }
                     else
                     {
@@ -608,6 +618,102 @@ namespace MasterFudge.Emulation.Graphics
                         Buffer.BlockCopy(legacyColorData[c & 0x0F], 0, OutputFramebuffer, outputAddress, 4);
                     }
                 }
+            }
+        }
+
+        // TODO: illegal sprites and stuff
+        private void RenderSpritesMode2(int line)
+        {
+            /* Determine sprite size */
+            int spriteSize = (isLargeSprites ? 16 : 8);
+
+            /* Check and adjust for zoomed sprites */
+            if (isZoomedSprites) spriteSize *= 2;
+
+            int numSprites = 0;
+            for (int sprite = 0; sprite < 32; sprite++)
+            {
+                int yCoordinate = vram[spriteAttribTableBaseAddress + (sprite * 4)];
+
+                /* Ignore following if Y coord is 208 */
+                if (yCoordinate == 208)
+                {
+                    // TODO: illegal sprites
+                    break;
+                }
+
+                /* Modify Y coord as needed */
+                yCoordinate++;
+                if (yCoordinate > screenHeight)
+                    yCoordinate -= 256;
+
+                /* Ignore this sprite if on incorrect lines */
+                if (line < yCoordinate || line >= (yCoordinate + spriteSize)) continue;
+
+                /* Check for sprite overflow */
+                numSprites++;
+                if (numSprites > 4)
+                {
+                    // TODO: illegal sprites
+                    break;
+                }
+
+                /* If display isn't blanked, draw line */
+                if (!isDisplayBlanked)
+                {
+                    int xCoordinate = vram[spriteAttribTableBaseAddress + (sprite * 4) + 1];
+                    int characterNumber = vram[spriteAttribTableBaseAddress + (sprite * 4) + 2];
+                    int attributes = vram[spriteAttribTableBaseAddress + (sprite * 4) + 3];
+
+                    if ((attributes & 0x80) == 0x80) xCoordinate -= 32;
+                    int spriteColor = (attributes & 0x0F);
+                    int zoomShift = (isZoomedSprites ? 1 : 0);
+
+                    if (isLargeSprites)
+                    {
+                        ushort spritePatternAddress = (ushort)(spritePatternGenBaseAddress + ((characterNumber & 0xFC) * 8) + (((line - yCoordinate) >> zoomShift) % spriteSize));
+                        RenderSpriteTileMode2(spritePatternAddress, xCoordinate, (line - (yCoordinate % 8)), spriteColor);
+                        RenderSpriteTileMode2((ushort)(spritePatternAddress + 16), (xCoordinate + 8), (line - (yCoordinate % 8)), spriteColor);
+                    }
+                    else
+                    {
+                        ushort spritePatternAddress = (ushort)(spritePatternGenBaseAddress + (characterNumber * 8) + (((line - yCoordinate) >> zoomShift) % spriteSize));
+                        RenderSpriteTileMode2(spritePatternAddress, xCoordinate, (line - (yCoordinate % 8)), spriteColor);
+                    }
+                }
+            }
+        }
+
+        private void RenderSpriteTileMode2(ushort spritePatternAddress, int xCoordinate, int yCoordinate, int spriteColor)
+        {
+            /* Fetch pixel and color data */
+            byte pixelLineData = vram[spritePatternAddress];
+            byte[] outputColorData = legacyColorData[spriteColor];
+
+            /* Draw pixels */
+            for (int pixel = 0; pixel < 8; pixel++)
+            {
+                /* Check if a pixel needs to be drawn, and if we've crossed the right screen edge */
+                if (((pixelLineData >> (7 - pixel)) & 0x01) == 0x00 || xCoordinate + pixel >= NumPixelsPerLine) continue;
+
+                /* Calculate output framebuffer coordinates */
+                int outputY = ((yCoordinate % screenHeight) * NumPixelsPerLine);
+                int outputX = ((xCoordinate + pixel) % NumPixelsPerLine);
+
+                if ((screenPixelUsage[outputY + outputX] & ScreenPixelUsage.HasSprite) == ScreenPixelUsage.HasSprite)
+                {
+                    /* Set sprite collision flag */
+                    isSpriteCollision = true;
+                }
+                else
+                {
+                    /* Get BGRA values from legacy color table, write to framebuffer */
+                    int outputAddress = outputFramebufferStartAddress + ((outputY + outputX) * 4);
+                    Buffer.BlockCopy(outputColorData, 0, OutputFramebuffer, outputAddress, 4);
+                }
+
+                /* Note that there is a sprite here regardless */
+                screenPixelUsage[outputY + outputX] |= ScreenPixelUsage.HasSprite;
             }
         }
 
