@@ -13,7 +13,7 @@ MasterFudge is an incomplete Sega Master System and Game Gear emulator written i
 Otherwise, if it's not listed above, it's probably not there yet at all.
 
 ## Known Issues
-Known issues as of [this commit](https://github.com/xdanieldzd/MasterFudge/tree/c36eb1da2d8de7b6d20c43bbfe070f5466e25137); there's most likely more:
+Known issues as of [this commit](https://github.com/xdanieldzd/MasterFudge/tree/010f43f8e850d65944b90d0634a70b6a7da4e0d2); there's most likely more:
 
 * __Master System__
  * __F-16 Fighting Falcon__: Uses non-SMS VDP mode; not implemented
