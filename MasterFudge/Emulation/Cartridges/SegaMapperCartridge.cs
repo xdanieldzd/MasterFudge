@@ -95,8 +95,8 @@ namespace MasterFudge.Emulation.Cartridges
             {
                 /* ROM write enabled...? */
             }
-            else
-                throw new Exception(string.Format("Cannot write to cartridge address 0x{0:X4}", address));
+
+            /* Otherwise ignore writes to ROM, as some games seem to be doing that? (ex. Gunstar Heroes GG to 0000) */
         }
 
         public override MemoryAreaDescriptor[] GetAdditionalMemoryAreaDescriptors()

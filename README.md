@@ -16,12 +16,10 @@ Otherwise, if it's not listed above, it's probably not there yet at all.
 Known issues as of [this commit](https://github.com/xdanieldzd/MasterFudge/tree/c36eb1da2d8de7b6d20c43bbfe070f5466e25137); there's most likely more:
 
 * __Master System__
- * __Chase H.Q.__: Doesn't react to buttons on title screen
  * __F-16 Fighting Falcon__: Uses non-SMS VDP mode; not implemented
  * __[VDP Test ROM](http://www.smspower.org/Homebrew/SMSVDPTest-SMS)__: Fails most HCounter tests, sprite off-screen Y collision test
 * __Game Gear__
- * __Fantasy Zone Gear__: Crash during startup; memory mapping issues?
- * __Gunstar Heroes__: Crash during intro; memory mapping issues?
+ * __Fantasy Zone Gear__: Bad horizontal scrolling on title screen
 
 ## Screenshots
 * __Sonic the Hedgehog__:<br>
