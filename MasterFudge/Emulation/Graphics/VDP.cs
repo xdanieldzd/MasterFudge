@@ -77,21 +77,21 @@ namespace MasterFudge.Emulation.Graphics
 
         /* Interrupt flags */
         public bool IrqLineAsserted { get; private set; }
-        bool isLineInterruptEnabled { get { return PowerBase.IsBitSet(registers[0x00], 4); } }
-        bool isFrameInterruptEnabled { get { return PowerBase.IsBitSet(registers[0x01], 5); } }
+        bool isLineInterruptEnabled { get { return Utils.IsBitSet(registers[0x00], 4); } }
+        bool isFrameInterruptEnabled { get { return Utils.IsBitSet(registers[0x01], 5); } }
         bool isLineInterruptPending;
 
         /* Masking etc. flags */
-        bool isDisplayBlanked { get { return !PowerBase.IsBitSet(registers[0x01], 6); } }
-        bool isColumn0MaskEnabled { get { return PowerBase.IsBitSet(registers[0x00], 5); } }
-        bool isVScrollPartiallyDisabled { get { return PowerBase.IsBitSet(registers[0x00], 7); } }   /* Columns 24-31, i.e. pixels 192-255 */
-        bool isHScrollPartiallyDisabled { get { return PowerBase.IsBitSet(registers[0x00], 6); } }   /* Rows 0-1, i.e. pixels 0-15 */
+        bool isDisplayBlanked { get { return !Utils.IsBitSet(registers[0x01], 6); } }
+        bool isColumn0MaskEnabled { get { return Utils.IsBitSet(registers[0x00], 5); } }
+        bool isVScrollPartiallyDisabled { get { return Utils.IsBitSet(registers[0x00], 7); } }   /* Columns 24-31, i.e. pixels 192-255 */
+        bool isHScrollPartiallyDisabled { get { return Utils.IsBitSet(registers[0x00], 6); } }   /* Rows 0-1, i.e. pixels 0-15 */
 
         /* Display modes */
-        bool isMode4 { get { return PowerBase.IsBitSet(registers[0x00], 2); } }      /* SMS VDP mode 4 */
-        bool isMode3 { get { return PowerBase.IsBitSet(registers[0x01], 3); } }      /* TMS9918 mode 3 OR 240-line mode */
-        bool isMode2 { get { return PowerBase.IsBitSet(registers[0x00], 1); } }      /* TMS9918 mode 2 */
-        bool isMode1 { get { return PowerBase.IsBitSet(registers[0x01], 4); } }      /* TMS9918 mode 1 OR 224-line mode */
+        bool isMode4 { get { return Utils.IsBitSet(registers[0x00], 2); } }      /* SMS VDP mode 4 */
+        bool isMode3 { get { return Utils.IsBitSet(registers[0x01], 3); } }      /* TMS9918 mode 3 OR 240-line mode */
+        bool isMode2 { get { return Utils.IsBitSet(registers[0x00], 1); } }      /* TMS9918 mode 2 */
+        bool isMode1 { get { return Utils.IsBitSet(registers[0x01], 4); } }      /* TMS9918 mode 1 OR 224-line mode */
         bool isMode0 { get { return !(isMode1 || isMode2 || isMode3 || isMode4); } }
 
         bool isSMS240LineMode { get { return (isMode4 && isMode2 && isMode3); } }
@@ -99,9 +99,9 @@ namespace MasterFudge.Emulation.Graphics
         bool isSMS192LineMode { get { return (isMode4 && isMode2); } }
 
         /* Sprite flags */
-        bool isLargeSprites { get { return PowerBase.IsBitSet(registers[0x01], 1); } }
-        bool isZoomedSprites { get { return PowerBase.IsBitSet(registers[0x01], 0); } }
-        bool isSpriteShiftLeft8 { get { return PowerBase.IsBitSet(registers[0x00], 3); } }
+        bool isLargeSprites { get { return Utils.IsBitSet(registers[0x01], 1); } }
+        bool isZoomedSprites { get { return Utils.IsBitSet(registers[0x01], 0); } }
+        bool isSpriteShiftLeft8 { get { return Utils.IsBitSet(registers[0x00], 3); } }
 
         /* Addresses */
         ushort nametableBaseAddress
@@ -188,7 +188,7 @@ namespace MasterFudge.Emulation.Graphics
 
         public VDP()
         {
-            SetTvSystem(PowerBase.DefaultBaseUnitRegion);
+            SetTvSystem(BaseUnit.DefaultBaseUnitRegion);
 
             registers = new byte[0x10];
             vram = new byte[0x4000];
@@ -204,12 +204,12 @@ namespace MasterFudge.Emulation.Graphics
 
         public static int GetVDPClockCyclesPerFrame(bool isNtsc)
         {
-            return (int)(PowerBase.GetMasterClockCyclesPerFrame(isNtsc) / ClockDivider);
+            return (int)(BaseUnit.GetMasterClockCyclesPerFrame(isNtsc) / ClockDivider);
         }
 
         public static int GetVDPClockCyclesPerScanline(bool isNtsc)
         {
-            return (int)(PowerBase.GetMasterClockCyclesPerScanline(isNtsc) / ClockDivider);
+            return (int)(BaseUnit.GetMasterClockCyclesPerScanline(isNtsc) / ClockDivider);
         }
 
         public void Reset()

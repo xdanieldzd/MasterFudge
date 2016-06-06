@@ -44,7 +44,6 @@ namespace MasterFudge.Emulation
     [Flags]
     public enum Buttons
     {
-        None = 0,
         Up = (1 << 0),
         Down = (1 << 1),
         Left = (1 << 2),
@@ -84,7 +83,7 @@ namespace MasterFudge.Emulation
         Start = (1 << 7)
     }
 
-    public partial class PowerBase
+    public partial class BaseUnit
     {
         public const double MasterClockPAL = 53203424;
         public const double MasterClockNTSC = 53693175;
@@ -110,12 +109,12 @@ namespace MasterFudge.Emulation
         byte portIoC, portParallelData, portDataDirNMI, portTxBuffer, portRxBuffer, portSerialControl, portStereoControl;
 
         // TODO: actually make memory accesses depend on these
-        public bool isExpansionSlotEnabled { get { return !IsBitSet(portMemoryControl, 7); } }
-        public bool isCartridgeSlotEnabled { get { return !IsBitSet(portMemoryControl, 6); } }
-        public bool isCardSlotEnabled { get { return !IsBitSet(portMemoryControl, 5); } }
-        public bool isWorkRamEnabled { get { return !IsBitSet(portMemoryControl, 4); } }
-        public bool isBootstrapRomEnabled { get { return !IsBitSet(portMemoryControl, 3); } }
-        public bool isIoChipEnabled { get { return !IsBitSet(portMemoryControl, 2); } }
+        public bool isExpansionSlotEnabled { get { return !Utils.IsBitSet(portMemoryControl, 7); } }
+        public bool isCartridgeSlotEnabled { get { return !Utils.IsBitSet(portMemoryControl, 6); } }
+        public bool isCardSlotEnabled { get { return !Utils.IsBitSet(portMemoryControl, 5); } }
+        public bool isWorkRamEnabled { get { return !Utils.IsBitSet(portMemoryControl, 4); } }
+        public bool isBootstrapRomEnabled { get { return !Utils.IsBitSet(portMemoryControl, 3); } }
+        public bool isIoChipEnabled { get { return !Utils.IsBitSet(portMemoryControl, 2); } }
 
         bool isNtscSystem { get { return (baseUnitRegion == BaseUnitRegion.JapanNTSC || baseUnitRegion == BaseUnitRegion.ExportNTSC); } }
         bool isExportSystem { get { return (baseUnitRegion == BaseUnitRegion.ExportNTSC || baseUnitRegion == BaseUnitRegion.ExportPAL); } }
@@ -138,7 +137,7 @@ namespace MasterFudge.Emulation
         public bool CartridgeLoaded { get { return (cartridge != null); } }
         public string CartridgeFilename { get; private set; }
 
-        public PowerBase()
+        public BaseUnit()
         {
             cpu = new Z80(ReadMemory, WriteMemory, ReadIOPort, WriteIOPort);
             wram = new byte[0x2000];
@@ -191,11 +190,6 @@ namespace MasterFudge.Emulation
 
             vdp?.SetTvSystem(baseUnitRegion);
             psg?.SetTvSystem(baseUnitRegion);
-        }
-
-        public static bool IsBitSet(byte value, int bit)
-        {
-            return ((value & (1 << bit)) != 0);
         }
 
         public void LoadCartridge(string filename)

@@ -22,7 +22,7 @@ namespace MasterFudge
         static readonly string saveDirectory = "Saves";
         static readonly string screenshotDirectory = "Screenshots";
 
-        PowerBase emulator;
+        BaseUnit emulator;
         TaskWrapper taskWrapper;
         Bitmap screenBitmap;
         WaveOut waveOut;
@@ -45,7 +45,7 @@ namespace MasterFudge
             InitializeComponent();
 
             /* Create emulator instance & task wrapper */
-            emulator = new PowerBase();
+            emulator = new BaseUnit();
             emulator.OnRenderScreen += Emulator_OnRenderScreen;
             emulator.SetRegion(Configuration.BaseUnitRegion);
             emulator.LimitFPS = Configuration.LimitFPS;
@@ -187,9 +187,9 @@ namespace MasterFudge
             {
                 try
                 {
-                    File.WriteAllBytes(@"E:\temp\sms\wram.bin", Emulation.PowerBase.Debugging.DumpMemory(emulator, Emulation.PowerBase.Debugging.DumpRegion.WorkRam));
-                    File.WriteAllBytes(@"E:\temp\sms\vram.sms", Emulation.PowerBase.Debugging.DumpMemory(emulator, Emulation.PowerBase.Debugging.DumpRegion.VideoRam));
-                    File.WriteAllBytes(@"E:\temp\sms\cram.bin", Emulation.PowerBase.Debugging.DumpMemory(emulator, Emulation.PowerBase.Debugging.DumpRegion.ColorRam));
+                    File.WriteAllBytes(@"E:\temp\sms\wram.bin", BaseUnit.Debugging.DumpMemory(emulator, BaseUnit.Debugging.DumpRegion.WorkRam));
+                    File.WriteAllBytes(@"E:\temp\sms\vram.sms", BaseUnit.Debugging.DumpMemory(emulator, BaseUnit.Debugging.DumpRegion.VideoRam));
+                    File.WriteAllBytes(@"E:\temp\sms\cram.bin", BaseUnit.Debugging.DumpMemory(emulator, BaseUnit.Debugging.DumpRegion.ColorRam));
                 }
                 catch (IOException) { /* just ignore this one, happens if I have any of these open in ex. a hexeditor */ }
             }
@@ -295,7 +295,7 @@ namespace MasterFudge
             LoadCartridge(romFile);
         }
 
-        private void LogCartridgeInformation(Emulation.PowerBase ms, string romFile)
+        private void LogCartridgeInformation(BaseUnit ms, string romFile)
         {
             Program.Log.WriteEvent("--- ROM INFORMATION ---");
 
@@ -366,8 +366,30 @@ namespace MasterFudge
             else if (key == Configuration.KeyP1Button2) return Buttons.Button2;
             else if (key == Configuration.KeyP1StartPause) return Buttons.StartPause;
             else if (key == Configuration.KeyReset) return Buttons.Reset;
-            else return Buttons.None;
+            else return (Buttons)0;
         }
+
+        private void pbRenderOutput_Paint(object sender, PaintEventArgs e)
+        {
+            if (screenBitmap != null)
+            {
+                e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+                e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+                e.Graphics.DrawImage(screenBitmap, (sender as PictureBox).ClientRectangle, new Rectangle(0, 0, screenBitmap.Width, screenBitmap.Height), GraphicsUnit.Pixel);
+            }
+        }
+
+        private void MainForm_KeyDown(object sender, KeyEventArgs e)
+        {
+            emulator?.SetButtonData(CheckInput(e.KeyCode), 0, true);
+        }
+
+        private void MainForm_KeyUp(object sender, KeyEventArgs e)
+        {
+            emulator?.SetButtonData(CheckInput(e.KeyCode), 0, false);
+        }
+
+        #region Menu Event Handlers
 
         private void openCartridgeToolStripMenuItem_Click(object sender, EventArgs e)
         {
@@ -388,10 +410,99 @@ namespace MasterFudge
             MessageBox.Show(builder.ToString(), "Cartridge Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
+        private void screenshotToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            string directory = Path.Combine(Configuration.UserDataPath, screenshotDirectory);
+            string fileName = string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0} ({1}).png", Path.GetFileNameWithoutExtension(emulator.CartridgeFilename), DateTime.Now);
+            fileName = Path.GetInvalidFileNameChars().Aggregate(fileName, (current, c) => current.Replace(c.ToString(), "-"));
+
+            string filePath = Path.Combine(Configuration.UserDataPath, screenshotDirectory, fileName);
+            if (!Directory.Exists(directory)) Directory.CreateDirectory(directory);
+            screenBitmap?.Save(filePath);
+
+            tsslStatus.Text = string.Format("Saved screenshot '{0}'", fileName);
+        }
+
+        private void clearListToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            for (int i = 0; i < Configuration.RecentFiles.Length; i++)
+                Configuration.RecentFiles[i] = string.Empty;
+            UpdateRecentFilesMenu();
+        }
+
         private void exitToolStripMenuItem_Click(object sender, EventArgs e)
         {
             taskWrapper.Stop();
             Application.Exit();
+        }
+
+        private void limitFPSToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Configuration.LimitFPS = emulator.LimitFPS = (sender as ToolStripMenuItem).Checked;
+        }
+
+        private void enableSoundToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Configuration.SoundEnabled = soundEnabled = (sender as ToolStripMenuItem).Checked;
+        }
+
+        private void nTSCToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SetRegion((sender as ToolStripMenuItem).Checked, emulator.IsExportSystem);
+        }
+
+        private void pALToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SetRegion(!(sender as ToolStripMenuItem).Checked, emulator.IsExportSystem);
+        }
+
+        private void japaneseToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SetRegion(emulator.IsNtscSystem, !(sender as ToolStripMenuItem).Checked);
+        }
+
+        private void exportToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SetRegion(emulator.IsNtscSystem, (sender as ToolStripMenuItem).Checked);
+        }
+
+        private void settingsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            OptionsFormData optionsData = new OptionsFormData()
+            {
+                UseBootstrap = Configuration.BootstrapEnabled,
+                MasterSystemBootstrapPath = Configuration.MasterSystemBootstrapPath,
+                GameGearBootstrapPath = Configuration.GameGearBootstrapPath,
+                Player1Buttons = new Dictionary<Buttons, Keys>()
+                {
+                    { Buttons.Up, Configuration.KeyP1Up },
+                    { Buttons.Down, Configuration.KeyP1Down },
+                    { Buttons.Left, Configuration.KeyP1Left },
+                    { Buttons.Right, Configuration.KeyP1Right },
+                    { Buttons.Button1, Configuration.KeyP1Button1 },
+                    { Buttons.Button2, Configuration.KeyP1Button2 },
+                    { Buttons.StartPause, Configuration.KeyP1StartPause },
+                    { Buttons.Reset, Configuration.KeyReset }
+                },
+            };
+
+            using (OptionsForm optionsForm = new OptionsForm(optionsData))
+            {
+                if (optionsForm.ShowDialog() == DialogResult.OK)
+                {
+                    Configuration.BootstrapEnabled = optionsForm.OptionsData.UseBootstrap;
+                    Configuration.MasterSystemBootstrapPath = optionsForm.OptionsData.MasterSystemBootstrapPath;
+                    Configuration.GameGearBootstrapPath = optionsForm.OptionsData.GameGearBootstrapPath;
+                    Configuration.KeyP1Up = optionsForm.OptionsData.Player1Buttons[Buttons.Up];
+                    Configuration.KeyP1Down = optionsForm.OptionsData.Player1Buttons[Buttons.Down];
+                    Configuration.KeyP1Left = optionsForm.OptionsData.Player1Buttons[Buttons.Left];
+                    Configuration.KeyP1Right = optionsForm.OptionsData.Player1Buttons[Buttons.Right];
+                    Configuration.KeyP1Button1 = optionsForm.OptionsData.Player1Buttons[Buttons.Button1];
+                    Configuration.KeyP1Button2 = optionsForm.OptionsData.Player1Buttons[Buttons.Button2];
+                    Configuration.KeyP1StartPause = optionsForm.OptionsData.Player1Buttons[Buttons.StartPause];
+                    Configuration.KeyReset = optionsForm.OptionsData.Player1Buttons[Buttons.Reset];
+                }
+            }
         }
 
         private void enableLogToolStripMenuItem_Click(object sender, EventArgs e)
@@ -425,74 +536,6 @@ namespace MasterFudge
             MessageBox.Show(builder.ToString(), "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
-        private void pbRenderOutput_Paint(object sender, PaintEventArgs e)
-        {
-            if (screenBitmap != null)
-            {
-                e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
-                e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
-                e.Graphics.DrawImage(screenBitmap, (sender as PictureBox).ClientRectangle, new Rectangle(0, 0, screenBitmap.Width, screenBitmap.Height), GraphicsUnit.Pixel);
-            }
-        }
-
-        private void MainForm_KeyDown(object sender, KeyEventArgs e)
-        {
-            emulator?.SetButtonData(CheckInput(e.KeyCode), 0, true);
-        }
-
-        private void MainForm_KeyUp(object sender, KeyEventArgs e)
-        {
-            emulator?.SetButtonData(CheckInput(e.KeyCode), 0, false);
-        }
-
-        private void nTSCToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            SetRegion((sender as ToolStripMenuItem).Checked, emulator.IsExportSystem);
-        }
-
-        private void pALToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            SetRegion(!(sender as ToolStripMenuItem).Checked, emulator.IsExportSystem);
-        }
-
-        private void japaneseToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            SetRegion(emulator.IsNtscSystem, !(sender as ToolStripMenuItem).Checked);
-        }
-
-        private void exportToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            SetRegion(emulator.IsNtscSystem, (sender as ToolStripMenuItem).Checked);
-        }
-
-        private void limitFPSToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            Configuration.LimitFPS = emulator.LimitFPS = (sender as ToolStripMenuItem).Checked;
-        }
-
-        private void enableSoundToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            Configuration.SoundEnabled = soundEnabled = (sender as ToolStripMenuItem).Checked;
-        }
-
-        private void clearListToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            for (int i = 0; i < Configuration.RecentFiles.Length; i++)
-                Configuration.RecentFiles[i] = string.Empty;
-            UpdateRecentFilesMenu();
-        }
-
-        private void screenshotToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            string directory = Path.Combine(Configuration.UserDataPath, screenshotDirectory);
-            string fileName = string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0} ({1}).png", Path.GetFileNameWithoutExtension(emulator.CartridgeFilename), DateTime.Now);
-            fileName = Path.GetInvalidFileNameChars().Aggregate(fileName, (current, c) => current.Replace(c.ToString(), "-"));
-
-            string filePath = Path.Combine(Configuration.UserDataPath, screenshotDirectory, fileName);
-            if (!Directory.Exists(directory)) Directory.CreateDirectory(directory);
-            screenBitmap?.Save(filePath);
-
-            tsslStatus.Text = string.Format("Saved screenshot '{0}'", fileName);
-        }
+        #endregion
     }
 }

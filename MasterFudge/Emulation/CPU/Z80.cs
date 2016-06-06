@@ -100,12 +100,12 @@ namespace MasterFudge.Emulation.CPU
 
         public static int GetCPUClockCyclesPerFrame(bool isNtsc)
         {
-            return (int)(PowerBase.GetMasterClockCyclesPerFrame(isNtsc) / ClockDivider);
+            return (int)(BaseUnit.GetMasterClockCyclesPerFrame(isNtsc) / ClockDivider);
         }
 
         public static int GetCPUClockCyclesPerScanline(bool isNtsc)
         {
-            return (int)(PowerBase.GetMasterClockCyclesPerScanline(isNtsc) / ClockDivider);
+            return (int)(BaseUnit.GetMasterClockCyclesPerScanline(isNtsc) / ClockDivider);
         }
 
         public void Reset()
@@ -267,7 +267,7 @@ namespace MasterFudge.Emulation.CPU
         {
             int bitsSet = 0;
             for (int i = 0; i < 8; i++)
-                if (PowerBase.IsBitSet(value, i))
+                if (Utils.IsBitSet(value, i))
                     bitsSet++;
 
             SetClearFlagConditional(Flags.PV, (bitsSet == 0 || (bitsSet % 2) == 0));
@@ -279,11 +279,11 @@ namespace MasterFudge.Emulation.CPU
         private void RotateLeft(ref byte value)
         {
             bool isCarrySet = IsFlagSet(Flags.C);
-            bool isMsbSet = PowerBase.IsBitSet(value, 7);
+            bool isMsbSet = Utils.IsBitSet(value, 7);
             value <<= 1;
             if (isCarrySet) SetBit(ref value, 0);
 
-            SetClearFlagConditional(Flags.S, PowerBase.IsBitSet(value, 7));
+            SetClearFlagConditional(Flags.S, Utils.IsBitSet(value, 7));
             SetClearFlagConditional(Flags.Z, (value == 0));
             ClearFlag(Flags.H);
             CalculateAndSetParity(value);
@@ -300,11 +300,11 @@ namespace MasterFudge.Emulation.CPU
 
         private void RotateLeftCircular(ref byte value)
         {
-            bool isMsbSet = PowerBase.IsBitSet(value, 7);
+            bool isMsbSet = Utils.IsBitSet(value, 7);
             value <<= 1;
             if (isMsbSet) SetBit(ref value, 0);
 
-            SetClearFlagConditional(Flags.S, PowerBase.IsBitSet(value, 7));
+            SetClearFlagConditional(Flags.S, Utils.IsBitSet(value, 7));
             SetClearFlagConditional(Flags.Z, (value == 0));
             ClearFlag(Flags.H);
             CalculateAndSetParity(value);
@@ -322,11 +322,11 @@ namespace MasterFudge.Emulation.CPU
         private void RotateRight(ref byte value)
         {
             bool isCarrySet = IsFlagSet(Flags.C);
-            bool isLsbSet = PowerBase.IsBitSet(value, 0);
+            bool isLsbSet = Utils.IsBitSet(value, 0);
             value >>= 1;
             if (isCarrySet) SetBit(ref value, 7);
 
-            SetClearFlagConditional(Flags.S, PowerBase.IsBitSet(value, 7));
+            SetClearFlagConditional(Flags.S, Utils.IsBitSet(value, 7));
             SetClearFlagConditional(Flags.Z, (value == 0));
             ClearFlag(Flags.H);
             CalculateAndSetParity(value);
@@ -343,11 +343,11 @@ namespace MasterFudge.Emulation.CPU
 
         private void RotateRightCircular(ref byte value)
         {
-            bool isLsbSet = PowerBase.IsBitSet(value, 0);
+            bool isLsbSet = Utils.IsBitSet(value, 0);
             value >>= 1;
             if (isLsbSet) SetBit(ref value, 7);
 
-            SetClearFlagConditional(Flags.S, PowerBase.IsBitSet(value, 7));
+            SetClearFlagConditional(Flags.S, Utils.IsBitSet(value, 7));
             SetClearFlagConditional(Flags.Z, (value == 0x00));
             ClearFlag(Flags.H);
             CalculateAndSetParity(value);
@@ -364,10 +364,10 @@ namespace MasterFudge.Emulation.CPU
 
         private void ShiftLeftArithmetic(ref byte value)
         {
-            bool isMsbSet = PowerBase.IsBitSet(value, 7);
+            bool isMsbSet = Utils.IsBitSet(value, 7);
             value <<= 1;
 
-            SetClearFlagConditional(Flags.S, PowerBase.IsBitSet(value, 7));
+            SetClearFlagConditional(Flags.S, Utils.IsBitSet(value, 7));
             SetClearFlagConditional(Flags.Z, (value == 0x00));
             ClearFlag(Flags.H);
             CalculateAndSetParity(value);
@@ -384,12 +384,12 @@ namespace MasterFudge.Emulation.CPU
 
         private void ShiftRightArithmetic(ref byte value)
         {
-            bool isLsbSet = PowerBase.IsBitSet(value, 0);
-            bool isMsbSet = PowerBase.IsBitSet(value, 7);
+            bool isLsbSet = Utils.IsBitSet(value, 0);
+            bool isMsbSet = Utils.IsBitSet(value, 7);
             value >>= 1;
             if (isMsbSet) SetBit(ref value, 7);
 
-            SetClearFlagConditional(Flags.S, PowerBase.IsBitSet(value, 7));
+            SetClearFlagConditional(Flags.S, Utils.IsBitSet(value, 7));
             SetClearFlagConditional(Flags.Z, (value == 0x00));
             ClearFlag(Flags.H);
             CalculateAndSetParity(value);
@@ -406,11 +406,11 @@ namespace MasterFudge.Emulation.CPU
 
         private void ShiftLeftLogical(ref byte value)
         {
-            bool isMsbSet = PowerBase.IsBitSet(value, 7);
+            bool isMsbSet = Utils.IsBitSet(value, 7);
             value <<= 1;
             value |= 0x01;
 
-            SetClearFlagConditional(Flags.S, PowerBase.IsBitSet(value, 7));
+            SetClearFlagConditional(Flags.S, Utils.IsBitSet(value, 7));
             SetClearFlagConditional(Flags.Z, (value == 0x00));
             ClearFlag(Flags.H);
             CalculateAndSetParity(value);
@@ -427,10 +427,10 @@ namespace MasterFudge.Emulation.CPU
 
         private void ShiftRightLogical(ref byte value)
         {
-            bool isLsbSet = PowerBase.IsBitSet(value, 0);
+            bool isLsbSet = Utils.IsBitSet(value, 0);
             value >>= 1;
 
-            SetClearFlagConditional(Flags.S, PowerBase.IsBitSet(value, 7));
+            SetClearFlagConditional(Flags.S, Utils.IsBitSet(value, 7));
             SetClearFlagConditional(Flags.Z, (value == 0x00));
             ClearFlag(Flags.H);
             CalculateAndSetParity(value);
@@ -447,7 +447,7 @@ namespace MasterFudge.Emulation.CPU
 
         private void TestBit(byte value, int bit)
         {
-            bool isBitSet = PowerBase.IsBitSet(value, bit);
+            bool isBitSet = Utils.IsBitSet(value, bit);
 
             SetClearFlagConditional(Flags.S, (bit == 7 && isBitSet));
             SetClearFlagConditional(Flags.Z, !isBitSet);
@@ -503,7 +503,7 @@ namespace MasterFudge.Emulation.CPU
         private void RotateLeftAccumulator()
         {
             bool isCarrySet = IsFlagSet(Flags.C);
-            bool isMsbSet = PowerBase.IsBitSet(af.High, 7);
+            bool isMsbSet = Utils.IsBitSet(af.High, 7);
             af.High <<= 1;
             if (isCarrySet) SetBit(ref af.High, 0);
 
@@ -517,7 +517,7 @@ namespace MasterFudge.Emulation.CPU
 
         private void RotateLeftAccumulatorCircular()
         {
-            bool isMsbSet = PowerBase.IsBitSet(af.High, 7);
+            bool isMsbSet = Utils.IsBitSet(af.High, 7);
             af.High <<= 1;
             if (isMsbSet) SetBit(ref af.High, 0);
 
@@ -532,7 +532,7 @@ namespace MasterFudge.Emulation.CPU
         private void RotateRightAccumulator()
         {
             bool isCarrySet = IsFlagSet(Flags.C);
-            bool isLsbSet = PowerBase.IsBitSet(af.High, 0);
+            bool isLsbSet = Utils.IsBitSet(af.High, 0);
             af.High >>= 1;
             if (isCarrySet) SetBit(ref af.High, 7);
 
@@ -546,7 +546,7 @@ namespace MasterFudge.Emulation.CPU
 
         private void RotateRightAccumulatorCircular()
         {
-            bool isLsbSet = PowerBase.IsBitSet(af.High, 0);
+            bool isLsbSet = Utils.IsBitSet(af.High, 0);
             af.High >>= 1;
             if (isLsbSet) SetBit(ref af.High, 7);
 
@@ -574,7 +574,7 @@ namespace MasterFudge.Emulation.CPU
 
             WriteMemory8(hl.Word, hlValue);
 
-            SetClearFlagConditional(Flags.S, PowerBase.IsBitSet(af.High, 7));
+            SetClearFlagConditional(Flags.S, Utils.IsBitSet(af.High, 7));
             SetClearFlagConditional(Flags.Z, (af.High == 0x00));
             ClearFlag(Flags.H);
             CalculateAndSetParity(af.High);
@@ -598,7 +598,7 @@ namespace MasterFudge.Emulation.CPU
 
             WriteMemory8(hl.Word, hlValue);
 
-            SetClearFlagConditional(Flags.S, PowerBase.IsBitSet(af.High, 7));
+            SetClearFlagConditional(Flags.S, Utils.IsBitSet(af.High, 7));
             SetClearFlagConditional(Flags.Z, (af.High == 0x00));
             ClearFlag(Flags.H);
             CalculateAndSetParity(af.High);
@@ -634,7 +634,7 @@ namespace MasterFudge.Emulation.CPU
             else
                 result = (af.High - factor);
 
-            SetClearFlagConditional(Flags.S, PowerBase.IsBitSet((byte)result, 7));
+            SetClearFlagConditional(Flags.S, Utils.IsBitSet((byte)result, 7));
             SetClearFlagConditional(Flags.Z, ((byte)result == 0x00));
             SetClearFlagConditional(Flags.H, (((before ^ (byte)result) & 0x10) != 0));
             CalculateAndSetParity(af.High);
@@ -667,7 +667,7 @@ namespace MasterFudge.Emulation.CPU
         {
             dest = ioReadDelegate(port);
 
-            SetClearFlagConditional(Flags.S, PowerBase.IsBitSet(dest, 7));
+            SetClearFlagConditional(Flags.S, Utils.IsBitSet(dest, 7));
             SetClearFlagConditional(Flags.Z, (dest == 0x00));
             ClearFlag(Flags.H);
             CalculateAndSetParity(dest);
@@ -764,7 +764,7 @@ namespace MasterFudge.Emulation.CPU
             hl.Word++;
             bc.Word--;
 
-            SetClearFlagConditional(Flags.S, PowerBase.IsBitSet((byte)result, 7));
+            SetClearFlagConditional(Flags.S, Utils.IsBitSet((byte)result, 7));
             SetClearFlagConditional(Flags.Z, (af.High == operand));
             SetClearFlagConditional(Flags.H, (((af.High ^ result ^ operand) & 0x10) != 0));
             SetClearFlagConditional(Flags.PV, (bc.Word != 0));
@@ -791,7 +791,7 @@ namespace MasterFudge.Emulation.CPU
             hl.Word--;
             bc.Word--;
 
-            SetClearFlagConditional(Flags.S, PowerBase.IsBitSet((byte)result, 7));
+            SetClearFlagConditional(Flags.S, Utils.IsBitSet((byte)result, 7));
             SetClearFlagConditional(Flags.Z, (af.High == operand));
             SetClearFlagConditional(Flags.H, (((af.High ^ result ^ operand) & 0x10) != 0));
             SetClearFlagConditional(Flags.PV, (bc.Word != 0));
@@ -952,7 +952,7 @@ namespace MasterFudge.Emulation.CPU
             int operandWithCarry = (operand + (withCarry && IsFlagSet(Flags.C) ? 1 : 0));
             int result = (af.High + operandWithCarry);
 
-            SetClearFlagConditional(Flags.S, PowerBase.IsBitSet((byte)result, 7));
+            SetClearFlagConditional(Flags.S, Utils.IsBitSet((byte)result, 7));
             SetClearFlagConditional(Flags.Z, ((result & 0xFF) == 0));
             SetClearFlagConditional(Flags.H, (((af.High ^ result ^ operand) & 0x10) != 0));
             SetClearFlagConditional(Flags.PV, (((operand ^ af.High ^ 0x80) & (af.High ^ result) & 0x80) != 0));
@@ -967,7 +967,7 @@ namespace MasterFudge.Emulation.CPU
             int operandWithCarry = (operand + (withCarry && IsFlagSet(Flags.C) ? 1 : 0));
             int result = (af.High - operandWithCarry);
 
-            SetClearFlagConditional(Flags.S, PowerBase.IsBitSet((byte)result, 7));
+            SetClearFlagConditional(Flags.S, Utils.IsBitSet((byte)result, 7));
             SetClearFlagConditional(Flags.Z, ((result & 0xFF) == 0));
             SetClearFlagConditional(Flags.H, (((af.High ^ result ^ operand) & 0x10) != 0));
             SetClearFlagConditional(Flags.PV, (((operand ^ af.High) & (af.High ^ result) & 0x80) != 0));
@@ -981,7 +981,7 @@ namespace MasterFudge.Emulation.CPU
         {
             int result = (af.High & operand);
 
-            SetClearFlagConditional(Flags.S, PowerBase.IsBitSet((byte)result, 7));
+            SetClearFlagConditional(Flags.S, Utils.IsBitSet((byte)result, 7));
             SetClearFlagConditional(Flags.Z, ((result & 0xFF) == 0));
             SetFlag(Flags.H);
             CalculateAndSetParity((byte)result);
@@ -995,7 +995,7 @@ namespace MasterFudge.Emulation.CPU
         {
             int result = (af.High ^ operand);
 
-            SetClearFlagConditional(Flags.S, PowerBase.IsBitSet((byte)result, 7));
+            SetClearFlagConditional(Flags.S, Utils.IsBitSet((byte)result, 7));
             SetClearFlagConditional(Flags.Z, ((result & 0xFF) == 0));
             ClearFlag(Flags.H);
             CalculateAndSetParity((byte)result);
@@ -1009,7 +1009,7 @@ namespace MasterFudge.Emulation.CPU
         {
             int result = (af.High | operand);
 
-            SetClearFlagConditional(Flags.S, PowerBase.IsBitSet((byte)result, 7));
+            SetClearFlagConditional(Flags.S, Utils.IsBitSet((byte)result, 7));
             SetClearFlagConditional(Flags.Z, ((result & 0xFF) == 0));
             ClearFlag(Flags.H);
             CalculateAndSetParity((byte)result);
@@ -1023,7 +1023,7 @@ namespace MasterFudge.Emulation.CPU
         {
             int result = (af.High - operand);
 
-            SetClearFlagConditional(Flags.S, PowerBase.IsBitSet((byte)result, 7));
+            SetClearFlagConditional(Flags.S, Utils.IsBitSet((byte)result, 7));
             SetClearFlagConditional(Flags.Z, ((result & 0xFF) == 0));
             SetClearFlagConditional(Flags.H, (((af.High ^ result ^ operand) & 0x10) != 0));
             SetClearFlagConditional(Flags.PV, (((operand ^ af.High) & (af.High ^ result) & 0x80) != 0));
@@ -1098,7 +1098,7 @@ namespace MasterFudge.Emulation.CPU
             // Register is I or R?
             if (specialRegs)
             {
-                SetClearFlagConditional(Flags.S, PowerBase.IsBitSet(register, 7));
+                SetClearFlagConditional(Flags.S, Utils.IsBitSet(register, 7));
                 SetClearFlagConditional(Flags.Z, (register == 0));
                 ClearFlag(Flags.H);
                 SetClearFlagConditional(Flags.PV, (iff2));
@@ -1132,7 +1132,7 @@ namespace MasterFudge.Emulation.CPU
         {
             byte result = (byte)(register + 1);
 
-            SetClearFlagConditional(Flags.S, PowerBase.IsBitSet(result, 7));
+            SetClearFlagConditional(Flags.S, Utils.IsBitSet(result, 7));
             SetClearFlagConditional(Flags.Z, (result == 0x00));
             SetClearFlagConditional(Flags.H, ((register & 0x0F) == 0x0F));
             SetClearFlagConditional(Flags.PV, (register == 0x7F));
@@ -1158,7 +1158,7 @@ namespace MasterFudge.Emulation.CPU
         {
             byte result = (byte)(register - 1);
 
-            SetClearFlagConditional(Flags.S, PowerBase.IsBitSet(result, 7));
+            SetClearFlagConditional(Flags.S, Utils.IsBitSet(result, 7));
             SetClearFlagConditional(Flags.Z, (result == 0x00));
             SetClearFlagConditional(Flags.H, ((register & 0x0F) == 0x00));
             SetClearFlagConditional(Flags.PV, (register == 0x80));

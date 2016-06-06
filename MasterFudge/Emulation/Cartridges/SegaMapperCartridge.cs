@@ -71,7 +71,7 @@ namespace MasterFudge.Emulation.Cartridges
                     return romData[((pagingRegisters[2] << 14) | (address & 0x3FFF))];
 
                 case 0x8000:
-                    if (PowerBase.IsBitSet(pagingRegisters[0], 3))
+                    if (Utils.IsBitSet(pagingRegisters[0], 3))
                         return ramData[((pagingRegisters[0] >> 2) & 0x01) << 14 | (address & 0x3FFF)];
                     else
                         return romData[((pagingRegisters[3] << 14) | (address & 0x3FFF))];
@@ -83,12 +83,12 @@ namespace MasterFudge.Emulation.Cartridges
 
         public override void WriteCartridge(ushort address, byte value)
         {
-            if ((address & 0xC000) == 0x8000 && PowerBase.IsBitSet(pagingRegisters[0], 3))
+            if ((address & 0xC000) == 0x8000 && Utils.IsBitSet(pagingRegisters[0], 3))
             {
                 /* Cartridge RAM */
                 ramData[((pagingRegisters[0] >> 2) & 0x01) << 14 | (address & 0x3FFF)] = value;
             }
-            else if (PowerBase.IsBitSet(pagingRegisters[0], 7))
+            else if (Utils.IsBitSet(pagingRegisters[0], 7))
             {
                 /* ROM write enabled...? */
             }
@@ -103,7 +103,7 @@ namespace MasterFudge.Emulation.Cartridges
             pagingRegisters[address & 0x0003] = value;
 
             /* Check if RAM ever gets enabled; if it is, indicate that we'll need to save the RAM */
-            if (!hasCartRam && (address & 0x0003) == 0x0000 && PowerBase.IsBitSet(pagingRegisters[address & 0x0003], 3))
+            if (!hasCartRam && (address & 0x0003) == 0x0000 && Utils.IsBitSet(pagingRegisters[address & 0x0003], 3))
                 hasCartRam = true;
         }
     }

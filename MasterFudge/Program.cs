@@ -14,6 +14,8 @@ namespace MasterFudge
         [STAThread]
         static void Main()
         {
+            System.Threading.Thread.CurrentThread.CurrentCulture = System.Threading.Thread.CurrentThread.CurrentUICulture = System.Globalization.CultureInfo.InvariantCulture;
+
             Log = new Logger();
 
             Application.EnableVisualStyles();

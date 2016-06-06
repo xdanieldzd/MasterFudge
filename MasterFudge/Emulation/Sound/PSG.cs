@@ -44,7 +44,7 @@ namespace MasterFudge.Emulation.Sound
             /* For NAudio WaveProvider16 */
             SetWaveFormat(44100, 2);
 
-            SetTvSystem(PowerBase.DefaultBaseUnitRegion);
+            SetTvSystem(BaseUnit.DefaultBaseUnitRegion);
 
             volumeRegisters = new ushort[numChannels];
             toneRegisters = new ushort[numChannels];
@@ -145,7 +145,7 @@ namespace MasterFudge.Emulation.Sound
 
         public void WriteData(byte data)
         {
-            if (PowerBase.IsBitSet(data, 7))
+            if (Utils.IsBitSet(data, 7))
             {
                 /* LATCH/DATA byte; get channel (0-3) and type (0 is tone/noise, 1 is volume) */
                 latchedChannel = (byte)((data >> 5) & 0x03);
