@@ -437,8 +437,8 @@ namespace MasterFudge.Emulation.CPU
             UnimplementedOpcodeED, /* 6E - undocumented */
             new SimpleOpcodeDelegate((c) => { c.RotateLeft4B(); }),
             /* 0x70 */
-            UnimplementedOpcodeED, /* 70 - undocumented */
-            UnimplementedOpcodeED, /* 71 - undocumented */
+            new SimpleOpcodeDelegate((c) => { /* XXX */ c.PortReadFlagsOnly(c.bc.Low); }),
+            new SimpleOpcodeDelegate((c) => { /* XXX */ c.ioWriteDelegate(c.bc.Low, 0x00); }),
             new SimpleOpcodeDelegate((c) => { c.Subtract16(ref c.hl, c.sp, true); }),
             new SimpleOpcodeDelegate((c) => { c.LoadMemory16(c.memoryMapper.Read16(c.pc), c.sp); c.pc += 2; }),
             UnimplementedOpcodeED, /* 74 - undocumented */

@@ -649,6 +649,13 @@ namespace MasterFudge.Emulation.CPU
             // C
         }
 
+        private void PortReadFlagsOnly(byte port)
+        {
+            byte temp = 0;
+
+            PortRead(ref temp, port);
+        }
+
         private void DecrementJumpNonZero()
         {
             bc.High--;
