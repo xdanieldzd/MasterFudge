@@ -395,7 +395,7 @@ namespace MasterFudge.Emulation
                 string message = string.Format("Exception occured: {0}\n\nEmulation thread has been stopped.", ex.Message);
                 System.Windows.Forms.MessageBox.Show(message);
 
-                isStopped = true;
+                IsStopped = true;
             }
 #endif
         }

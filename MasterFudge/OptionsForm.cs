@@ -30,6 +30,7 @@ namespace MasterFudge
             gbBootstrap.DataBindings.Add("Enabled", OptionsData, "UseBootstrap", false, DataSourceUpdateMode.OnPropertyChanged);
             txtBootstrapSMS.DataBindings.Add("Text", OptionsData, "MasterSystemBootstrapPath", false, DataSourceUpdateMode.OnPropertyChanged);
             txtBootstrapGG.DataBindings.Add("Text", OptionsData, "GameGearBootstrapPath", false, DataSourceUpdateMode.OnPropertyChanged);
+            chkMiscNoiseEffect.DataBindings.Add("Checked", OptionsData, "UseNoiseEffect", false, DataSourceUpdateMode.OnPropertyChanged);
         }
 
         private void btnBootstrapSMSBrowse_Click(object sender, EventArgs e)
@@ -76,5 +77,6 @@ namespace MasterFudge
         public bool TVSystemPAL { get { return !TVSystemNTSC; } set { TVSystemNTSC = !value; } }
         public bool RegionJapan { get; set; }
         public bool RegionExport { get { return !RegionJapan; } set { RegionJapan = !value; } }
+        public bool UseNoiseEffect { get; set; }
     }
 }

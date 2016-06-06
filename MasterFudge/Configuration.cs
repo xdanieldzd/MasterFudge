@@ -49,6 +49,12 @@ namespace MasterFudge
             set { source.Configs[sectionOptions].Set("BootstrapEnabled", value); }
         }
 
+        public static bool NoiseEffectEnabled
+        {
+            get { return (source.Configs[sectionOptions].GetBoolean("NoiseEffectEnabled", false)); }
+            set { source.Configs[sectionOptions].Set("NoiseEffectEnabled", value); }
+        }
+
         public static BaseUnitRegion BaseUnitRegion
         {
             get { return ((BaseUnitRegion)Enum.Parse(typeof(BaseUnitRegion), (source.Configs[sectionSystem].GetString("BaseUnitRegion", "ExportNTSC")))); }

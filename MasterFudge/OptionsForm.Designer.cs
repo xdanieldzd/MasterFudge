@@ -39,14 +39,17 @@
             this.txtBootstrapSMS = new System.Windows.Forms.TextBox();
             this.chkBootstrapEnable = new System.Windows.Forms.CheckBox();
             this.gbKeyConfig = new System.Windows.Forms.GroupBox();
+            this.lblKeyConfigKeys = new System.Windows.Forms.Label();
+            this.lblKeyConfigButtons = new System.Windows.Forms.Label();
+            this.lbKeyConfigKeys = new System.Windows.Forms.ListBox();
+            this.lbKeyConfigButton = new System.Windows.Forms.ListBox();
             this.ofdBootstrapSMS = new System.Windows.Forms.OpenFileDialog();
             this.ofdBootstrapGG = new System.Windows.Forms.OpenFileDialog();
-            this.lbKeyConfigButton = new System.Windows.Forms.ListBox();
-            this.lbKeyConfigKeys = new System.Windows.Forms.ListBox();
-            this.lblKeyConfigButtons = new System.Windows.Forms.Label();
-            this.lblKeyConfigKeys = new System.Windows.Forms.Label();
+            this.gbMisc = new System.Windows.Forms.GroupBox();
+            this.chkMiscNoiseEffect = new System.Windows.Forms.CheckBox();
             this.gbBootstrap.SuspendLayout();
             this.gbKeyConfig.SuspendLayout();
+            this.gbMisc.SuspendLayout();
             this.SuspendLayout();
             // 
             // btnCancel
@@ -168,23 +171,23 @@
             this.gbKeyConfig.TabStop = false;
             this.gbKeyConfig.Text = "Keyboard Configuration";
             // 
-            // ofdBootstrapSMS
+            // lblKeyConfigKeys
             // 
-            this.ofdBootstrapSMS.Filter = "Sega Master System ROMs (*.sms)|*.sms|All Files (*.*)|*.*";
+            this.lblKeyConfigKeys.AutoSize = true;
+            this.lblKeyConfigKeys.Location = new System.Drawing.Point(132, 19);
+            this.lblKeyConfigKeys.Name = "lblKeyConfigKeys";
+            this.lblKeyConfigKeys.Size = new System.Drawing.Size(33, 13);
+            this.lblKeyConfigKeys.TabIndex = 4;
+            this.lblKeyConfigKeys.Text = "Keys:";
             // 
-            // ofdBootstrapGG
+            // lblKeyConfigButtons
             // 
-            this.ofdBootstrapGG.Filter = "Sega Game Gear ROMs (*.gg)|*.gg|All Files (*.*)|*.*";
-            // 
-            // lbKeyConfigButton
-            // 
-            this.lbKeyConfigButton.FormattingEnabled = true;
-            this.lbKeyConfigButton.IntegralHeight = false;
-            this.lbKeyConfigButton.Location = new System.Drawing.Point(6, 35);
-            this.lbKeyConfigButton.Name = "lbKeyConfigButton";
-            this.lbKeyConfigButton.Size = new System.Drawing.Size(120, 120);
-            this.lbKeyConfigButton.TabIndex = 0;
-            this.lbKeyConfigButton.SelectedIndexChanged += new System.EventHandler(this.lbKeyConfigButton_SelectedIndexChanged);
+            this.lblKeyConfigButtons.AutoSize = true;
+            this.lblKeyConfigButtons.Location = new System.Drawing.Point(6, 19);
+            this.lblKeyConfigButtons.Name = "lblKeyConfigButtons";
+            this.lblKeyConfigButtons.Size = new System.Drawing.Size(46, 13);
+            this.lblKeyConfigButtons.TabIndex = 3;
+            this.lblKeyConfigButtons.Text = "Buttons:";
             // 
             // lbKeyConfigKeys
             // 
@@ -196,23 +199,43 @@
             this.lbKeyConfigKeys.TabIndex = 2;
             this.lbKeyConfigKeys.SelectedIndexChanged += new System.EventHandler(this.lbKeyConfigKeys_SelectedIndexChanged);
             // 
-            // lblKeyConfigButtons
+            // lbKeyConfigButton
             // 
-            this.lblKeyConfigButtons.AutoSize = true;
-            this.lblKeyConfigButtons.Location = new System.Drawing.Point(6, 19);
-            this.lblKeyConfigButtons.Name = "lblKeyConfigButtons";
-            this.lblKeyConfigButtons.Size = new System.Drawing.Size(46, 13);
-            this.lblKeyConfigButtons.TabIndex = 3;
-            this.lblKeyConfigButtons.Text = "Buttons:";
+            this.lbKeyConfigButton.FormattingEnabled = true;
+            this.lbKeyConfigButton.IntegralHeight = false;
+            this.lbKeyConfigButton.Location = new System.Drawing.Point(6, 35);
+            this.lbKeyConfigButton.Name = "lbKeyConfigButton";
+            this.lbKeyConfigButton.Size = new System.Drawing.Size(120, 120);
+            this.lbKeyConfigButton.TabIndex = 0;
+            this.lbKeyConfigButton.SelectedIndexChanged += new System.EventHandler(this.lbKeyConfigButton_SelectedIndexChanged);
             // 
-            // lblKeyConfigKeys
+            // ofdBootstrapSMS
             // 
-            this.lblKeyConfigKeys.AutoSize = true;
-            this.lblKeyConfigKeys.Location = new System.Drawing.Point(132, 19);
-            this.lblKeyConfigKeys.Name = "lblKeyConfigKeys";
-            this.lblKeyConfigKeys.Size = new System.Drawing.Size(33, 13);
-            this.lblKeyConfigKeys.TabIndex = 4;
-            this.lblKeyConfigKeys.Text = "Keys:";
+            this.ofdBootstrapSMS.Filter = "Sega Master System ROMs (*.sms)|*.sms|All Files (*.*)|*.*";
+            // 
+            // ofdBootstrapGG
+            // 
+            this.ofdBootstrapGG.Filter = "Sega Game Gear ROMs (*.gg)|*.gg|All Files (*.*)|*.*";
+            // 
+            // gbMisc
+            // 
+            this.gbMisc.Controls.Add(this.chkMiscNoiseEffect);
+            this.gbMisc.Location = new System.Drawing.Point(278, 98);
+            this.gbMisc.Name = "gbMisc";
+            this.gbMisc.Size = new System.Drawing.Size(194, 170);
+            this.gbMisc.TabIndex = 4;
+            this.gbMisc.TabStop = false;
+            this.gbMisc.Text = "Miscellaneous";
+            // 
+            // chkMiscNoiseEffect
+            // 
+            this.chkMiscNoiseEffect.AutoSize = true;
+            this.chkMiscNoiseEffect.Location = new System.Drawing.Point(6, 19);
+            this.chkMiscNoiseEffect.Name = "chkMiscNoiseEffect";
+            this.chkMiscNoiseEffect.Size = new System.Drawing.Size(132, 17);
+            this.chkMiscNoiseEffect.TabIndex = 0;
+            this.chkMiscNoiseEffect.Text = "Noise when Power Off";
+            this.chkMiscNoiseEffect.UseVisualStyleBackColor = true;
             // 
             // OptionsForm
             // 
@@ -221,6 +244,7 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this.btnCancel;
             this.ClientSize = new System.Drawing.Size(484, 312);
+            this.Controls.Add(this.gbMisc);
             this.Controls.Add(this.gbKeyConfig);
             this.Controls.Add(this.chkBootstrapEnable);
             this.Controls.Add(this.gbBootstrap);
@@ -236,6 +260,8 @@
             this.gbBootstrap.PerformLayout();
             this.gbKeyConfig.ResumeLayout(false);
             this.gbKeyConfig.PerformLayout();
+            this.gbMisc.ResumeLayout(false);
+            this.gbMisc.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -260,5 +286,7 @@
         private System.Windows.Forms.ListBox lbKeyConfigKeys;
         private System.Windows.Forms.Label lblKeyConfigKeys;
         private System.Windows.Forms.Label lblKeyConfigButtons;
+        private System.Windows.Forms.GroupBox gbMisc;
+        private System.Windows.Forms.CheckBox chkMiscNoiseEffect;
     }
 }

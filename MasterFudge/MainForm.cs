@@ -28,6 +28,12 @@ namespace MasterFudge
         WaveOut waveOut;
 
         Version programVersion;
+
+        Random random;
+        byte[][] noiseEffectData;
+        int noiseIndex;
+        Timer noiseTimer;
+
         bool logEnabled;
         TextWriter logWriter;
 
@@ -61,6 +67,26 @@ namespace MasterFudge
 
             /* Misc variables */
             programVersion = new Version(Application.ProductVersion);
+
+            random = new Random();
+            noiseEffectData = new byte[16][];
+            for (int i = 0; i < noiseEffectData.Length; i++)
+            {
+                noiseEffectData[i] = new byte[VDP.NumPixelsPerLine * VDP.NumVisibleLinesHigh * 4];
+
+                for (int j = 0; j < noiseEffectData[i].Length; j += 4)
+                {
+                    noiseEffectData[i][j] = 0xFF;
+                    noiseEffectData[i][j + 1] = 0xFF;
+                    noiseEffectData[i][j + 2] = 0xFF;
+                    noiseEffectData[i][j + 3] = (byte)(random.Next() / 1.5);
+                }
+            }
+            noiseIndex = 0;
+            noiseTimer = new Timer();
+            noiseTimer.Interval = 25;
+            noiseTimer.Tick += NoiseTimer_Tick;
+            noiseTimer.Start();
 
             /* Misc UI stuff */
             nTSCToolStripMenuItem.DataBindings.Add("Checked", emulator, "IsNtscSystem");
@@ -104,6 +130,13 @@ namespace MasterFudge
 
             /* Autostart ROM when debugging thingy */
             DebugLoadRomShim();
+        }
+
+        private void NoiseTimer_Tick(object sender, EventArgs e)
+        {
+            noiseIndex++;
+            noiseIndex %= noiseEffectData.Length;
+            RenderScreen(noiseEffectData[noiseIndex]);
         }
 
         private void SetFormTitle()
@@ -183,9 +216,8 @@ namespace MasterFudge
         {
             emulator.OnRenderScreen -= Emulator_OnRenderScreen;
 
-            emulator?.PowerOff();
-            if (emulator != null && emulator.CartridgeLoaded)
-                emulator.SaveCartridgeRam(Path.Combine(Configuration.UserDataPath, saveDirectory, Path.GetFileName(Path.ChangeExtension(emulator.CartridgeFilename, "sav"))));
+            PowerOffEmulation();
+
             taskWrapper.Stop();
 
             logWriter?.Close();
@@ -220,12 +252,28 @@ namespace MasterFudge
             Configuration.BaseUnitRegion = regionToSet;
         }
 
-        private void LoadCartridge(string filename)
+        private void PowerOnEmulation()
+        {
+            Program.Log.WriteEvent("--- STARTING EMULATION ---");
+
+            noiseTimer.Stop();
+            emulator.PowerOn();
+        }
+
+        private void PowerOffEmulation()
         {
             emulator.PowerOff();
             if (emulator.CartridgeLoaded)
                 emulator.SaveCartridgeRam(GetSaveFilePath(emulator.CartridgeFilename));
             Program.Log.ClearEvents();
+
+            noiseTimer.Start();
+            tsslFps.Text = string.Empty;
+        }
+
+        private void LoadCartridge(string filename)
+        {
+            PowerOffEmulation();
 
             emulator.LoadCartridge(filename);
             emulator.LoadCartridgeRam(GetSaveFilePath(filename));
@@ -246,8 +294,7 @@ namespace MasterFudge
 
             Configuration.LastCartridgePath = Path.GetDirectoryName(filename);
 
-            Program.Log.WriteEvent("--- STARTING EMULATION ---");
-            emulator.PowerOn();
+            PowerOnEmulation();
         }
 
         private void CleanUpRecentList()
@@ -339,25 +386,25 @@ namespace MasterFudge
                     {
                         Invoke(new Action<RenderEventArgs>((ev) =>
                         {
-                            RenderScreen(ev);
+                            RenderScreen(ev.FrameData);
                             tsslFps.Text = string.Format("{0:##} FPS", emulator.FramesPerSecond);
                         }), e);
                     }
                     else
                     {
-                        RenderScreen(e);
+                        RenderScreen(e.FrameData);
                     }
                 }
             }
             catch (ObjectDisposedException) { /* meh, maybe fix later */ }
         }
 
-        private void RenderScreen(RenderEventArgs e)
+        private void RenderScreen(byte[] frameData)
         {
             BitmapData bmpData = screenBitmap.LockBits(new Rectangle(0, 0, screenBitmap.Width, screenBitmap.Height), ImageLockMode.WriteOnly, screenBitmap.PixelFormat);
 
             byte[] pixelData = new byte[bmpData.Stride * bmpData.Height];
-            Buffer.BlockCopy(e.FrameData, 0, pixelData, 0, pixelData.Length);
+            Buffer.BlockCopy(frameData, 0, pixelData, 0, pixelData.Length);
 
             Marshal.Copy(pixelData, 0, bmpData.Scan0, pixelData.Length);
 
@@ -448,17 +495,14 @@ namespace MasterFudge
 
         private void powerOnToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            emulator.PowerOn();
+            PowerOnEmulation();
 
             SetFormTitle();
         }
 
         private void powerOffToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            emulator.PowerOff();
-            if (emulator.CartridgeLoaded)
-                emulator.SaveCartridgeRam(GetSaveFilePath(emulator.CartridgeFilename));
-
+            PowerOffEmulation();
             SetFormTitle();
         }
 
@@ -522,6 +566,7 @@ namespace MasterFudge
                     { Buttons.StartPause, Configuration.KeyP1StartPause },
                     { Buttons.Reset, Configuration.KeyReset }
                 },
+                UseNoiseEffect = Configuration.NoiseEffectEnabled,
             };
 
             using (OptionsForm optionsForm = new OptionsForm(optionsData))
@@ -539,6 +584,7 @@ namespace MasterFudge
                     Configuration.KeyP1Button2 = optionsForm.OptionsData.Player1Buttons[Buttons.Button2];
                     Configuration.KeyP1StartPause = optionsForm.OptionsData.Player1Buttons[Buttons.StartPause];
                     Configuration.KeyReset = optionsForm.OptionsData.Player1Buttons[Buttons.Reset];
+                    Configuration.NoiseEffectEnabled = optionsForm.OptionsData.UseNoiseEffect;
                 }
             }
         }
