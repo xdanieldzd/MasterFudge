@@ -406,7 +406,7 @@ namespace MasterFudge.Emulation
             {
                 switch (port)
                 {
-                    case 0x00: return portIoC;
+                    case 0x00: return (byte)((portIoC & 0xBF) | (isExportSystem ? 0x40 : 0x00));
                     case 0x01: return portParallelData;
                     case 0x02: return portDataDirNMI;
                     case 0x03: return portTxBuffer;
