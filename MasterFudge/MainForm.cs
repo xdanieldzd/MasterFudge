@@ -112,8 +112,16 @@ namespace MasterFudge
             builder.AppendFormat("{0} v{1}.{2}", Application.ProductName, programVersion.Major, programVersion.Minor);
             if (programVersion.Build != 0) builder.AppendFormat(".{0}", programVersion.Build);
 
-            if (emulator.CartridgeLoaded)
-                builder.AppendFormat(" - [{0}]", Path.GetFileName(emulator.CartridgeFilename));
+            if (!emulator.IsStopped)
+            {
+                if (emulator.CartridgeLoaded)
+                    builder.AppendFormat(" - [{0}]", Path.GetFileName(emulator.CartridgeFilename));
+                else
+                    builder.Append(" - [No Cartridge]");
+
+                if (emulator.IsPaused)
+                    builder.Append(" - (Paused)");
+            }
 
             Text = builder.ToString();
         }
@@ -270,6 +278,8 @@ namespace MasterFudge
         private void DebugLoadRomShim()
         {
             if (Environment.MachineName != "NANAMI-X") return;
+
+            return;
 
             Configuration.MasterSystemBootstrapPath = @"D:\ROMs\SMS\[BIOS] Sega Master System (USA, Europe) (v1.3).sms";
             Configuration.GameGearBootstrapPath = @"D:\ROMs\GG\majbios.gg";
@@ -434,6 +444,34 @@ namespace MasterFudge
         {
             taskWrapper.Stop();
             Application.Exit();
+        }
+
+        private void powerOnToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            emulator.PowerOn();
+
+            SetFormTitle();
+        }
+
+        private void powerOffToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            emulator.PowerOff();
+            if (emulator.CartridgeLoaded)
+                emulator.SaveCartridgeRam(GetSaveFilePath(emulator.CartridgeFilename));
+
+            SetFormTitle();
+        }
+
+        private void pauseToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            emulator.TogglePause();
+            (sender as ToolStripMenuItem).Checked = emulator.IsPaused;
+            SetFormTitle();
+        }
+
+        private void resetToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            emulator.Reset();
         }
 
         private void limitFPSToolStripMenuItem_Click(object sender, EventArgs e)

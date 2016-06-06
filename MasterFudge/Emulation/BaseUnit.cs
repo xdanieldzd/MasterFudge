@@ -126,8 +126,10 @@ namespace MasterFudge.Emulation
 
         public event RenderScreenHandler OnRenderScreen;
 
+        public bool IsStopped { get; private set; }
+        public bool IsPaused { get; private set; }
+
         Stopwatch stopWatch;
-        bool isStopped;
         long startTime;
         int frameCounter;
         public double FramesPerSecond { get; private set; }
@@ -148,10 +150,11 @@ namespace MasterFudge.Emulation
             card = null;
             bootstrap = null;
 
+            IsStopped = true;
+            IsPaused = false;
+
             stopWatch = new Stopwatch();
             stopWatch.Start();
-
-            isStopped = true;
 
             frameCounter = 0;
             FramesPerSecond = 0.0;
@@ -315,12 +318,21 @@ namespace MasterFudge.Emulation
         {
             Reset();
 
-            isStopped = false;
+            IsStopped = false;
+
+            IsPaused = false;
         }
 
         public void PowerOff()
         {
-            isStopped = true;
+            IsStopped = true;
+
+            IsPaused = false;
+        }
+
+        public void TogglePause()
+        {
+            IsPaused = !IsPaused;
         }
 
         public void Execute()
@@ -331,35 +343,38 @@ namespace MasterFudge.Emulation
             {
                 // TODO: fix timing
 
-                while (!isStopped)
+                while (!IsStopped)
                 {
                     startTime = stopWatch.ElapsedMilliseconds;
                     long interval = (long)TimeSpan.FromSeconds(1.0 / GetFrameRate(isNtscSystem)).TotalMilliseconds;
 
-                    int cyclesPerFrame = Z80.GetCPUClockCyclesPerFrame(isNtscSystem);
-                    int cyclesPerLine = Z80.GetCPUClockCyclesPerScanline(isNtscSystem);
-
-                    int totalCycles = 0, cycleDiff = 0;
-                    while (totalCycles < cyclesPerFrame)
+                    if (!IsPaused)
                     {
-                        int cyclesInLine = cycleDiff;
-                        while (cyclesInLine < cyclesPerLine)
+                        int cyclesPerFrame = Z80.GetCPUClockCyclesPerFrame(isNtscSystem);
+                        int cyclesPerLine = Z80.GetCPUClockCyclesPerScanline(isNtscSystem);
+
+                        int totalCycles = 0, cycleDiff = 0;
+                        while (totalCycles < cyclesPerFrame)
                         {
-                            int currentCycles = cpu.Execute();
+                            int cyclesInLine = cycleDiff;
+                            while (cyclesInLine < cyclesPerLine)
+                            {
+                                int currentCycles = cpu.Execute();
 
-                            HandleInterrupts();
+                                HandleInterrupts();
 
-                            if (vdp.Execute(currentCycles))
-                                OnRenderScreen?.Invoke(this, new RenderEventArgs(vdp.OutputFramebuffer));
+                                if (vdp.Execute(currentCycles))
+                                    OnRenderScreen?.Invoke(this, new RenderEventArgs(vdp.OutputFramebuffer));
 
-                            // TODO: verify, fix, whatever, I hate sound
-                            psg.Execute(currentCycles);
+                                // TODO: verify, fix, whatever, I hate sound
+                                psg.Execute(currentCycles);
 
-                            cyclesInLine += currentCycles;
+                                cyclesInLine += currentCycles;
+                            }
+
+                            cycleDiff = (cyclesInLine - cyclesPerLine);
+                            totalCycles += cyclesInLine;
                         }
-
-                        cycleDiff = (cyclesInLine - cyclesPerLine);
-                        totalCycles += cyclesInLine;
                     }
 
                     while (LimitFPS && stopWatch.ElapsedMilliseconds - startTime < interval)
