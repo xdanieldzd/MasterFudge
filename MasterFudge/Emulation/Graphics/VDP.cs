@@ -624,11 +624,15 @@ namespace MasterFudge.Emulation.Graphics
         // TODO: illegal sprites and stuff
         private void RenderSpritesMode2(int line)
         {
+            /* Clear last illegal sprite number (if any) and overflow flag from status register */
+            statusFlags &= (StatusFlags.FrameInterruptPending | StatusFlags.SpriteCollision);
+
             /* Determine sprite size */
             int spriteSize = (isLargeSprites ? 16 : 8);
 
             /* Check and adjust for zoomed sprites */
             if (isZoomedSprites) spriteSize *= 2;
+            int zoomShift = (isZoomedSprites ? 1 : 0);
 
             int numSprites = 0;
             for (int sprite = 0; sprite < 32; sprite++)
@@ -638,8 +642,9 @@ namespace MasterFudge.Emulation.Graphics
                 /* Ignore following if Y coord is 208 */
                 if (yCoordinate == 208)
                 {
-                    // TODO: illegal sprites
-                    break;
+                    /* Store first "illegal sprite" number in status register */
+                    statusFlags |= (StatusFlags)sprite;
+                    return;
                 }
 
                 /* Modify Y coord as needed */
@@ -654,8 +659,10 @@ namespace MasterFudge.Emulation.Graphics
                 numSprites++;
                 if (numSprites > 4)
                 {
-                    // TODO: illegal sprites
-                    break;
+                    isSpriteOverflow = true;
+                    /* Store sprite number in status register */
+                    statusFlags |= (StatusFlags)sprite;
+                    return;
                 }
 
                 /* If display isn't blanked, draw line */
@@ -665,26 +672,29 @@ namespace MasterFudge.Emulation.Graphics
                     int characterNumber = vram[spriteAttribTableBaseAddress + (sprite * 4) + 2];
                     int attributes = vram[spriteAttribTableBaseAddress + (sprite * 4) + 3];
 
+                    /* Adjust according to registers/attributes, get sprite color */
                     if ((attributes & 0x80) == 0x80) xCoordinate -= 32;
+                    if (isLargeSprites) characterNumber &= 0xFC;
                     int spriteColor = (attributes & 0x0F);
-                    int zoomShift = (isZoomedSprites ? 1 : 0);
 
+                    ushort spritePatternAddress = (ushort)(spritePatternGenBaseAddress + (characterNumber * 8) + (((line - yCoordinate) >> zoomShift) % spriteSize));
                     if (isLargeSprites)
                     {
-                        ushort spritePatternAddress = (ushort)(spritePatternGenBaseAddress + ((characterNumber & 0xFC) * 8) + (((line - yCoordinate) >> zoomShift) % spriteSize));
-                        RenderSpriteTileMode2(spritePatternAddress, xCoordinate, (line - (yCoordinate % 8)), spriteColor);
-                        RenderSpriteTileMode2((ushort)(spritePatternAddress + 16), (xCoordinate + 8), (line - (yCoordinate % 8)), spriteColor);
+                        RenderSpriteTileMode2(spritePatternAddress, xCoordinate, (line - (yCoordinate % 8)), spriteColor, zoomShift);
+                        RenderSpriteTileMode2((ushort)(spritePatternAddress + 16), (xCoordinate + 8), (line - (yCoordinate % 8)), spriteColor, zoomShift);
                     }
                     else
                     {
-                        ushort spritePatternAddress = (ushort)(spritePatternGenBaseAddress + (characterNumber * 8) + (((line - yCoordinate) >> zoomShift) % spriteSize));
-                        RenderSpriteTileMode2(spritePatternAddress, xCoordinate, (line - (yCoordinate % 8)), spriteColor);
+                        RenderSpriteTileMode2(spritePatternAddress, xCoordinate, (line - (yCoordinate % 8)), spriteColor, zoomShift);
                     }
                 }
             }
+
+            /* Because we didn't bow out before already, store total number of sprites in status register */
+            statusFlags |= (StatusFlags)31;
         }
 
-        private void RenderSpriteTileMode2(ushort spritePatternAddress, int xCoordinate, int yCoordinate, int spriteColor)
+        private void RenderSpriteTileMode2(ushort spritePatternAddress, int xCoordinate, int yCoordinate, int spriteColor, int zoomShift)
         {
             /* Fetch pixel and color data */
             byte pixelLineData = vram[spritePatternAddress];
@@ -694,7 +704,7 @@ namespace MasterFudge.Emulation.Graphics
             for (int pixel = 0; pixel < 8; pixel++)
             {
                 /* Check if a pixel needs to be drawn, and if we've crossed the right screen edge */
-                if (((pixelLineData >> (7 - pixel)) & 0x01) == 0x00 || xCoordinate + pixel >= NumPixelsPerLine) continue;
+                if (spriteColor == 0 || ((pixelLineData >> (7 - (pixel >> zoomShift))) & 0x01) == 0x00 || xCoordinate + pixel >= NumPixelsPerLine) continue;
 
                 /* Calculate output framebuffer coordinates */
                 int outputY = ((yCoordinate % screenHeight) * NumPixelsPerLine);
