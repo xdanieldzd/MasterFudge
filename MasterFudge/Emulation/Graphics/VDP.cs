@@ -123,7 +123,8 @@ namespace MasterFudge.Emulation.Graphics
         }
 
         /* Colors, scrolling */
-        int overscanBgColor { get { return (registers[0x07] & 0x0F); } }
+        int overscanBackgroundColor { get { return (registers[0x07] & 0x0F); } }
+        int legacyTextColor { get { return ((registers[0x07] >> 4) & 0x0F); } }     /* Only for TMS9918 modes */
         int backgroundHScroll { get { return registers[0x08]; } }
 
         /* Non-mode 4 colors */
@@ -268,7 +269,7 @@ namespace MasterFudge.Emulation.Graphics
                 /* Clear screen */
                 if (currentScanline == 0)
                 {
-                    overscanBgColorArgb = (baseUnitType == BaseUnitType.GameGear ? ConvertGameGearColor(1, overscanBgColor) : ConvertMasterSystemColor(1, overscanBgColor));
+                    overscanBgColorArgb = (baseUnitType == BaseUnitType.GameGear ? ConvertGameGearColor(1, overscanBackgroundColor) : ConvertMasterSystemColor(1, overscanBackgroundColor));
                     ClearFramebuffer();
                 }
 
@@ -277,17 +278,24 @@ namespace MasterFudge.Emulation.Graphics
                 {
                     if (isMode4)
                     {
+                        /* Most Master System and Game Gear games, excluding F-16 Fighting Falcon */
                         RenderBackgroundMode4(currentScanline);
                         RenderSpritesMode4(currentScanline);
                     }
                     else if (isMode2)
                     {
+                        /* F-16 Fighting Falcon (SMS), SG-1000 and SC-3000 games */
                         RenderBackgroundMode2(currentScanline);
                         RenderSpritesMode2(currentScanline);
                     }
+                    else if (isMode1)
+                    {
+                        /* Mostly text-based software, ex. Sega Basic...? */
+                        RenderBackgroundMode1(currentScanline);
+                    }
                     else
                     {
-                        // TODO: TMS9918 modes 0, 1 and 3, used by "non-SMS" games (SG-1000, SC-3000); should I even bother?
+                        // TODO: TMS9918 modes 0 and 3, used by "non-SMS" games (SG-1000, SC-3000); do these eventually
                     }
                 }
 
@@ -317,17 +325,9 @@ namespace MasterFudge.Emulation.Graphics
                     }
                     else
                     {
-                        if (isMode2)
-                        {
-                            screenHeight = NumVisibleLinesLow;
-                            nametableHeight = 192;
-                        }
-                        else
-                        {
-                            // TODO: verify remaining TMS9918 modes, these are probably not correct
-                            screenHeight = NumVisibleLinesLow;
-                            nametableHeight = NumVisibleLinesLow;
-                        }
+                        // TODO: should be correct for remaining TMS9918 modes; verify!
+                        screenHeight = NumVisibleLinesLow;
+                        nametableHeight = NumVisibleLinesLow;
                     }
                 }
 
@@ -583,10 +583,8 @@ namespace MasterFudge.Emulation.Graphics
 
                 for (int tile = 0; tile < numTilesPerLine; tile++)
                 {
-                    /* Calculate nametable address, fetch data byte */
+                    /* Calculate nametable address */
                     ushort nametableAddress = (ushort)(nametableBaseAddress + ((line / 8) * numTilesPerLine) + tile);
-
-                    byte patternNametableData = vram[nametableAddress];
 
                     /* Calculate character number and masks */
                     ushort characterNumber = (ushort)(((line / 64) << 8) | vram[nametableAddress]);
@@ -621,7 +619,6 @@ namespace MasterFudge.Emulation.Graphics
             }
         }
 
-        // TODO: illegal sprites and stuff
         private void RenderSpritesMode2(int line)
         {
             /* Clear last illegal sprite number (if any) and overflow flag from status register */
@@ -724,6 +721,46 @@ namespace MasterFudge.Emulation.Graphics
 
                 /* Note that there is a sprite here regardless */
                 screenPixelUsage[outputY + outputX] |= ScreenPixelUsage.HasSprite;
+            }
+        }
+
+        private void RenderBackgroundMode1(int line)
+        {
+            if (!isDisplayBlanked)
+            {
+                /* Calculate/set some variables we'll need */
+                int tileWidth = 6;
+                int numTilesPerLine = 40;
+                ushort patternGeneratorBaseAddress = (ushort)((registers[0x04] & 0x07) << 11);
+
+                /* Get background and text color indices */
+                byte[] colorIndicesBackgroundText = new byte[2];
+                colorIndicesBackgroundText[0] = (byte)overscanBackgroundColor;
+                colorIndicesBackgroundText[1] = (byte)legacyTextColor;
+
+                for (int tile = 0; tile < numTilesPerLine; tile++)
+                {
+                    /* Calculate nametable address, fetch character number */
+                    ushort nametableAddress = (ushort)(nametableBaseAddress + ((line / 8) * numTilesPerLine) + tile);
+                    byte characterNumber = vram[nametableAddress];
+
+                    /* Fetch pixel data for current pixel line (1 byte, 8 pixels) */
+                    byte pixelLineData = vram[patternGeneratorBaseAddress + (characterNumber * 8) + (line % 8)];
+
+                    /* Draw pixels */
+                    for (int pixel = 0; pixel < tileWidth; pixel++)
+                    {
+                        /* Fetch color index for current pixel (bit clear means background, bit set means text color) */
+                        byte c = colorIndicesBackgroundText[((pixelLineData >> (7 - pixel)) & 0x01)];
+
+                        /* Calculate output framebuffer location, get BGRA values from legacy color table, write to framebuffer */
+                        int outputY = ((line % screenHeight) * NumPixelsPerLine);
+                        int outputX = ((8 + (tile * tileWidth) + pixel) % NumPixelsPerLine);
+
+                        int outputAddress = outputFramebufferStartAddress + ((outputY + outputX) * 4);
+                        Buffer.BlockCopy(legacyColorData[c & 0x0F], 0, OutputFramebuffer, outputAddress, 4);
+                    }
+                }
             }
         }
 

@@ -31,6 +31,18 @@ namespace MasterFudge.Emulation.Cartridges
             ramData = new byte[0x8000];
 
             bankMask = (byte)((romData.Length >> 14) - 1);
+
+            // TODO: kludge for small SG-1000/SC-3000 games, eventually do proper memory mapping for them
+            if (romData.Length <= 0x4000)
+            {
+                pagingRegisters[2] = 0x00;
+                pagingRegisters[3] = 0x00;
+            }
+            else if (romData.Length <= 0x8000)
+            {
+                pagingRegisters[2] = 0x01;
+                pagingRegisters[3] = 0x01;
+            }
         }
 
         public override bool HasCartridgeRam()
