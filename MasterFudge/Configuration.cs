@@ -43,6 +43,12 @@ namespace MasterFudge
             set { source.Configs[sectionOptions].Set("SoundEnabled", value); }
         }
 
+        public static bool BootstrapEnabled
+        {
+            get { return (source.Configs[sectionOptions].GetBoolean("BootstrapEnabled", false)); }
+            set { source.Configs[sectionOptions].Set("BootstrapEnabled", value); }
+        }
+
         public static BaseUnitRegion BaseUnitRegion
         {
             get { return ((BaseUnitRegion)Enum.Parse(typeof(BaseUnitRegion), (source.Configs[sectionSystem].GetString("BaseUnitRegion", "ExportNTSC")))); }
@@ -53,6 +59,18 @@ namespace MasterFudge
         {
             get { return (source.Configs[sectionPaths].GetString("LastCartridgePath", string.Empty)); }
             set { source.Configs[sectionPaths].Set("LastCartridgePath", value); }
+        }
+
+        public static string MasterSystemBootstrapPath
+        {
+            get { return (source.Configs[sectionPaths].GetString("MasterSystemBootstrapPath", string.Empty)); }
+            set { source.Configs[sectionPaths].Set("MasterSystemBootstrapPath", value); }
+        }
+
+        public static string GameGearBootstrapPath
+        {
+            get { return (source.Configs[sectionPaths].GetString("GameGearBootstrapPath", string.Empty)); }
+            set { source.Configs[sectionPaths].Set("GameGearBootstrapPath", value); }
         }
 
         public static string[] RecentFiles

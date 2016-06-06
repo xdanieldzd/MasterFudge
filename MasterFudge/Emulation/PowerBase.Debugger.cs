@@ -24,7 +24,7 @@ namespace MasterFudge.Emulation
             {
                 switch (memoryRegion)
                 {
-                    case DumpRegion.WorkRam: return ms.wram.DumpWorkRam();
+                    case DumpRegion.WorkRam: return ms.wram;
                     case DumpRegion.VideoRam: return ms.vdp.DumpVideoRam();
                     case DumpRegion.ColorRam: return ms.vdp.DumpColorRam();
                     default: throw new Exception("Invalid memory region for dumping");

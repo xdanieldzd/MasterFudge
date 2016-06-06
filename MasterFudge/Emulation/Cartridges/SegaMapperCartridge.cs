@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using MasterFudge.Emulation.Memory;
 
 namespace MasterFudge.Emulation.Cartridges
 {
@@ -11,9 +10,7 @@ namespace MasterFudge.Emulation.Cartridges
     {
         // TODO: the other FFFC/reg0 stuff? http://www.smspower.org/Development/Mappers?from=Development.Mapper
 
-        // TODO: remove the mirror kludge somehow? registerMirror is basically WRAM, but in *here* for the whole (DFFC-DFFF == FFFC-FFFF) mirroring...
-
-        byte[] pagingRegisters, wramPagingRegistersMirror;
+        byte[] pagingRegisters;
         byte[] ramData;
         byte bankMask;
         bool hasCartRam;
@@ -25,8 +22,6 @@ namespace MasterFudge.Emulation.Cartridges
             pagingRegisters[1] = 0x00;  /* Page 0 ROM bank */
             pagingRegisters[2] = 0x01;  /* Page 1 ROM bank */
             pagingRegisters[3] = 0x02;  /* Page 2 ROM/RAM bank */
-
-            wramPagingRegistersMirror = new byte[] { pagingRegisters[0], pagingRegisters[1], pagingRegisters[2], pagingRegisters[3] };
 
             ramData = new byte[0x8000];
 
@@ -60,17 +55,7 @@ namespace MasterFudge.Emulation.Cartridges
             return ramData;
         }
 
-        public override ushort GetStartAddress()
-        {
-            return 0x0000;
-        }
-
-        public override ushort GetEndAddress()
-        {
-            return 0xBFFF;
-        }
-
-        public override byte Read8(ushort address)
+        public override byte ReadCartridge(ushort address)
         {
             // TODO: appears to be working correctly now, wrt mirroring etc...
 
@@ -96,7 +81,7 @@ namespace MasterFudge.Emulation.Cartridges
             }
         }
 
-        public override void Write8(ushort address, byte value)
+        public override void WriteCartridge(ushort address, byte value)
         {
             if ((address & 0xC000) == 0x8000 && PowerBase.IsBitSet(pagingRegisters[0], 3))
             {
@@ -111,43 +96,15 @@ namespace MasterFudge.Emulation.Cartridges
             /* Otherwise ignore writes to ROM, as some games seem to be doing that? (ex. Gunstar Heroes GG to 0000) */
         }
 
-        public override MemoryAreaDescriptor[] GetAdditionalMemoryAreaDescriptors()
+        public override void WriteMapper(ushort address, byte value)
         {
-            return new MemoryAreaDescriptor[]
-            {
-                 new MemoryAreaDescriptor(0xFFFC, 0xFFFF, ReadRegister, WriteRegister),
-                 new MemoryAreaDescriptor(0xDFFC, 0xDFFF, ReadRegisterMirror, WriteRegisterMirror)
-            };
-        }
-
-        private byte ReadRegister(ushort address)
-        {
-            /* Read from paging register */
-            return pagingRegisters[address & 0x0003];
-        }
-
-        private byte ReadRegisterMirror(ushort address)
-        {
-            /* Read from "WRAM" */
-            return wramPagingRegistersMirror[address & 0x0003];
-        }
-
-        private void WriteRegister(ushort address, byte value)
-        {
-            /* Write to paging register AND "WRAM" */
-            wramPagingRegistersMirror[address & 0x0003] = value;
+            /* Write to paging register */
             if ((address & 0x0003) != 0x00) value &= bankMask;
             pagingRegisters[address & 0x0003] = value;
 
             /* Check if RAM ever gets enabled; if it is, indicate that we'll need to save the RAM */
             if (!hasCartRam && (address & 0x0003) == 0x0000 && PowerBase.IsBitSet(pagingRegisters[address & 0x0003], 3))
                 hasCartRam = true;
-        }
-
-        private void WriteRegisterMirror(ushort address, byte value)
-        {
-            /* Write ONLY to "WRAM" (does not affect paging registers) */
-            wramPagingRegistersMirror[address & 0x0003] = value;
         }
     }
 }

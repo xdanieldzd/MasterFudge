@@ -5,8 +5,6 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 
-using MasterFudge.Emulation.Memory;
-
 namespace MasterFudge.Emulation.CPU
 {
     [StructLayout(LayoutKind.Explicit)]
@@ -25,6 +23,9 @@ namespace MasterFudge.Emulation.CPU
         /* http://clrhome.org/table/
          * http://z80-heaven.wikidot.com/opcode-reference-chart
          */
+
+        public delegate byte MemoryReadDelegate(ushort address);
+        public delegate void MemoryWriteDelegate(ushort address, byte value);
 
         public delegate byte IOPortReadDelegate(byte port);
         public delegate void IOPortWriteDelegate(byte port, byte value);
@@ -66,7 +67,8 @@ namespace MasterFudge.Emulation.CPU
 
         int currentCycles;
 
-        MemoryMapper memoryMapper;
+        MemoryReadDelegate memoryReadDelegate;
+        MemoryWriteDelegate memoryWriteDelegate;
         IOPortReadDelegate ioReadDelegate;
         IOPortWriteDelegate ioWriteDelegate;
 
@@ -79,9 +81,10 @@ namespace MasterFudge.Emulation.CPU
             random = new Random();
         }
 
-        public Z80(MemoryMapper memMap, IOPortReadDelegate ioRead, IOPortWriteDelegate ioWrite) : this()
+        public Z80(MemoryReadDelegate memRead, MemoryWriteDelegate memWrite, IOPortReadDelegate ioRead, IOPortWriteDelegate ioWrite) : this()
         {
-            memoryMapper = memMap;
+            memoryReadDelegate = memRead;
+            memoryWriteDelegate = memWrite;
             ioReadDelegate = ioRead;
             ioWriteDelegate = ioWrite;
 
@@ -128,6 +131,29 @@ namespace MasterFudge.Emulation.CPU
             halted = false;
         }
 
+        private byte ReadMemory8(ushort address)
+        {
+            return memoryReadDelegate.Invoke(address);
+        }
+
+        private ushort ReadMemory16(ushort address)
+        {
+            byte low = memoryReadDelegate.Invoke(address);
+            byte high = memoryReadDelegate.Invoke((ushort)(address + 1));
+            return (ushort)((high << 8) | low);
+        }
+
+        public void WriteMemory8(ushort address, byte value)
+        {
+            memoryWriteDelegate(address, value);
+        }
+
+        public void WriteMemory16(ushort address, ushort value)
+        {
+            WriteMemory8(address, (byte)(value & 0xFF));
+            WriteMemory8((ushort)(address + 1), (byte)(value >> 8));
+        }
+
         public int Execute()
         {
             currentCycles = 0;
@@ -139,7 +165,7 @@ namespace MasterFudge.Emulation.CPU
 
                 r = (byte)((r + random.Next()) & 0x7F);
 
-                byte op = memoryMapper.Read8(pc++);
+                byte op = ReadMemory8(pc++);
                 switch (op)
                 {
                     case 0xCB: ExecuteOpCB(); break;
@@ -166,42 +192,42 @@ namespace MasterFudge.Emulation.CPU
 
         private void ExecuteOpED()
         {
-            byte edOp = memoryMapper.Read8(pc++);
+            byte edOp = ReadMemory8(pc++);
             currentCycles += cycleCountsED[edOp];
             opcodeTable_ED[edOp](this);
         }
 
         private void ExecuteOpCB()
         {
-            byte cbOp = memoryMapper.Read8(pc++);
+            byte cbOp = ReadMemory8(pc++);
             currentCycles += cycleCountsCB[cbOp];
             opcodeTable_CB[cbOp](this);
         }
 
         private void ExecuteOpDD()
         {
-            byte ddOp = memoryMapper.Read8(pc++);
+            byte ddOp = ReadMemory8(pc++);
             currentCycles += cycleCountsDDFD[ddOp];
             opcodeTable_DDFD[ddOp](this, ref ix);
         }
 
         private void ExecuteOpFD()
         {
-            byte fdOp = memoryMapper.Read8(pc++);
+            byte fdOp = ReadMemory8(pc++);
             currentCycles += cycleCountsDDFD[fdOp];
             opcodeTable_DDFD[fdOp](this, ref iy);
         }
 
         private ushort CalculateIXIYAddress(Register register)
         {
-            return (ushort)(register.Word + (sbyte)memoryMapper.Read8(pc++));
+            return (ushort)(register.Word + (sbyte)ReadMemory8(pc++));
         }
 
         private void ExecuteOpDDFDCB(byte op, ref Register register)
         {
             currentCycles += (cycleCountsCB[op] + AddCyclesDDFDCBOps);
 
-            sbyte operand = (sbyte)memoryMapper.Read8(pc);
+            sbyte operand = (sbyte)ReadMemory8(pc);
             ushort address = (ushort)(register.Word + operand);
             pc += 2;
 
@@ -267,9 +293,9 @@ namespace MasterFudge.Emulation.CPU
 
         private void RotateLeft(ushort address)
         {
-            byte value = memoryMapper.Read8(address);
+            byte value = ReadMemory8(address);
             RotateLeft(ref value);
-            memoryMapper.Write8(address, value);
+            WriteMemory8(address, value);
         }
 
         private void RotateLeftCircular(ref byte value)
@@ -288,9 +314,9 @@ namespace MasterFudge.Emulation.CPU
 
         private void RotateLeftCircular(ushort address)
         {
-            byte value = memoryMapper.Read8(address);
+            byte value = ReadMemory8(address);
             RotateLeftCircular(ref value);
-            memoryMapper.Write8(address, value);
+            WriteMemory8(address, value);
         }
 
         private void RotateRight(ref byte value)
@@ -310,9 +336,9 @@ namespace MasterFudge.Emulation.CPU
 
         private void RotateRight(ushort address)
         {
-            byte value = memoryMapper.Read8(address);
+            byte value = ReadMemory8(address);
             RotateRight(ref value);
-            memoryMapper.Write8(address, value);
+            WriteMemory8(address, value);
         }
 
         private void RotateRightCircular(ref byte value)
@@ -331,9 +357,9 @@ namespace MasterFudge.Emulation.CPU
 
         private void RotateRightCircular(ushort address)
         {
-            byte value = memoryMapper.Read8(address);
+            byte value = ReadMemory8(address);
             RotateRightCircular(ref value);
-            memoryMapper.Write8(address, value);
+            WriteMemory8(address, value);
         }
 
         private void ShiftLeftArithmetic(ref byte value)
@@ -351,9 +377,9 @@ namespace MasterFudge.Emulation.CPU
 
         private void ShiftLeftArithmetic(ushort address)
         {
-            byte value = memoryMapper.Read8(address);
+            byte value = ReadMemory8(address);
             ShiftLeftArithmetic(ref value);
-            memoryMapper.Write8(address, value);
+            WriteMemory8(address, value);
         }
 
         private void ShiftRightArithmetic(ref byte value)
@@ -373,9 +399,9 @@ namespace MasterFudge.Emulation.CPU
 
         private void ShiftRightArithmetic(ushort address)
         {
-            byte value = memoryMapper.Read8(address);
+            byte value = ReadMemory8(address);
             ShiftRightArithmetic(ref value);
-            memoryMapper.Write8(address, value);
+            WriteMemory8(address, value);
         }
 
         private void ShiftLeftLogical(ref byte value)
@@ -394,9 +420,9 @@ namespace MasterFudge.Emulation.CPU
 
         private void ShiftLeftLogical(ushort address)
         {
-            byte value = memoryMapper.Read8(address);
+            byte value = ReadMemory8(address);
             ShiftLeftLogical(ref value);
-            memoryMapper.Write8(address, value);
+            WriteMemory8(address, value);
         }
 
         private void ShiftRightLogical(ref byte value)
@@ -414,9 +440,9 @@ namespace MasterFudge.Emulation.CPU
 
         private void ShiftRightLogical(ushort address)
         {
-            byte value = memoryMapper.Read8(address);
+            byte value = ReadMemory8(address);
             ShiftRightLogical(ref value);
-            memoryMapper.Write8(address, value);
+            WriteMemory8(address, value);
         }
 
         private void TestBit(byte value, int bit)
@@ -438,9 +464,9 @@ namespace MasterFudge.Emulation.CPU
 
         private void ResetBit(ushort address, int bit)
         {
-            byte value = memoryMapper.Read8(address);
+            byte value = ReadMemory8(address);
             ResetBit(ref value, bit);
-            memoryMapper.Write8(address, value);
+            WriteMemory8(address, value);
         }
 
         private void SetBit(ref byte value, int bit)
@@ -450,27 +476,27 @@ namespace MasterFudge.Emulation.CPU
 
         private void SetBit(ushort address, int bit)
         {
-            byte value = memoryMapper.Read8(address);
+            byte value = ReadMemory8(address);
             SetBit(ref value, bit);
-            memoryMapper.Write8(address, value);
+            WriteMemory8(address, value);
         }
 
         private void Pop(ref Register register)
         {
-            register.Low = memoryMapper.Read8(sp++);
-            register.High = memoryMapper.Read8(sp++);
+            register.Low = ReadMemory8(sp++);
+            register.High = ReadMemory8(sp++);
         }
 
         private void Push(Register register)
         {
-            memoryMapper.Write8(--sp, register.High);
-            memoryMapper.Write8(--sp, register.Low);
+            WriteMemory8(--sp, register.High);
+            WriteMemory8(--sp, register.Low);
         }
 
         private void Rst(ushort address)
         {
-            memoryMapper.Write8(--sp, (byte)(pc >> 8));
-            memoryMapper.Write8(--sp, (byte)(pc & 0xFF));
+            WriteMemory8(--sp, (byte)(pc >> 8));
+            WriteMemory8(--sp, (byte)(pc & 0xFF));
             pc = address;
         }
 
@@ -534,7 +560,7 @@ namespace MasterFudge.Emulation.CPU
 
         private void RotateRight4B()
         {
-            byte hlValue = memoryMapper.Read8(hl.Word);
+            byte hlValue = ReadMemory8(hl.Word);
 
             // A=WX  (HL)=YZ
             // A=WZ  (HL)=XY
@@ -546,7 +572,7 @@ namespace MasterFudge.Emulation.CPU
             af.High = (byte)((a1 << 4) | hl2);
             hlValue = (byte)((a2 << 4) | hl1);
 
-            memoryMapper.Write8(hl.Word, hlValue);
+            WriteMemory8(hl.Word, hlValue);
 
             SetClearFlagConditional(Flags.S, PowerBase.IsBitSet(af.High, 7));
             SetClearFlagConditional(Flags.Z, (af.High == 0x00));
@@ -558,7 +584,7 @@ namespace MasterFudge.Emulation.CPU
 
         private void RotateLeft4B()
         {
-            byte hlValue = memoryMapper.Read8(hl.Word);
+            byte hlValue = ReadMemory8(hl.Word);
 
             // A=WX  (HL)=YZ
             // A=WY  (HL)=ZX
@@ -570,7 +596,7 @@ namespace MasterFudge.Emulation.CPU
             af.High = (byte)((a1 << 4) | hl1);
             hlValue = (byte)((hl2 << 4) | a2);
 
-            memoryMapper.Write8(hl.Word, hlValue);
+            WriteMemory8(hl.Word, hlValue);
 
             SetClearFlagConditional(Flags.S, PowerBase.IsBitSet(af.High, 7));
             SetClearFlagConditional(Flags.Z, (af.High == 0x00));
@@ -627,11 +653,11 @@ namespace MasterFudge.Emulation.CPU
 
         private void ExchangeStackRegister16(ref Register reg)
         {
-            byte sl = memoryMapper.Read8(sp);
-            byte sh = memoryMapper.Read8((ushort)(sp + 1));
+            byte sl = ReadMemory8(sp);
+            byte sh = ReadMemory8((ushort)(sp + 1));
 
-            memoryMapper.Write8(sp, reg.Low);
-            memoryMapper.Write8((ushort)(sp + 1), reg.High);
+            WriteMemory8(sp, reg.Low);
+            WriteMemory8((ushort)(sp + 1), reg.High);
 
             reg.Low = sl;
             reg.High = sh;
@@ -664,8 +690,8 @@ namespace MasterFudge.Emulation.CPU
 
         private void LoadIncrement()
         {
-            byte hlValue = memoryMapper.Read8(hl.Word);
-            memoryMapper.Write8(de.Word, hlValue);
+            byte hlValue = ReadMemory8(hl.Word);
+            WriteMemory8(de.Word, hlValue);
             Increment16(ref de.Word);
             Increment16(ref hl.Word);
             Decrement16(ref bc.Word);
@@ -698,8 +724,8 @@ namespace MasterFudge.Emulation.CPU
 
         private void LoadDecrement()
         {
-            byte hlValue = memoryMapper.Read8(hl.Word);
-            memoryMapper.Write8(de.Word, hlValue);
+            byte hlValue = ReadMemory8(hl.Word);
+            WriteMemory8(de.Word, hlValue);
             Decrement16(ref de.Word);
             Decrement16(ref hl.Word);
             Decrement16(ref bc.Word);
@@ -732,7 +758,7 @@ namespace MasterFudge.Emulation.CPU
 
         private void CompareIncrement()
         {
-            byte operand = memoryMapper.Read8(hl.Word);
+            byte operand = ReadMemory8(hl.Word);
             int result = (af.High - (sbyte)operand);
 
             hl.Word++;
@@ -759,7 +785,7 @@ namespace MasterFudge.Emulation.CPU
 
         private void CompareDecrement()
         {
-            byte operand = memoryMapper.Read8(hl.Word);
+            byte operand = ReadMemory8(hl.Word);
             int result = (af.High - (sbyte)operand);
 
             hl.Word--;
@@ -786,7 +812,7 @@ namespace MasterFudge.Emulation.CPU
 
         private void InputIncrement()
         {
-            memoryMapper.Write8(hl.Word, ioReadDelegate(bc.Low));
+            WriteMemory8(hl.Word, ioReadDelegate(bc.Low));
             Increment16(ref hl.Word);
             Decrement8(ref bc.High);
 
@@ -820,7 +846,7 @@ namespace MasterFudge.Emulation.CPU
 
         private void InputDecrement()
         {
-            memoryMapper.Write8(hl.Word, ioReadDelegate(bc.Low));
+            WriteMemory8(hl.Word, ioReadDelegate(bc.Low));
             Decrement16(ref hl.Word);
             Decrement8(ref bc.High);
 
@@ -854,7 +880,7 @@ namespace MasterFudge.Emulation.CPU
 
         private void OutputIncrement()
         {
-            byte value = memoryMapper.Read8(hl.Word);
+            byte value = ReadMemory8(hl.Word);
             ioWriteDelegate(bc.Low, value);
             Increment16(ref hl.Word);
             Decrement8(ref bc.High);
@@ -889,7 +915,7 @@ namespace MasterFudge.Emulation.CPU
 
         private void OutputDecrement()
         {
-            ioWriteDelegate(bc.Low, memoryMapper.Read8(hl.Word));
+            ioWriteDelegate(bc.Low, ReadMemory8(hl.Word));
             Decrement16(ref hl.Word);
             Decrement8(ref bc.High);
 
@@ -1057,12 +1083,12 @@ namespace MasterFudge.Emulation.CPU
 
         private void LoadRegisterFromMemory8(ref byte register, ushort address, bool specialRegs)
         {
-            LoadRegister8(ref register, memoryMapper.Read8(address), specialRegs);
+            LoadRegister8(ref register, ReadMemory8(address), specialRegs);
         }
 
         private void LoadRegisterImmediate8(ref byte register, bool specialRegs)
         {
-            LoadRegister8(ref register, memoryMapper.Read8(pc++), specialRegs);
+            LoadRegister8(ref register, ReadMemory8(pc++), specialRegs);
         }
 
         private void LoadRegister8(ref byte register, byte value, bool specialRegs)
@@ -1083,7 +1109,7 @@ namespace MasterFudge.Emulation.CPU
 
         private void LoadRegisterImmediate16(ref ushort register)
         {
-            LoadRegister16(ref register, memoryMapper.Read16(pc));
+            LoadRegister16(ref register, ReadMemory16(pc));
             pc += 2;
         }
 
@@ -1094,12 +1120,12 @@ namespace MasterFudge.Emulation.CPU
 
         private void LoadMemory8(ushort address, byte value)
         {
-            memoryMapper.Write8(address, value);
+            WriteMemory8(address, value);
         }
 
         private void LoadMemory16(ushort address, ushort value)
         {
-            memoryMapper.Write16(address, value);
+            WriteMemory16(address, value);
         }
 
         private void Increment8(ref byte register)
@@ -1123,9 +1149,9 @@ namespace MasterFudge.Emulation.CPU
 
         private void IncrementMemory8(ushort address)
         {
-            byte value = memoryMapper.Read8(address);
+            byte value = ReadMemory8(address);
             Increment8(ref value);
-            memoryMapper.Write8(address, value);
+            WriteMemory8(address, value);
         }
 
         private void Decrement8(ref byte register)
@@ -1149,14 +1175,14 @@ namespace MasterFudge.Emulation.CPU
 
         private void DecrementMemory8(ushort address)
         {
-            byte value = memoryMapper.Read8(address);
+            byte value = ReadMemory8(address);
             Decrement8(ref value);
-            memoryMapper.Write8(address, value);
+            WriteMemory8(address, value);
         }
 
         private void Jump8()
         {
-            pc += (ushort)((sbyte)(memoryMapper.Read8(pc) + 1));
+            pc += (ushort)((sbyte)(ReadMemory8(pc) + 1));
         }
 
         private void JumpConditional8(bool condition)
@@ -1173,16 +1199,16 @@ namespace MasterFudge.Emulation.CPU
         private void JumpConditional16(bool condition)
         {
             if (condition)
-                pc = memoryMapper.Read16(pc);
+                pc = ReadMemory16(pc);
             else
                 pc += 2;
         }
 
         private void Call16()
         {
-            memoryMapper.Write8(--sp, (byte)((pc + 2) >> 8));
-            memoryMapper.Write8(--sp, (byte)((pc + 2) & 0xFF));
-            pc = memoryMapper.Read16(pc);
+            WriteMemory8(--sp, (byte)((pc + 2) >> 8));
+            WriteMemory8(--sp, (byte)((pc + 2) & 0xFF));
+            pc = ReadMemory16(pc);
         }
 
         private void CallConditional16(bool condition)
@@ -1198,7 +1224,7 @@ namespace MasterFudge.Emulation.CPU
 
         private void Return()
         {
-            pc = memoryMapper.Read16(sp);
+            pc = ReadMemory16(sp);
             sp += 2;
         }
 

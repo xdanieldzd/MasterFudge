@@ -5,11 +5,9 @@ using System.Text;
 using System.Threading.Tasks;
 using System.IO;
 
-using MasterFudge.Emulation.Memory;
-
 namespace MasterFudge.Emulation.Cartridges
 {
-    public abstract class BaseCartridge : SimpleMemoryArea
+    public abstract class BaseCartridge
     {
         protected byte[] romData;
         public RomHeader Header { get; private set; }
@@ -51,10 +49,9 @@ namespace MasterFudge.Emulation.Cartridges
             return new byte[0];
         }
 
-        public virtual MemoryAreaDescriptor[] GetAdditionalMemoryAreaDescriptors()
-        {
-            return new MemoryAreaDescriptor[0];
-        }
+        public abstract byte ReadCartridge(ushort address);
+        public abstract void WriteCartridge(ushort address, byte value);
+        public abstract void WriteMapper(ushort address, byte value);
 
         private static byte[] ReadRomData(string filename)
         {

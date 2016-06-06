@@ -7,7 +7,6 @@ using System.Threading;
 using System.Diagnostics;
 using System.IO;
 
-using MasterFudge.Emulation.Memory;
 using MasterFudge.Emulation.CPU;
 using MasterFudge.Emulation.Cartridges;
 using MasterFudge.Emulation.Graphics;
@@ -97,13 +96,11 @@ namespace MasterFudge.Emulation
         BaseUnitType baseUnitType;
         BaseUnitRegion baseUnitRegion;
 
-        MemoryMapper memoryMapper;
-
         Z80 cpu;
-        WRAM wram;
+        byte[] wram;
         VDP vdp;
         PSG psg;
-        BaseCartridge cartridge;
+        BaseCartridge cartridge, card, bootstrap;
 
         byte portMemoryControl, portIoControl, portIoAB, portIoBMisc;
         byte lastHCounter;
@@ -117,8 +114,8 @@ namespace MasterFudge.Emulation
         public bool isCartridgeSlotEnabled { get { return !IsBitSet(portMemoryControl, 6); } }
         public bool isCardSlotEnabled { get { return !IsBitSet(portMemoryControl, 5); } }
         public bool isWorkRamEnabled { get { return !IsBitSet(portMemoryControl, 4); } }
-        public bool isBiosRomEnabled { get { return !IsBitSet(portMemoryControl, 3); } }
-        public bool isIOChipEnabled { get { return !IsBitSet(portMemoryControl, 2); } }
+        public bool isBootstrapRomEnabled { get { return !IsBitSet(portMemoryControl, 3); } }
+        public bool isIoChipEnabled { get { return !IsBitSet(portMemoryControl, 2); } }
 
         bool isNtscSystem { get { return (baseUnitRegion == BaseUnitRegion.JapanNTSC || baseUnitRegion == BaseUnitRegion.ExportNTSC); } }
         bool isExportSystem { get { return (baseUnitRegion == BaseUnitRegion.ExportNTSC || baseUnitRegion == BaseUnitRegion.ExportPAL); } }
@@ -143,14 +140,14 @@ namespace MasterFudge.Emulation
 
         public PowerBase()
         {
-            memoryMapper = new MemoryMapper();
-
-            cpu = new Z80(memoryMapper, ReadIOPort, WriteIOPort);
-            wram = new WRAM();
+            cpu = new Z80(ReadMemory, WriteMemory, ReadIOPort, WriteIOPort);
+            wram = new byte[0x2000];
             vdp = new VDP();
             psg = new PSG();
 
-            memoryMapper.AddMemoryArea(wram.GetMemoryAreaDescriptor());
+            cartridge = null;
+            card = null;
+            bootstrap = null;
 
             stopWatch = new Stopwatch();
             stopWatch.Start();
@@ -206,10 +203,6 @@ namespace MasterFudge.Emulation
             CartridgeFilename = filename;
 
             cartridge = BaseCartridge.LoadCartridge<BaseCartridge>(filename);
-            memoryMapper.AddMemoryArea(cartridge.GetMemoryAreaDescriptor());
-
-            foreach (MemoryAreaDescriptor areaDescriptor in cartridge.GetAdditionalMemoryAreaDescriptors())
-                memoryMapper.AddMemoryArea(areaDescriptor);
         }
 
         public void LoadCartridgeRam(string filename)
@@ -300,8 +293,18 @@ namespace MasterFudge.Emulation
             // TODO: more resetti things
             cpu.Reset();
             vdp.Reset();
+            psg.Reset();
 
-            portMemoryControl = 0x00;
+            bootstrap = null;
+            if (Configuration.BootstrapEnabled)
+            {
+                if (baseUnitType == BaseUnitType.MasterSystem)
+                    bootstrap = BaseCartridge.LoadCartridge<BaseCartridge>(Configuration.MasterSystemBootstrapPath);
+                else if (baseUnitType == BaseUnitType.GameGear)
+                    bootstrap = BaseCartridge.LoadCartridge<BaseCartridge>(Configuration.GameGearBootstrapPath);
+            }
+
+            portMemoryControl = (byte)(bootstrap != null ? (baseUnitType == BaseUnitType.GameGear ? 0xA3 : 0xE3) : 0x00);
             portIoControl = portIoAB = portIoBMisc = 0xFF;
             lastHCounter = 0x00;
 
@@ -398,6 +401,62 @@ namespace MasterFudge.Emulation
 
             if (vdp.IrqLineAsserted && cpu.IFF1 && cpu.InterruptMode == 0x01)
                 cpu.ServiceInterrupt(0x0038);
+        }
+
+        private byte ReadMemory(ushort address)
+        {
+            if (address >= 0x0000 && address <= 0xBFFF)
+            {
+                if (baseUnitType == BaseUnitType.MasterSystem)
+                {
+                    if (isBootstrapRomEnabled && bootstrap != null)
+                        return bootstrap.ReadCartridge(address);
+                    else if (isCartridgeSlotEnabled && cartridge != null)
+                        return cartridge.ReadCartridge(address);
+                    else if (isCardSlotEnabled && card != null)
+                        return card.ReadCartridge(address);
+                    else
+                        return 0x00; /* For bootstrap, no usable media mapped */
+                }
+                else if (baseUnitType == BaseUnitType.GameGear)
+                {
+                    if (isBootstrapRomEnabled && bootstrap != null && address <= 0x03FF)
+                        return bootstrap.ReadCartridge(address);
+                    else if (isCartridgeSlotEnabled && cartridge != null)
+                        return cartridge.ReadCartridge(address);
+                    else
+                        return 0x00; /* For bootstrap, no usable media mapped */
+                }
+            }
+            else if (address >= 0xC000 && address <= 0xFFFF)
+            {
+                return wram[address & 0x1FFF];
+            }
+
+            throw new Exception(string.Format("Unsupported read from address 0x{0:X4}", address));
+        }
+
+        private void WriteMemory(ushort address, byte value)
+        {
+            if (address >= 0x0000 && address <= 0xBFFF)
+            {
+                if (isBootstrapRomEnabled) bootstrap?.WriteCartridge(address, value);
+                if (isCartridgeSlotEnabled) cartridge?.WriteCartridge(address, value);
+                if (isCardSlotEnabled) card?.WriteCartridge(address, value);
+            }
+            else if (address >= 0xC000 && address <= 0xFFFF)
+            {
+                wram[address & 0x1FFF] = value;
+
+                if (address >= 0xFFFC)
+                {
+                    if (isBootstrapRomEnabled) bootstrap?.WriteMapper(address, value);
+                    if (isCartridgeSlotEnabled) cartridge?.WriteMapper(address, value);
+                    if (isCardSlotEnabled) card?.WriteMapper(address, value);
+                }
+            }
+            else
+                throw new Exception(string.Format("Unsupported write to address 0x{0:X4}, value 0x{1:X2}", address, value));
         }
 
         private byte ReadIOPort(byte port)

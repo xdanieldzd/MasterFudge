@@ -69,10 +69,6 @@
     <Compile Include="Emulation\CPU\Z80.OpcodeTables.cs" />
     <Compile Include="Emulation\PowerBase.cs" />
     <Compile Include="Emulation\PowerBase.Debugger.cs" />
-    <Compile Include="Emulation\Memory\MemoryAreaDescriptor.cs" />
-    <Compile Include="Emulation\Memory\MemoryMapper.cs" />
-    <Compile Include="Emulation\Memory\SimpleMemoryArea.cs" />
-    <Compile Include="Emulation\Memory\WRAM.cs" />
     <Compile Include="Emulation\Cartridges\RomHeader.cs" />
     <Compile Include="Emulation\Cartridges\BaseCartridge.cs" />
     <Compile Include="Emulation\CPU\Z80.cs" />

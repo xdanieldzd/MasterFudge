@@ -392,7 +392,7 @@ namespace MasterFudge.Emulation.CPU
         {
             byte[] opcode = new byte[5];
             for (int i = 0; i < opcode.Length; i++)
-                opcode[i] = (address + i <= 0xFFFF ? memoryMapper.Read8((ushort)(address + i)) : (byte)0);
+                opcode[i] = (address + i <= 0xFFFF ? ReadMemory8((ushort)(address + i)) : (byte)0);
             return opcode;
         }
 

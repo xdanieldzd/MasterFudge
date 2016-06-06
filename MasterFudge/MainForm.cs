@@ -271,23 +271,26 @@ namespace MasterFudge
         {
             if (Environment.MachineName != "NANAMI-X") return;
 
+            Configuration.MasterSystemBootstrapPath = @"D:\ROMs\SMS\[BIOS] Sega Master System (USA, Europe) (v1.3).sms";
+            Configuration.GameGearBootstrapPath = @"D:\ROMs\GG\majbios.gg";
+
             string romFile = @"D:\ROMs\SMS\Hang-On_(UE)_[!].sms";
-            romFile = @"D:\ROMs\SMS\Sonic_the_Hedgehog_(UE)_[!].sms";
+            //romFile = @"D:\ROMs\SMS\Sonic_the_Hedgehog_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\Y's_-_The_Vanished_Omen_(UE)_[!].sms";
-            romFile = @"D:\ROMs\SMS\VDPTEST.sms";
+            //romFile = @"D:\ROMs\SMS\VDPTEST.sms";
             //romFile = @"D:\ROMs\SMS\[BIOS] Sega Master System (USA, Europe) (v1.3).sms";
             //romFile = @"D:\ROMs\SMS\Teddy_Boy_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\R-Type_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\Alex_Kidd_in_Miracle_World_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\Psycho_Fox_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\SMS Sound Test 1.1.sms";
-            romFile = @"D:\ROMs\SMS\F16_Fighting_Falcon_(UE)_[!].sms";
+            //romFile = @"D:\ROMs\SMS\F16_Fighting_Falcon_(UE)_[!].sms";
 
             //romFile = @"D:\ROMs\GG\Sonic_the_Hedgehog_(JUE).gg";
             //romFile = @"D:\ROMs\GG\Gunstar_Heroes_(J).gg";
 
             //romFile = @"D:\ROMs\SMS\Girl's_Garden_(SC-3000).sg";
-            romFile = @"D:\ROMs\SMS\Sega_BASIC_Level_2_(SC-3000).sc";
+            //romFile = @"D:\ROMs\SMS\Sega_BASIC_Level_2_(SC-3000).sc";
 
             LoadCartridge(romFile);
         }
