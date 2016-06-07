@@ -3,12 +3,12 @@ MasterFudge is an incomplete Sega Master System and Game Gear emulator written i
 
 ## Status
 * __Z80__: All documented opcodes done (main, CB-, DD-, ED- and FD-prefix; only a few "undocumented" ones), possibly still with issues (flags, etc.)
-* __VDP__: Mostly done, but with inaccurate timing and missing the "legacy" display modes
+* __VDP__: Mostly done, but with inaccurate timing, some bugs here and there, and missing display modes 0 and 3
 * __Memory__: Working, I guess; nothing fancy here
-* __Cartridges__: Basic Sega mapper support (ROM and RAM), does not save cartridge RAM yet
+* __Cartridges__: Basic Sega mapper support (ROM and RAM), can also save and load cartridge RAM 
 * __Input__: P1 joypad/Game Gear buttons, SMS Pause and Reset are implemented and work
 * __Sound__: Some really crappy PSG emulation and missing the noise channel
-* __Misc__: Region selection; overall timing isn't very good
+* __Misc__: Region selection; support for SMS and GG bootstrap/BIOS ROMs; overall timing isn't very good
 
 Otherwise, if it's not listed above, it's probably not there yet at all.
 
