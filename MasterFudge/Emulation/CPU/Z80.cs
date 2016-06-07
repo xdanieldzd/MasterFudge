@@ -61,9 +61,8 @@ namespace MasterFudge.Emulation.CPU
         byte i, r;
         ushort sp, pc;
 
-        public bool IFF1 { get; private set; }
-        public byte InterruptMode { get; private set; }
-        bool iff2, eiDelay, halted;
+        bool iff1, iff2, eiDelay, halted;
+        byte interruptMode;
 
         int currentCycles;
 
@@ -120,14 +119,24 @@ namespace MasterFudge.Emulation.CPU
             sp = 0xDFF0;
             pc = 0;
 
-            IFF1 = iff2 = eiDelay = halted = false;
-            InterruptMode = 0;
+            iff1 = iff2 = eiDelay = halted = false;
+            interruptMode = 0;
         }
 
         public void ServiceInterrupt(ushort address)
         {
+            if (iff1 && interruptMode == 0x01)
+            {
+                Rst(address);
+                iff1 = iff2 = false;
+                halted = false;
+            }
+        }
+
+        public void ServiceNonMaskableInterrupt(ushort address)
+        {
             Rst(address);
-            IFF1 = iff2 = false;
+            iff1 = false;
             halted = false;
         }
 
@@ -181,7 +190,7 @@ namespace MasterFudge.Emulation.CPU
                 if (op != 0xFB && eiDelay)
                 {
                     eiDelay = false;
-                    IFF1 = iff2 = true;
+                    iff1 = iff2 = true;
                 }
             }
             else

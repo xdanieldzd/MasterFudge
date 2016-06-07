@@ -300,7 +300,7 @@ namespace MasterFudge.Emulation.CPU
             new SimpleOpcodeDelegate((c) => { c.ReturnConditional(!c.IsFlagSet(Flags.S)); }),
             new SimpleOpcodeDelegate((c) => { c.Pop(ref c.af); }),
             new SimpleOpcodeDelegate((c) => { c.JumpConditional16(!c.IsFlagSet(Flags.S)); }),
-            new SimpleOpcodeDelegate((c) => { c.IFF1 = c.iff2 = false; }),
+            new SimpleOpcodeDelegate((c) => { c.iff1 = c.iff2 = false; }),
             new SimpleOpcodeDelegate((c) => { c.CallConditional16(!c.IsFlagSet(Flags.S)); }),
             new SimpleOpcodeDelegate((c) => { c.Push(c.af); }),
             new SimpleOpcodeDelegate((c) => { c.Or8(c.ReadMemory8(c.pc++)); }),
@@ -391,15 +391,15 @@ namespace MasterFudge.Emulation.CPU
             new SimpleOpcodeDelegate((c) => { c.Subtract16(ref c.hl, c.bc.Word, true); }),
             new SimpleOpcodeDelegate((c) => { c.LoadMemory16(c.ReadMemory16(c.pc), c.bc.Word); c.pc += 2; }),
             new SimpleOpcodeDelegate((c) => { c.Negate(); }),
-            new SimpleOpcodeDelegate((c) => { c.IFF1 = c.iff2; c.Return(); }),
-            new SimpleOpcodeDelegate((c) => { c.InterruptMode = 0; }),
+            new SimpleOpcodeDelegate((c) => { c.iff1 = c.iff2; c.Return(); }),
+            new SimpleOpcodeDelegate((c) => { c.interruptMode = 0; }),
             new SimpleOpcodeDelegate((c) => { c.i = c.af.High; }),
             new SimpleOpcodeDelegate((c) => { c.PortRead(ref c.bc.Low, c.bc.Low); }),
             new SimpleOpcodeDelegate((c) => { c.ioWriteDelegate(c.bc.Low, c.bc.Low); }),
             new SimpleOpcodeDelegate((c) => { c.Add16(ref c.hl, c.bc.Word, true); }),
             new SimpleOpcodeDelegate((c) => { c.LoadRegister16(ref c.bc.Word, c.ReadMemory16(c.ReadMemory16(c.pc))); c.pc += 2; }),
             UnimplementedOpcodeED, /* 4C - undocumented */
-            new SimpleOpcodeDelegate((c) => { c.Return(); c.IFF1 = c.iff2; }),
+            new SimpleOpcodeDelegate((c) => { c.Return(); c.iff1 = c.iff2; }),
             UnimplementedOpcodeED, /* 4E - undocumented */
             new SimpleOpcodeDelegate((c) => { c.r = c.af.High; }),
             /* 0x50 */
@@ -409,7 +409,7 @@ namespace MasterFudge.Emulation.CPU
             new SimpleOpcodeDelegate((c) => { c.LoadMemory16(c.ReadMemory16(c.pc), c.de.Word); c.pc += 2; }),
             UnimplementedOpcodeED, /* 54 - undocumented */
             UnimplementedOpcodeED, /* 55 - undocumented */
-            new SimpleOpcodeDelegate((c) => { c.InterruptMode = 1; }),
+            new SimpleOpcodeDelegate((c) => { c.interruptMode = 1; }),
             new SimpleOpcodeDelegate((c) => { c.LoadRegister8(ref c.af.High, c.i, true); }),
             new SimpleOpcodeDelegate((c) => { c.PortRead(ref c.de.Low, c.bc.Low); }),
             new SimpleOpcodeDelegate((c) => { c.ioWriteDelegate(c.bc.Low, c.de.Low); }),
@@ -417,7 +417,7 @@ namespace MasterFudge.Emulation.CPU
             new SimpleOpcodeDelegate((c) => { c.LoadRegister16(ref c.de.Word, c.ReadMemory16(c.ReadMemory16(c.pc))); c.pc += 2; }),
             UnimplementedOpcodeED, /* 5C - undocumented */
             UnimplementedOpcodeED, /* 5D - undocumented */
-            new SimpleOpcodeDelegate((c) => { c.InterruptMode = 2; }),
+            new SimpleOpcodeDelegate((c) => { c.interruptMode = 2; }),
             new SimpleOpcodeDelegate((c) => { c.LoadRegister8(ref c.af.High, c.r, true); }),
             /* 0x60 */
             new SimpleOpcodeDelegate((c) => { c.PortRead(ref c.hl.High, c.bc.Low); }),

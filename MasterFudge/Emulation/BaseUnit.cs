@@ -402,13 +402,13 @@ namespace MasterFudge.Emulation
 
         private void HandleInterrupts()
         {
-            if (pausePressed && cpu.IFF1 && cpu.InterruptMode == 0x01)
+            if (pausePressed)
             {
                 pausePressed = false;
-                cpu.ServiceInterrupt(0x0066);
+                cpu.ServiceNonMaskableInterrupt(0x0066);
             }
 
-            if (vdp.IrqLineAsserted && cpu.IFF1 && cpu.InterruptMode == 0x01)
+            if (vdp.IrqLineAsserted)
                 cpu.ServiceInterrupt(0x0038);
         }
 
