@@ -77,7 +77,7 @@ namespace MasterFudge.Emulation.Cartridges
                         return romData[((pagingRegisters[3] << 14) | (address & 0x3FFF))];
 
                 default:
-                    throw new Exception(string.Format("Cannot read from cartridge address 0x{0:X4}", address));
+                    throw new Exception(string.Format("Sega mapper: Cannot read from cartridge address 0x{0:X4}", address));
             }
         }
 

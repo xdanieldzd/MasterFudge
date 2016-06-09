@@ -220,7 +220,11 @@ namespace MasterFudge.Emulation.Graphics
             WriteRegister(0x03, 0xFF);
             WriteRegister(0x04, 0xFF);
             WriteRegister(0x05, 0xFF);
-            WriteRegister(0x06, 0xFF);
+            WriteRegister(0x06, 0xFB);
+            WriteRegister(0x07, 0x00);
+            WriteRegister(0x08, 0x00);
+            WriteRegister(0x09, 0x00);
+            WriteRegister(0x0A, 0xFF);
 
             for (int i = 0; i < vram.Length; i++) vram[i] = 0;
             for (int i = 0; i < cramMS.Length; i++) cramMS[i] = 0;
@@ -307,28 +311,6 @@ namespace MasterFudge.Emulation.Graphics
                 {
                     lineInterruptCounter = registers[0x0A];
                     backgroundVScroll = registers[0x09];
-
-                    if ((isSMS224LineMode && isSMS240LineMode) || isSMS192LineMode)
-                    {
-                        screenHeight = NumVisibleLinesLow;
-                        nametableHeight = 224;
-                    }
-                    else if (isSMS240LineMode)
-                    {
-                        screenHeight = NumVisibleLinesHigh;
-                        nametableHeight = 256;
-                    }
-                    else if (isSMS224LineMode)
-                    {
-                        screenHeight = NumVisibleLinesMed;
-                        nametableHeight = 256;
-                    }
-                    else
-                    {
-                        // TODO: should be correct for remaining TMS9918 modes; verify!
-                        screenHeight = NumVisibleLinesLow;
-                        nametableHeight = NumVisibleLinesLow;
-                    }
                 }
 
                 if (vCounter < (screenHeight + 1))
@@ -389,6 +371,34 @@ namespace MasterFudge.Emulation.Graphics
             }
 
             return false;
+        }
+
+        private void UpdateViewport()
+        {
+            if (isMode4)
+            {
+                if (isSMS240LineMode)
+                {
+                    screenHeight = NumVisibleLinesHigh;
+                    nametableHeight = 256;
+                }
+                else if (isSMS224LineMode)
+                {
+                    screenHeight = NumVisibleLinesMed;
+                    nametableHeight = 256;
+                }
+                else
+                {
+                    screenHeight = NumVisibleLinesLow;
+                    nametableHeight = 224;
+                }
+            }
+            else
+            {
+                // TODO: should be correct for remaining TMS9918 modes; verify!
+                screenHeight = NumVisibleLinesLow;
+                nametableHeight = NumVisibleLinesLow;
+            }
         }
 
         public byte[] ConvertMasterSystemColor(int palette, int color)
@@ -903,6 +913,8 @@ namespace MasterFudge.Emulation.Graphics
         private void WriteRegister(byte register, byte value)
         {
             registers[register] = value;
+
+            UpdateViewport();
         }
 
         public byte[] DumpVideoRam()

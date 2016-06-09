@@ -326,10 +326,8 @@ namespace MasterFudge
         {
             if (Environment.MachineName != "NANAMI-X") return;
 
-            return;
-
-            Configuration.MasterSystemBootstrapPath = @"D:\ROMs\SMS\[BIOS] Sega Master System (USA, Europe) (v1.3).sms";
-            Configuration.GameGearBootstrapPath = @"D:\ROMs\GG\majbios.gg";
+            //Configuration.MasterSystemBootstrapPath = @"D:\ROMs\SMS\[BIOS] Sega Master System (USA, Europe) (v1.3).sms";
+            //Configuration.GameGearBootstrapPath = @"D:\ROMs\GG\majbios.gg";
 
             string romFile = @"D:\ROMs\SMS\Hang-On_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\Sonic_the_Hedgehog_(UE)_[!].sms";
@@ -348,6 +346,10 @@ namespace MasterFudge
 
             //romFile = @"D:\ROMs\SMS\Girl's_Garden_(SC-3000).sg";
             //romFile = @"D:\ROMs\SMS\Sega_BASIC_Level_2_(SC-3000).sc";
+
+            romFile = @"D:\ROMs\SMS\Cosmic Spacehead (Europe) (En,Fr,De,Es).sms";
+            romFile = @"D:\ROMs\SMS\Fantastic Dizzy (Europe) (En,Fr,De,Es,It).sms";
+            //romFile = @"D:\ROMs\SMS\Micro Machines (Europe).sms";
 
             LoadCartridge(romFile);
         }

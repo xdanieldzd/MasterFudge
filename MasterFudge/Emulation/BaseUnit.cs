@@ -30,12 +30,14 @@ namespace MasterFudge.Emulation
 
     public enum BaseUnitType
     {
+        Default,
         MasterSystem,
         GameGear
     }
 
     public enum BaseUnitRegion
     {
+        Default,
         JapanNTSC,
         ExportNTSC,
         ExportPAL
@@ -200,6 +202,11 @@ namespace MasterFudge.Emulation
             CartridgeFilename = filename;
 
             cartridge = BaseCartridge.LoadCartridge<BaseCartridge>(filename);
+
+            if (cartridge.RequestedUnitRegion != BaseUnitRegion.Default)
+                SetRegion(cartridge.RequestedUnitRegion);
+            if (cartridge.RequestedUnitType != BaseUnitType.Default)
+                SetUnitType(cartridge.RequestedUnitType);
         }
 
         public void LoadCartridgeRam(string filename)
@@ -457,11 +464,12 @@ namespace MasterFudge.Emulation
             {
                 wram[address & 0x1FFF] = value;
 
+                // TODO: make just a bit smarter, in conjunction with CartridgeIdentity maybe?
                 if (address >= 0xFFFC)
                 {
-                    if (isBootstrapRomEnabled) bootstrap?.WriteMapper(address, value);
-                    if (isCartridgeSlotEnabled) cartridge?.WriteMapper(address, value);
-                    if (isCardSlotEnabled) card?.WriteMapper(address, value);
+                    if (isBootstrapRomEnabled && (bootstrap != null) && (bootstrap is SegaMapperCartridge)) bootstrap.WriteMapper(address, value);
+                    if (isCartridgeSlotEnabled && (cartridge != null) && (cartridge is SegaMapperCartridge)) cartridge.WriteMapper(address, value);
+                    if (isCardSlotEnabled && (card != null) && (card is SegaMapperCartridge)) card.WriteMapper(address, value);
                 }
             }
             else

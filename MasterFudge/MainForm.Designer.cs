@@ -88,7 +88,9 @@
             // 
             // ofdOpenCartridge
             // 
-            this.ofdOpenCartridge.Filter = "Sega Master System & Game Gear ROMs (*.sms;*.gg)|*.sms;*.gg|All Files (*.*)|*.*";
+            this.ofdOpenCartridge.Filter = "All Sega 8-bit ROMs (*.sms;*.gg;*.sg;*.sc)|*.sms;*.gg;*.sg;*.sc|Sega Master Syste" +
+"m & Game Gear ROMs (*.sms;*.gg)|*.sms;*.gg|Sega SG-1000 & SC-3000 ROMs (*.sg;*.s" +
+"c)|*.sg;*.sc|All Files (*.*)|*.*";
             // 
             // menuStrip
             // 

@@ -7,29 +7,69 @@ using System.IO;
 
 namespace MasterFudge.Emulation.Cartridges
 {
+    public enum KnownMapper
+    {
+        DefaultSega = 0,
+        Codemasters = 1
+    }
+
     public abstract class BaseCartridge
     {
+        static Dictionary<uint, CartridgeIdentity> cartridgeIdents = new Dictionary<uint, CartridgeIdentity>()
+        {
+            { 0x71DEBA5A, new CartridgeIdentity() { UnitRegion = BaseUnitRegion.JapanNTSC } },                                      /* Pop Breaker (GG) */
+            { 0x29822980, new CartridgeIdentity() { Mapper = KnownMapper.Codemasters, UnitRegion = BaseUnitRegion.ExportPAL } },    /* Cosmic Spacehead (SMS) */
+            { 0xB9664AE1, new CartridgeIdentity() { Mapper = KnownMapper.Codemasters, UnitRegion = BaseUnitRegion.ExportPAL } },    /* Fantastic Dizzy (SMS) */
+            { 0xA577CE46, new CartridgeIdentity() { Mapper = KnownMapper.Codemasters, UnitRegion = BaseUnitRegion.ExportPAL } },    /* Micro Machines (SMS) */
+        };
+
         protected byte[] romData;
+
         public RomHeader Header { get; private set; }
+
+        public BaseUnitRegion RequestedUnitRegion { get; private set; }
+        public BaseUnitType RequestedUnitType { get; private set; }
 
         protected BaseCartridge(byte[] romData)
         {
             this.romData = romData;
+
             Header = new RomHeader(this.romData);
+
+            RequestedUnitRegion = BaseUnitRegion.Default;
+            RequestedUnitType = BaseUnitType.Default;
         }
 
         public static T LoadCartridge<T>(string filename) where T : BaseCartridge
         {
+            // TODO: "Korean" mapper
+
             byte[] data = ReadRomData(filename);
+            uint crc = Utils.CalculateCrc32(data);
 
             T cartridge = null;
 
-            // TODO: non-standard mappers (Codemasters, "Korean" mapper)
+            /* Is cartridge known to need special care? */
+            CartridgeIdentity cartIdent = (cartridgeIdents.ContainsKey(crc) ? cartridgeIdents[crc] : null);
+            if (cartIdent != null)
+            {
+                /* Check mapper information */
+                switch (cartIdent.Mapper)
+                {
+                    case KnownMapper.DefaultSega: cartridge = (new SegaMapperCartridge(data) as T); break;
+                    case KnownMapper.Codemasters: cartridge = (new CodemastersMapperCartridge(data) as T); break;
+                    default: throw new Exception(string.Format("Unhandled cartridge type {0}", cartIdent.Mapper));
+                }
 
-            if (data.Length <= 0x80000)
-                cartridge = (new SegaMapperCartridge(data) as T);
+                /* Force specified unit region/type */
+                cartridge.RequestedUnitRegion = cartIdent.UnitRegion;
+                cartridge.RequestedUnitType = cartIdent.UnitType;
+            }
             else
-                throw new Exception("Unhandled cartridge type");
+            {
+                /* Just assume default Sega mapper, no special treatment */
+                cartridge = (new SegaMapperCartridge(data) as T);
+            }
 
             return cartridge;
         }
@@ -61,13 +101,13 @@ namespace MasterFudge.Emulation.Cartridges
 
                 if ((file.Length % 0x4000) == 0x200)
                 {
-                    // Copier(?) header
+                    /* Copier header */
                     data = new byte[file.Length - (file.Length % 0x4000)];
                     file.Seek(file.Length % 0x4000, SeekOrigin.Begin);
                 }
                 else
                 {
-                    // Normal ROM
+                    /* Normal ROM */
                     data = new byte[file.Length];
                 }
 

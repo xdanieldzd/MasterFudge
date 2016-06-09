@@ -63,6 +63,8 @@
     <Compile Include="Controls\ToolStripRadioButtonMenuItem.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Emulation\Cartridges\CartridgeIdentity.cs" />
+    <Compile Include="Emulation\Cartridges\CodemastersMapperCartridge.cs" />
     <Compile Include="Emulation\Cartridges\SegaMapperCartridge.cs" />
     <Compile Include="Emulation\CPU\Z80.CycleCounts.cs" />
     <Compile Include="Emulation\CPU\Z80.Debugger.cs" />
