@@ -348,7 +348,7 @@ namespace MasterFudge
             //romFile = @"D:\ROMs\SMS\Sega_BASIC_Level_2_(SC-3000).sc";
 
             romFile = @"D:\ROMs\SMS\Cosmic Spacehead (Europe) (En,Fr,De,Es).sms";
-            romFile = @"D:\ROMs\SMS\Fantastic Dizzy (Europe) (En,Fr,De,Es,It).sms";
+            //romFile = @"D:\ROMs\SMS\Fantastic Dizzy (Europe) (En,Fr,De,Es,It).sms";
             //romFile = @"D:\ROMs\SMS\Micro Machines (Europe).sms";
 
             LoadCartridge(romFile);

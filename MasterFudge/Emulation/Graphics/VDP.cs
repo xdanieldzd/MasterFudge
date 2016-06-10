@@ -261,9 +261,7 @@ namespace MasterFudge.Emulation.Graphics
             // TODO: all the timing!
 
             bool drawLine = ((cyclesInLine + currentCycles) >= Z80.GetCPUClockCyclesPerScanline(isNtsc));
-
             cyclesInLine = ((cyclesInLine + currentCycles) % Z80.GetCPUClockCyclesPerScanline(isNtsc));
-
             hCounter = hCounterTable[cyclesInLine % Z80.GetCPUClockCyclesPerScanline(isNtsc)];
 
             IrqLineAsserted = ((isFrameInterruptEnabled && isFrameInterruptPending) || (isLineInterruptEnabled && isLineInterruptPending));
@@ -277,41 +275,16 @@ namespace MasterFudge.Emulation.Graphics
                     ClearFramebuffer();
                 }
 
-                /* Active screen area, render line */
-                if (currentScanline < screenHeight)
-                {
-                    if (isMode4)
-                    {
-                        /* Most Master System and Game Gear games, excluding F-16 Fighting Falcon */
-                        RenderBackgroundMode4(currentScanline);
-                        RenderSpritesMode4(currentScanline);
-                    }
-                    else if (isMode2)
-                    {
-                        /* F-16 Fighting Falcon (SMS), SG-1000 and SC-3000 games */
-                        RenderBackgroundMode2(currentScanline);
-                        RenderSpritesMode2(currentScanline);
-                    }
-                    else if (isMode1)
-                    {
-                        /* Mostly text-based software, ex. Sega Basic...? */
-                        RenderBackgroundMode1(currentScanline);
-                    }
-                    else
-                    {
-                        // TODO: TMS9918 modes 0 and 3, used by "non-SMS" games (SG-1000, SC-3000); do these eventually
-                    }
-                }
+                RenderLine(currentScanline);
 
                 /* Adjust counters */
                 vCounter = AdjustVCounter(currentScanline);
                 currentScanline++;
 
                 if (currentScanline > (screenHeight + 1))
-                {
                     lineInterruptCounter = registers[0x0A];
-                    backgroundVScroll = registers[0x09];
-                }
+
+                backgroundVScroll = registers[0x09];
 
                 if (vCounter < (screenHeight + 1))
                 {
@@ -329,16 +302,6 @@ namespace MasterFudge.Emulation.Graphics
                 }
                 else if (currentScanline == numScanlines)
                 {
-                    /* Mask column 0 with overscan color */
-                    if (isColumn0MaskEnabled)
-                    {
-                        for (int i = 0; i < OutputFramebuffer.Length; i += (NumPixelsPerLine * 4))
-                        {
-                            for (int j = 0; j < (8 * 4); j += 4)
-                                Buffer.BlockCopy(overscanBgColorArgb, 0, OutputFramebuffer, i + j, 4);
-                        }
-                    }
-
                     /* Apply Game Gear mask, if applicable */
                     if (baseUnitType == BaseUnitType.GameGear)
                     {
@@ -375,23 +338,20 @@ namespace MasterFudge.Emulation.Graphics
 
         private void UpdateViewport()
         {
-            if (isMode4)
+            if (isSMS240LineMode)
             {
-                if (isSMS240LineMode)
-                {
-                    screenHeight = NumVisibleLinesHigh;
-                    nametableHeight = 256;
-                }
-                else if (isSMS224LineMode)
-                {
-                    screenHeight = NumVisibleLinesMed;
-                    nametableHeight = 256;
-                }
-                else
-                {
-                    screenHeight = NumVisibleLinesLow;
-                    nametableHeight = 224;
-                }
+                screenHeight = NumVisibleLinesHigh;
+                nametableHeight = 256;
+            }
+            else if (isSMS224LineMode)
+            {
+                screenHeight = NumVisibleLinesMed;
+                nametableHeight = 256;
+            }
+            else if (isSMS192LineMode)
+            {
+                screenHeight = NumVisibleLinesLow;
+                nametableHeight = 224;
             }
             else
             {
@@ -429,6 +389,45 @@ namespace MasterFudge.Emulation.Graphics
             return new byte[] { b, g, r, 0xFF };
         }
 
+        private void RenderLine(int line)
+        {
+            if (line < NumVisibleLinesHigh)
+            {
+                if (line < screenHeight)
+                {
+                    if (isMode4)
+                    {
+                        /* Most Master System and Game Gear games, excluding F-16 Fighting Falcon */
+                        RenderBackgroundMode4(line);
+                        RenderSpritesMode4(line);
+                    }
+                    else if (isMode2)
+                    {
+                        /* F-16 Fighting Falcon (SMS), SG-1000 and SC-3000 games */
+                        RenderBackgroundMode2(line);
+                        RenderSpritesMode2(line);
+                    }
+                    else if (isMode1)
+                    {
+                        /* Mostly text-based software, ex. Sega Basic...? */
+                        RenderBackgroundMode1(line);
+                    }
+                    else
+                    {
+                        // TODO: TMS9918 modes 0 and 3, used by "non-SMS" games (SG-1000, SC-3000); do these eventually
+                    }
+                }
+
+                /* Mask column 0 with overscan color */
+                if (isColumn0MaskEnabled)
+                {
+                    int startPixel = (line * NumPixelsPerLine);
+                    for (int i = startPixel; i < (startPixel + 8); i++)
+                        Buffer.BlockCopy(overscanBgColorArgb, 0, OutputFramebuffer, i * 4, 4);
+                }
+            }
+        }
+
         private void ClearFramebuffer()
         {
             for (int i = 0; i < screenPixelUsage.Length; i++)
@@ -449,10 +448,7 @@ namespace MasterFudge.Emulation.Graphics
                     /* Vertical scrolling */
                     int scrolledLine = line;
                     if (!(isVScrollPartiallyDisabled && tile >= 24))
-                    {
-                        scrolledLine = (line + backgroundVScroll);
-                        if (scrolledLine >= nametableHeight) scrolledLine -= nametableHeight;
-                    }
+                        scrolledLine = (line + backgroundVScroll) % nametableHeight;
 
                     /* Horizontal scrolling */
                     int hScroll = (isHScrollPartiallyDisabled && line < 16 ? 0 : backgroundHScroll);
