@@ -71,13 +71,9 @@ namespace MasterFudge.Emulation.CPU
         IOPortReadDelegate ioReadDelegate;
         IOPortWriteDelegate ioWriteDelegate;
 
-        Random random;
-
         protected Z80()
         {
             DebugLogOpcodes = false;
-
-            random = new Random();
         }
 
         public Z80(MemoryReadDelegate memRead, MemoryWriteDelegate memWrite, IOPortReadDelegate ioRead, IOPortWriteDelegate ioWrite) : this()
@@ -113,8 +109,7 @@ namespace MasterFudge.Emulation.CPU
             afShadow.Word = bcShadow.Word = deShadow.Word = hlShadow.Word = 0x0000;
             ix.Word = iy.Word = 0x0000;
 
-            i = 0;
-            r = (byte)(random.Next() & 0x7F);
+            i = r = 0;
 
             sp = 0xDFF0;
             pc = 0;
@@ -127,6 +122,7 @@ namespace MasterFudge.Emulation.CPU
         {
             if (iff1 && interruptMode == 0x01)
             {
+                IncrementR(1);
                 Rst(address);
                 iff1 = iff2 = false;
                 halted = false;
@@ -135,6 +131,7 @@ namespace MasterFudge.Emulation.CPU
 
         public void ServiceNonMaskableInterrupt(ushort address)
         {
+            IncrementR(1);
             Rst(address);
             iff1 = false;
             halted = false;
@@ -172,8 +169,6 @@ namespace MasterFudge.Emulation.CPU
                 if (DebugLogOpcodes)
                     Program.Log.WriteEvent(string.Format("{0} | {1} | {2}", DisassembleOpcode(pc).PadRight(48), PrintRegisters(), PrintFlags()));
 
-                r = (byte)((r + random.Next()) & 0x7F);
-
                 byte op = ReadMemory8(pc++);
                 switch (op)
                 {
@@ -182,6 +177,7 @@ namespace MasterFudge.Emulation.CPU
                     case 0xED: ExecuteOpED(); break;
                     case 0xFD: ExecuteOpFD(); break;
                     default:
+                        IncrementR(1);
                         currentCycles += cycleCountsMain[op];
                         opcodeTable_Main[op](this);
                         break;
@@ -199,8 +195,14 @@ namespace MasterFudge.Emulation.CPU
             return currentCycles;
         }
 
+        private void IncrementR(byte inc)
+        {
+            r = (byte)(((r + inc) & 0x7F) | (r & 0x80));
+        }
+
         private void ExecuteOpED()
         {
+            IncrementR(2);
             byte edOp = ReadMemory8(pc++);
             currentCycles += cycleCountsED[edOp];
             opcodeTable_ED[edOp](this);
@@ -208,6 +210,7 @@ namespace MasterFudge.Emulation.CPU
 
         private void ExecuteOpCB()
         {
+            IncrementR(2);
             byte cbOp = ReadMemory8(pc++);
             currentCycles += cycleCountsCB[cbOp];
             opcodeTable_CB[cbOp](this);
@@ -215,6 +218,7 @@ namespace MasterFudge.Emulation.CPU
 
         private void ExecuteOpDD()
         {
+            IncrementR(2);
             byte ddOp = ReadMemory8(pc++);
             currentCycles += cycleCountsDDFD[ddOp];
             opcodeTable_DDFD[ddOp](this, ref ix);
@@ -222,6 +226,7 @@ namespace MasterFudge.Emulation.CPU
 
         private void ExecuteOpFD()
         {
+            IncrementR(2);
             byte fdOp = ReadMemory8(pc++);
             currentCycles += cycleCountsDDFD[fdOp];
             opcodeTable_DDFD[fdOp](this, ref iy);
