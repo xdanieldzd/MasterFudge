@@ -1,12 +1,12 @@
 # MasterFudge
-MasterFudge is an incomplete Sega Master System and Game Gear emulator written in C#. It is not very accurate, is missing features (see below for details) and is generally somewhat fudged together, hence its name.
+MasterFudge is an incomplete emulator for various 8-bit Sega systems, namely Sega Master System, Game Gear and (to some extent) SC-3000, written in C#. It is not very accurate, is missing features (see below for details) and is generally somewhat fudged together, hence its name.
 
 ## Status
 * __Z80__: All documented opcodes done (main, CB-, DD-, ED- and FD-prefix; only a few "undocumented" ones), possibly still with issues (flags, etc.)
 * __VDP__: Mostly done, but with inaccurate timing, some bugs here and there, and missing display modes 0 and 3
 * __Memory__: Working, I guess; nothing fancy here
-* __Cartridges__: Basic Sega mapper support (ROM and RAM), can also save and load cartridge RAM 
-* __Input__: P1 joypad/Game Gear buttons, SMS Pause and Reset are implemented and work
+* __Cartridges__: Basic Sega, Codemasters and 32k RAM cartridge mapper support, can also save and load cartridge RAM 
+* __Input__: P1 joypad/Game Gear buttons, SMS Pause and Reset, SC-3000 keyboard are implemented and should work fine
 * __Sound__: Some really crappy PSG emulation and missing the noise channel
 * __Misc__: Region selection; support for SMS and GG bootstrap/BIOS ROMs; overall timing isn't very good
 
