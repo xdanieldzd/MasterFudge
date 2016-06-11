@@ -14,15 +14,15 @@ namespace MasterFudge.Emulation.IO
 
     public enum KeyboardKeys
     {
-        None = 0,
+        None = -1,
 
         D1 = (0 * 8), D2, D3, D4, D5, D6, D7, P1Up,
         Q = (8 * 1), W, E, R, T, Y, U, P1Down,
         A = (8 * 2), S, D, F, G, H, J, P1Left,
         Z = (8 * 3), X, C, V, B, N, M, P1Right,
         EngDiers = (8 * 4), Space, HomeClr, InsDel, Unmapped36, Unmapped37, Unmapped38, P1Button1,
-        Comma = (8 * 5), Period, Slash, Pi, ArrowDown, ArrowLeft, ArrowRight, P1Button2,
-        K = (8 * 6), L, Semicolon, Colon, BracketClose, CR, ArrowUp, P2Up,
+        Comma = (8 * 5), Period, Slash, Pi, Down, Left, Right, P1Button2,
+        K = (8 * 6), L, Semicolon, Colon, BracketClose, CR, Up, P2Up,
         I = (8 * 7), O, P, At, BracketOpen, Unmapped61, Unmapped62, P2Down,
         D8 = (8 * 8), D9, D0, Minus, Caret, Yen, Break, P2Left,
         Unmapped72 = (8 * 9), Unmapped73, Unmapped74, Unmapped75, Unmapped76, Unmapped77, Graph, P2Right,
@@ -52,6 +52,8 @@ namespace MasterFudge.Emulation.IO
 
         public void SetKeys(KeyboardKeys key, bool pressed)
         {
+            if (key == KeyboardKeys.None) return;
+
             keyMatrix[(int)key / 8, (int)key % 8] = pressed;
             Refresh();
         }

@@ -10,32 +10,18 @@ namespace MasterFudge.Emulation
     {
         private byte ReadMemorySGSC(ushort address)
         {
-            if (address >= 0x0000 && address <= 0xBFFF)
-            {
-                if (isCartridgeSlotEnabled && cartridge != null)
-                    return cartridge.ReadCartridge(address);
-            }
-            else if (address >= 0xC000 && address <= 0xFFFF)
-            {
-                if (isWorkRamEnabled)
-                    return wram[address & 0x07FF];
-            }
+            if (isCartridgeSlotEnabled && cartridge != null)
+                return cartridge.ReadCartridge(address);
+            else
+                return (byte)(address >> 8);
 
             throw new Exception(string.Format("SG/SC: Unsupported read from address 0x{0:X4}", address));
         }
 
         private void WriteMemorySGSC(ushort address, byte value)
         {
-            if (address >= 0x0000 && address <= 0xBFFF)
-            {
-                if (isCartridgeSlotEnabled)
-                    cartridge?.WriteCartridge(address, value);
-            }
-            else if (address >= 0xC000 && address <= 0xFFFF)
-            {
-                if (isWorkRamEnabled)
-                    wram[address & 0x07FF] = value;
-            }
+            if (isCartridgeSlotEnabled && cartridge != null)
+                cartridge.WriteCartridge(address, value);
             else
                 throw new Exception(string.Format("SG/SC: Unsupported write to address 0x{0:X4}, value 0x{1:X2}", address, value));
         }

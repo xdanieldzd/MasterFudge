@@ -23,7 +23,7 @@ namespace MasterFudge
         static readonly string saveDirectory = "Saves";
         static readonly string screenshotDirectory = "Screenshots";
 
-        // TODO: finish keyboard map, find sensible layout for modern keyboards
+        // TODO: key mapping should be finished for now; eventually make user-configurable?
 
         static readonly Dictionary<Keys, KeyboardKeys> scKeyboardMapping = new Dictionary<Keys, KeyboardKeys>()
         {
@@ -39,9 +39,14 @@ namespace MasterFudge
             { Keys.U, KeyboardKeys.U }, { Keys.V, KeyboardKeys.V }, { Keys.W, KeyboardKeys.W }, { Keys.X, KeyboardKeys.X },
             { Keys.Y, KeyboardKeys.Y }, { Keys.Z, KeyboardKeys.Z },
 
-            { Keys.Space, KeyboardKeys.Space }, { Keys.Enter, KeyboardKeys.CR }, { Keys.ShiftKey, KeyboardKeys.Shift }, { Keys.Back, KeyboardKeys.InsDel },
-            { Keys.Left, KeyboardKeys.ArrowLeft }, { Keys.Right, KeyboardKeys.ArrowRight }, { Keys.Up, KeyboardKeys.ArrowUp }, { Keys.Down, KeyboardKeys.ArrowDown },
-            { Keys.OemMinus, KeyboardKeys.Minus },
+            { Keys.Left, KeyboardKeys.Left }, { Keys.Right, KeyboardKeys.Right }, { Keys.Up, KeyboardKeys.Up }, { Keys.Down, KeyboardKeys.Down },
+
+            { Keys.F1, KeyboardKeys.Func }, { Keys.ControlKey, KeyboardKeys.Ctrl }, { Keys.ShiftKey, KeyboardKeys.Shift }, { Keys.Tab, KeyboardKeys.Graph }, { Keys.F2, KeyboardKeys.EngDiers },
+            { Keys.Space, KeyboardKeys.Space }, { Keys.Enter, KeyboardKeys.CR }, { Keys.Home, KeyboardKeys.HomeClr }, { Keys.Back, KeyboardKeys.InsDel },
+
+            { Keys.OemMinus, KeyboardKeys.Minus }, { Keys.Oem6, KeyboardKeys.Caret }, { Keys.Oem4, KeyboardKeys.Yen }, { Keys.F12, KeyboardKeys.Break },
+            { Keys.Oemcomma, KeyboardKeys.Comma }, { Keys.OemPeriod, KeyboardKeys.Period }, { Keys.Oem102, KeyboardKeys.Slash }, { Keys.Oem5, KeyboardKeys.Pi },
+            { Keys.OemSemicolon, KeyboardKeys.At }, { Keys.Oemplus, KeyboardKeys.BracketOpen }, { Keys.Oem2, KeyboardKeys.BracketClose }, { Keys.Oem3, KeyboardKeys.Semicolon }, { Keys.Oem7, KeyboardKeys.Colon },
         };
 
         BaseUnit emulator;
@@ -361,6 +366,7 @@ namespace MasterFudge
 
             //romFile = @"D:\ROMs\SMS\Girl's_Garden_(SC-3000).sg";
             romFile = @"D:\ROMs\SMS\Sega_BASIC_Level_2_(SC-3000).sc";
+            romFile = @"D:\ROMs\SMS\Sega_BASIC_Level_3_V1_(SC-3000).sc";
 
             //romFile = @"D:\ROMs\SMS\Cosmic Spacehead (Europe) (En,Fr,De,Es).sms";
             //romFile = @"D:\ROMs\SMS\Fantastic Dizzy (Europe) (En,Fr,De,Es,It).sms";

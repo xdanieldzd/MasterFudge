@@ -23,6 +23,7 @@ namespace MasterFudge.Emulation.Cartridges
             { 0xB9664AE1, new CartridgeIdentity() { Mapper = KnownMapper.Codemasters, UnitRegion = BaseUnitRegion.ExportPAL } },    /* Fantastic Dizzy (SMS) */
             { 0xA577CE46, new CartridgeIdentity() { Mapper = KnownMapper.Codemasters, UnitRegion = BaseUnitRegion.ExportPAL } },    /* Micro Machines (SMS) */
             { 0xF691F9C7, new CartridgeIdentity() { Mapper = KnownMapper.Sega32kRAM, UnitType = BaseUnitType.SC3000 } },            /* Sega Basic Level 2 (SC-3000) */
+            { 0x5D9F11CA, new CartridgeIdentity() { Mapper = KnownMapper.Sega32kRAM, UnitType = BaseUnitType.SC3000 } },            /* Sega Basic Level 3 V1 (SC-3000) */
         };
 
         protected byte[] romData;
