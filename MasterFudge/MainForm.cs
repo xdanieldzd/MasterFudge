@@ -14,6 +14,7 @@ using NAudio.Wave;
 using MasterFudge.Emulation;
 using MasterFudge.Emulation.Cartridges;
 using MasterFudge.Emulation.Graphics;
+using MasterFudge.Emulation.IO;
 
 namespace MasterFudge
 {
@@ -21,6 +22,27 @@ namespace MasterFudge
     {
         static readonly string saveDirectory = "Saves";
         static readonly string screenshotDirectory = "Screenshots";
+
+        // TODO: finish keyboard map, find sensible layout for modern keyboards
+
+        static readonly Dictionary<Keys, KeyboardKeys> scKeyboardMapping = new Dictionary<Keys, KeyboardKeys>()
+        {
+            { Keys.D1, KeyboardKeys.D1 }, { Keys.D2, KeyboardKeys.D2 }, { Keys.D3, KeyboardKeys.D3 }, { Keys.D4, KeyboardKeys.D4 },
+            { Keys.D5, KeyboardKeys.D5 }, { Keys.D6, KeyboardKeys.D6 }, { Keys.D7, KeyboardKeys.D7 }, { Keys.D8, KeyboardKeys.D8 },
+            { Keys.D9, KeyboardKeys.D9 }, { Keys.D0, KeyboardKeys.D0 },
+
+            { Keys.A, KeyboardKeys.A }, { Keys.B, KeyboardKeys.B }, { Keys.C, KeyboardKeys.C }, { Keys.D, KeyboardKeys.D },
+            { Keys.E, KeyboardKeys.E }, { Keys.F, KeyboardKeys.F }, { Keys.G, KeyboardKeys.G }, { Keys.H, KeyboardKeys.H },
+            { Keys.I, KeyboardKeys.I }, { Keys.J, KeyboardKeys.J }, { Keys.K, KeyboardKeys.K }, { Keys.L, KeyboardKeys.L },
+            { Keys.M, KeyboardKeys.M }, { Keys.N, KeyboardKeys.N }, { Keys.O, KeyboardKeys.O }, { Keys.P, KeyboardKeys.P },
+            { Keys.Q, KeyboardKeys.Q }, { Keys.R, KeyboardKeys.R }, { Keys.S, KeyboardKeys.S }, { Keys.T, KeyboardKeys.T },
+            { Keys.U, KeyboardKeys.U }, { Keys.V, KeyboardKeys.V }, { Keys.W, KeyboardKeys.W }, { Keys.X, KeyboardKeys.X },
+            { Keys.Y, KeyboardKeys.Y }, { Keys.Z, KeyboardKeys.Z },
+
+            { Keys.Space, KeyboardKeys.Space }, { Keys.Enter, KeyboardKeys.CR }, { Keys.ShiftKey, KeyboardKeys.Shift }, { Keys.Back, KeyboardKeys.InsDel },
+            { Keys.Left, KeyboardKeys.ArrowLeft }, { Keys.Right, KeyboardKeys.ArrowRight }, { Keys.Up, KeyboardKeys.ArrowUp }, { Keys.Down, KeyboardKeys.ArrowDown },
+            { Keys.OemMinus, KeyboardKeys.Minus },
+        };
 
         BaseUnit emulator;
         TaskWrapper taskWrapper;
@@ -279,13 +301,6 @@ namespace MasterFudge
             emulator.LoadCartridgeRam(GetSaveFilePath(filename));
             LogCartridgeInformation(emulator, filename);
 
-            // TODO: allow manual override from menu?
-            RomHeader header = emulator.GetCartridgeHeader();
-            if (header.IsGameGear)
-                emulator.SetUnitType(BaseUnitType.GameGear);
-            else
-                emulator.SetUnitType(BaseUnitType.MasterSystem);
-
             SetFormTitle();
             tsslStatus.Text = string.Format("Cartridge '{0}' loaded", Path.GetFileName(filename));
             cartridgeInformationToolStripMenuItem.Enabled = true;
@@ -345,9 +360,9 @@ namespace MasterFudge
             //romFile = @"D:\ROMs\GG\Gunstar_Heroes_(J).gg";
 
             //romFile = @"D:\ROMs\SMS\Girl's_Garden_(SC-3000).sg";
-            //romFile = @"D:\ROMs\SMS\Sega_BASIC_Level_2_(SC-3000).sc";
+            romFile = @"D:\ROMs\SMS\Sega_BASIC_Level_2_(SC-3000).sc";
 
-            romFile = @"D:\ROMs\SMS\Cosmic Spacehead (Europe) (En,Fr,De,Es).sms";
+            //romFile = @"D:\ROMs\SMS\Cosmic Spacehead (Europe) (En,Fr,De,Es).sms";
             //romFile = @"D:\ROMs\SMS\Fantastic Dizzy (Europe) (En,Fr,De,Es,It).sms";
             //romFile = @"D:\ROMs\SMS\Micro Machines (Europe).sms";
 
@@ -415,7 +430,7 @@ namespace MasterFudge
             pbRenderOutput.Invalidate();
         }
 
-        private Buttons CheckInput(Keys key)
+        private Buttons CheckJoypadInput(Keys key)
         {
             if (key == Configuration.KeyP1Up) return Buttons.Up;
             else if (key == Configuration.KeyP1Down) return Buttons.Down;
@@ -425,7 +440,13 @@ namespace MasterFudge
             else if (key == Configuration.KeyP1Button2) return Buttons.Button2;
             else if (key == Configuration.KeyP1StartPause) return Buttons.StartPause;
             else if (key == Configuration.KeyReset) return Buttons.Reset;
-            else return (Buttons)0;
+            else return 0;
+        }
+
+        private KeyboardKeys CheckKeyboardInput(Keys key)
+        {
+            if (scKeyboardMapping.ContainsKey(key)) return scKeyboardMapping[key];
+            else return KeyboardKeys.None;
         }
 
         private void pbRenderOutput_Paint(object sender, PaintEventArgs e)
@@ -440,12 +461,18 @@ namespace MasterFudge
 
         private void MainForm_KeyDown(object sender, KeyEventArgs e)
         {
-            emulator?.SetButtonData(CheckInput(e.KeyCode), 0, true);
+            if (emulator?.GetUnitType() == BaseUnitType.SC3000)
+                emulator?.SetKeyboardData(CheckKeyboardInput(e.KeyCode), true);
+            else
+                emulator?.SetButtonData(CheckJoypadInput(e.KeyCode), 0, true);
         }
 
         private void MainForm_KeyUp(object sender, KeyEventArgs e)
         {
-            emulator?.SetButtonData(CheckInput(e.KeyCode), 0, false);
+            if (emulator?.GetUnitType() == BaseUnitType.SC3000)
+                emulator?.SetKeyboardData(CheckKeyboardInput(e.KeyCode), false);
+            else
+                emulator?.SetButtonData(CheckJoypadInput(e.KeyCode), 0, false);
         }
 
         #region Menu Event Handlers

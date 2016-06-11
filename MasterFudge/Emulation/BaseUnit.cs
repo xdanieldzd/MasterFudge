@@ -11,6 +11,7 @@ using MasterFudge.Emulation.CPU;
 using MasterFudge.Emulation.Cartridges;
 using MasterFudge.Emulation.Graphics;
 using MasterFudge.Emulation.Sound;
+using MasterFudge.Emulation.IO;
 
 using NAudio.Wave;
 
@@ -32,7 +33,8 @@ namespace MasterFudge.Emulation
     {
         Default,
         MasterSystem,
-        GameGear
+        GameGear,
+        SC3000
     }
 
     public enum BaseUnitRegion
@@ -107,8 +109,12 @@ namespace MasterFudge.Emulation
         byte lastHCounter;
         bool pausePressed;
 
-        /* Game Gear-only */
+        /* Game Gear only */
         byte portIoC, portParallelData, portDataDirNMI, portTxBuffer, portRxBuffer, portSerialControl, portStereoControl;
+
+        /* SC-3000 only */
+        i8255PPI ppi;
+        SCKeyboard keyboard;
 
         // TODO: actually make memory accesses depend on these
         public bool isExpansionSlotEnabled { get { return !Utils.IsBitSet(portMemoryControl, 7); } }
@@ -151,6 +157,9 @@ namespace MasterFudge.Emulation
             cartridge = null;
             card = null;
             bootstrap = null;
+
+            ppi = new i8255PPI();
+            keyboard = new SCKeyboard(ppi);
 
             IsStopped = true;
             IsPaused = false;
@@ -197,6 +206,11 @@ namespace MasterFudge.Emulation
             psg?.SetTvSystem(baseUnitRegion);
         }
 
+        public BaseUnitType GetUnitType()
+        {
+            return baseUnitType;
+        }
+
         public void LoadCartridge(string filename)
         {
             CartridgeFilename = filename;
@@ -205,8 +219,13 @@ namespace MasterFudge.Emulation
 
             if (cartridge.RequestedUnitRegion != BaseUnitRegion.Default)
                 SetRegion(cartridge.RequestedUnitRegion);
+
             if (cartridge.RequestedUnitType != BaseUnitType.Default)
                 SetUnitType(cartridge.RequestedUnitType);
+            else if (cartridge.Header.IsGameGear)
+                SetUnitType(BaseUnitType.GameGear);
+            else
+                SetUnitType(BaseUnitType.MasterSystem);
         }
 
         public void LoadCartridgeRam(string filename)
@@ -292,6 +311,11 @@ namespace MasterFudge.Emulation
             }
         }
 
+        public void SetKeyboardData(KeyboardKeys keys, bool pressed)
+        {
+            keyboard.SetKeys(keys, pressed);
+        }
+
         public void Reset()
         {
             // TODO: more resetti things
@@ -319,6 +343,9 @@ namespace MasterFudge.Emulation
             portRxBuffer = 0xFF;
             portSerialControl = 0x00;
             portStereoControl = 0xFF;
+
+            ppi.Reset();
+            keyboard.Reset();
         }
 
         public void PowerOn()
@@ -421,172 +448,49 @@ namespace MasterFudge.Emulation
 
         private byte ReadMemory(ushort address)
         {
-            if (address >= 0x0000 && address <= 0xBFFF)
+            switch (baseUnitType)
             {
-                if (baseUnitType == BaseUnitType.MasterSystem)
-                {
-                    if (isBootstrapRomEnabled && bootstrap != null)
-                        return bootstrap.ReadCartridge(address);
-                    else if (isCartridgeSlotEnabled && cartridge != null)
-                        return cartridge.ReadCartridge(address);
-                    else if (isCardSlotEnabled && card != null)
-                        return card.ReadCartridge(address);
-                    else
-                        return 0x00; /* For bootstrap, no usable media mapped */
-                }
-                else if (baseUnitType == BaseUnitType.GameGear)
-                {
-                    if (isBootstrapRomEnabled && bootstrap != null && address <= 0x03FF)
-                        return bootstrap.ReadCartridge(address);
-                    else if (isCartridgeSlotEnabled && cartridge != null)
-                        return cartridge.ReadCartridge(address);
-                    else
-                        return 0x00; /* For bootstrap, no usable media mapped */
-                }
-            }
-            else if (address >= 0xC000 && address <= 0xFFFF)
-            {
-                return wram[address & 0x1FFF];
-            }
+                case BaseUnitType.MasterSystem: return ReadMemorySMS(address);
+                case BaseUnitType.GameGear: return ReadMemoryGG(address);
+                case BaseUnitType.SC3000: return ReadMemorySGSC(address);
 
-            throw new Exception(string.Format("Unsupported read from address 0x{0:X4}", address));
+                default: throw new NotImplementedException(string.Format("Memory read not implemented for {0}", baseUnitType));
+            }
         }
 
         private void WriteMemory(ushort address, byte value)
         {
-            if (address >= 0x0000 && address <= 0xBFFF)
+            switch (baseUnitType)
             {
-                if (isBootstrapRomEnabled) bootstrap?.WriteCartridge(address, value);
-                if (isCartridgeSlotEnabled) cartridge?.WriteCartridge(address, value);
-                if (isCardSlotEnabled) card?.WriteCartridge(address, value);
-            }
-            else if (address >= 0xC000 && address <= 0xFFFF)
-            {
-                wram[address & 0x1FFF] = value;
+                case BaseUnitType.MasterSystem: WriteMemorySMS(address, value); break;
+                case BaseUnitType.GameGear: WriteMemoryGG(address, value); break;
+                case BaseUnitType.SC3000: WriteMemorySGSC(address, value); break;
 
-                // TODO: make just a bit smarter, in conjunction with CartridgeIdentity maybe?
-                if (address >= 0xFFFC)
-                {
-                    if (isBootstrapRomEnabled && (bootstrap != null) && (bootstrap is SegaMapperCartridge)) bootstrap.WriteMapper(address, value);
-                    if (isCartridgeSlotEnabled && (cartridge != null) && (cartridge is SegaMapperCartridge)) cartridge.WriteMapper(address, value);
-                    if (isCardSlotEnabled && (card != null) && (card is SegaMapperCartridge)) card.WriteMapper(address, value);
-                }
+                default: throw new NotImplementedException(string.Format("Memory write not implemented for {0}", baseUnitType));
             }
-            else
-                throw new Exception(string.Format("Unsupported write to address 0x{0:X4}, value 0x{1:X2}", address, value));
         }
 
         private byte ReadIOPort(byte port)
         {
-            if (baseUnitType == BaseUnitType.GameGear)
+            switch (baseUnitType)
             {
-                switch (port)
-                {
-                    case 0x00: return (byte)((portIoC & 0xBF) | (isExportSystem ? 0x40 : 0x00));
-                    case 0x01: return portParallelData;
-                    case 0x02: return portDataDirNMI;
-                    case 0x03: return portTxBuffer;
-                    case 0x04: return portRxBuffer;
-                    case 0x05: return portSerialControl;
-                    case 0x06: return portStereoControl;
-                }
+                case BaseUnitType.MasterSystem: return ReadIOPortSMS(port);
+                case BaseUnitType.GameGear: return ReadIOPortGG(port);
+                case BaseUnitType.SC3000: return ReadIOPortSGSC(port);
+
+                default: throw new NotImplementedException(string.Format("Port read not implemented for {0}", baseUnitType));
             }
-
-            port = (byte)(port & 0xC1);
-
-            switch (port & 0xF0)
-            {
-                case 0x00:
-                    /* Uh, behave like SMS2 for now */
-                    return 0xFF;
-
-                case 0x40:
-                    /* Counters */
-                    if ((port & 0x01) == 0)
-                        return vdp.ReadVCounter();      /* V counter */
-                    else
-                        return lastHCounter;            /* H counter */
-
-                case 0x80:
-                    /* VDP */
-                    if ((port & 0x01) == 0)
-                        return vdp.ReadDataPort();      /* Data port */
-                    else
-                        return vdp.ReadControlPort();   /* Status flags */
-
-                case 0xC0:
-                    if ((port & 0x01) == 0)
-                        return portIoAB;                /* IO port A/B register */
-                    else
-                    {
-                        /* IO port B/misc register */
-                        if (isExportSystem)
-                        {
-                            if (portIoControl == 0xF5)
-                                return (byte)(portIoBMisc | 0xC0);
-                            else
-                                return (byte)(portIoBMisc & 0x3F);
-                        }
-                        else
-                            return portIoBMisc;
-                    }
-            }
-
-            return 0xAA;
         }
 
         private void WriteIOPort(byte port, byte value)
         {
-            byte maskedPort = (byte)(port & 0xC1);
-
-            switch (maskedPort & 0xF0)
+            switch (baseUnitType)
             {
-                case 0x00:
-                    if (baseUnitType == BaseUnitType.GameGear && port >= 0x00 && port < 0x07)
-                    {
-                        /* Game Gear-only stuff */
-                        switch (port)
-                        {
-                            case 0x00: /* Read-only */ break;
-                            case 0x01: portParallelData = value; break;
-                            case 0x02: portDataDirNMI = value; break;
-                            case 0x03: portTxBuffer = value; break;
-                            case 0x04: /* Read-only? */; break;
-                            case 0x05: portSerialControl = (byte)(value & 0xF8); break;
-                            case 0x06: portStereoControl = value; break;    // TODO: write to PSG
-                        }
-                    }
-                    else
-                    {
-                        /* System stuff */
-                        if ((maskedPort & 0x01) == 0)
-                            portMemoryControl = value;  /* Memory control */
-                        else
-                        {
-                            /* I/O control */
-                            if ((portIoControl & 0x0A) == 0x00 && ((value & 0x02) == 0x02 || (value & 0x08) == 0x08))
-                                lastHCounter = vdp.ReadHCounter();
-                            portIoControl = value;
-                        }
-                    }
-                    break;
+                case BaseUnitType.MasterSystem: WriteIOPortSMS(port, value); break;
+                case BaseUnitType.GameGear: WriteIOPortGG(port, value); break;
+                case BaseUnitType.SC3000: WriteIOPortSGSC(port, value); break;
 
-                case 0x40:
-                    /* PSG */
-                    psg.WriteData(value);
-                    break;
-
-                case 0x80:
-                    /* VDP */
-                    if ((maskedPort & 0x01) == 0)
-                        vdp.WriteDataPort(value);       /* Data port */
-                    else
-                        vdp.WriteControlPort(value);    /* Control port */
-                    break;
-
-                case 0xC0:
-                    /* No effect */
-                    break;
+                default: throw new NotImplementedException(string.Format("Port write not implemented for {0}", baseUnitType));
             }
         }
     }

@@ -10,7 +10,8 @@ namespace MasterFudge.Emulation.Cartridges
     public enum KnownMapper
     {
         DefaultSega = 0,
-        Codemasters = 1
+        Codemasters = 1,
+        Sega32kRAM = 2,
     }
 
     public abstract class BaseCartridge
@@ -21,6 +22,7 @@ namespace MasterFudge.Emulation.Cartridges
             { 0x29822980, new CartridgeIdentity() { Mapper = KnownMapper.Codemasters, UnitRegion = BaseUnitRegion.ExportPAL } },    /* Cosmic Spacehead (SMS) */
             { 0xB9664AE1, new CartridgeIdentity() { Mapper = KnownMapper.Codemasters, UnitRegion = BaseUnitRegion.ExportPAL } },    /* Fantastic Dizzy (SMS) */
             { 0xA577CE46, new CartridgeIdentity() { Mapper = KnownMapper.Codemasters, UnitRegion = BaseUnitRegion.ExportPAL } },    /* Micro Machines (SMS) */
+            { 0xF691F9C7, new CartridgeIdentity() { Mapper = KnownMapper.Sega32kRAM, UnitType = BaseUnitType.SC3000 } },            /* Sega Basic Level 2 (SC-3000) */
         };
 
         protected byte[] romData;
@@ -58,6 +60,7 @@ namespace MasterFudge.Emulation.Cartridges
                 {
                     case KnownMapper.DefaultSega: cartridge = (new SegaMapperCartridge(data) as T); break;
                     case KnownMapper.Codemasters: cartridge = (new CodemastersMapperCartridge(data) as T); break;
+                    case KnownMapper.Sega32kRAM: cartridge = (new Sega32kRAMCartridge(data) as T); break;
                     default: throw new Exception(string.Format("Unhandled cartridge type {0}", cartIdent.Mapper));
                 }
 
