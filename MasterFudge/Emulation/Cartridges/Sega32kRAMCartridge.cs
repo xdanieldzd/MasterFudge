@@ -6,11 +6,11 @@ using System.Threading.Tasks;
 
 namespace MasterFudge.Emulation.Cartridges
 {
-    public class Sega32kRAMCartridge : BaseCartridge
+    public class Sega32kRamCartridge : BaseCartridge
     {
         byte[] ramData;
 
-        public Sega32kRAMCartridge(byte[] romData) : base(romData)
+        public Sega32kRamCartridge(byte[] romData) : base(romData)
         {
             ramData = new byte[0x8000];
         }
@@ -29,12 +29,6 @@ namespace MasterFudge.Emulation.Cartridges
                 ramData[address & 0x7FFF] = value;
             else
                 throw new Exception(string.Format("Sega 32k RAM mapper: Cannot write to cartridge address 0x{0:X4}", address));
-        }
-
-        public override void WriteMapper(ushort address, byte value)
-        {
-            /* Not needed */
-            return;
         }
     }
 }

@@ -15,29 +15,24 @@ namespace MasterFudge.Emulation.Cartridges
         byte bankMask;
         bool hasCartRam;
 
+        bool isRamEnabled { get { return Utils.IsBitSet(pagingRegisters[0], 3); } }
+        bool isRomWriteEnable { get { return Utils.IsBitSet(pagingRegisters[0], 7); } }
+        int ramBank { get { return ((pagingRegisters[0] >> 2) & 0x01); } }
+        int romBank0 { get { return pagingRegisters[1]; } }
+        int romBank1 { get { return pagingRegisters[2]; } }
+        int romBank2 { get { return pagingRegisters[3]; } }
+
         public SegaMapperCartridge(byte[] romData) : base(romData)
         {
             pagingRegisters = new byte[0x04];
-            pagingRegisters[0] = 0x00;  /* RAM select */
+            pagingRegisters[0] = 0x00;  /* Mapper control */
             pagingRegisters[1] = 0x00;  /* Page 0 ROM bank */
             pagingRegisters[2] = 0x01;  /* Page 1 ROM bank */
-            pagingRegisters[3] = 0x02;  /* Page 2 ROM/RAM bank */
+            pagingRegisters[3] = 0x02;  /* Page 2 ROM bank */
 
             ramData = new byte[0x8000];
 
             bankMask = (byte)((romData.Length >> 14) - 1);
-
-            // TODO: kludge for small SG-1000/SC-3000 games, eventually do proper memory mapping for them
-            if (romData.Length <= 0x4000)
-            {
-                pagingRegisters[2] = 0x00;
-                pagingRegisters[3] = 0x00;
-            }
-            else if (romData.Length <= 0x8000)
-            {
-                pagingRegisters[2] = 0x01;
-                pagingRegisters[3] = 0x01;
-            }
         }
 
         public override bool HasCartridgeRam()
@@ -57,24 +52,23 @@ namespace MasterFudge.Emulation.Cartridges
 
         public override byte ReadCartridge(ushort address)
         {
-            // TODO: appears to be working correctly now, wrt mirroring etc...
-
             switch (address & 0xC000)
             {
                 case 0x0000:
                     if (address < 0x400)
+                        /* First 1kb is constant to preserve interrupt vectors */
                         return romData[address];
                     else
-                        return romData[((pagingRegisters[1] << 14) | (address & 0x3FFF))];
+                        return romData[((romBank0 << 14) | (address & 0x3FFF))];
 
                 case 0x4000:
-                    return romData[((pagingRegisters[2] << 14) | (address & 0x3FFF))];
+                    return romData[((romBank1 << 14) | (address & 0x3FFF))];
 
                 case 0x8000:
-                    if (Utils.IsBitSet(pagingRegisters[0], 3))
-                        return ramData[((pagingRegisters[0] >> 2) & 0x01) << 14 | (address & 0x3FFF)];
+                    if (isRamEnabled)
+                        return ramData[((ramBank << 14) | (address & 0x3FFF))];
                     else
-                        return romData[((pagingRegisters[3] << 14) | (address & 0x3FFF))];
+                        return romData[((romBank2 << 14) | (address & 0x3FFF))];
 
                 default:
                     throw new Exception(string.Format("Sega mapper: Cannot read from cartridge address 0x{0:X4}", address));
@@ -83,28 +77,27 @@ namespace MasterFudge.Emulation.Cartridges
 
         public override void WriteCartridge(ushort address, byte value)
         {
-            if ((address & 0xC000) == 0x8000 && Utils.IsBitSet(pagingRegisters[0], 3))
+            if (address >= 0xFFFC && address <= 0xFFFF)
+            {
+                /* Write to paging register */
+                if ((address & 0x0003) != 0x00) value &= bankMask;
+                pagingRegisters[address & 0x0003] = value;
+
+                /* Check if RAM ever gets enabled; if it is, indicate that we'll need to save the RAM */
+                if (!hasCartRam && isRamEnabled && (address & 0x0003) == 0x0000)
+                    hasCartRam = true;
+            }
+            if (isRamEnabled && (address & 0xC000) == 0x8000)
             {
                 /* Cartridge RAM */
-                ramData[((pagingRegisters[0] >> 2) & 0x01) << 14 | (address & 0x3FFF)] = value;
+                ramData[((ramBank << 14) | (address & 0x3FFF))] = value;
             }
-            else if (Utils.IsBitSet(pagingRegisters[0], 7))
+            else if (isRomWriteEnable)
             {
                 /* ROM write enabled...? */
             }
 
             /* Otherwise ignore writes to ROM, as some games seem to be doing that? (ex. Gunstar Heroes GG to 0000) */
-        }
-
-        public override void WriteMapper(ushort address, byte value)
-        {
-            /* Write to paging register */
-            if ((address & 0x0003) != 0x00) value &= bankMask;
-            pagingRegisters[address & 0x0003] = value;
-
-            /* Check if RAM ever gets enabled; if it is, indicate that we'll need to save the RAM */
-            if (!hasCartRam && (address & 0x0003) == 0x0000 && Utils.IsBitSet(pagingRegisters[address & 0x0003], 3))
-                hasCartRam = true;
         }
     }
 }

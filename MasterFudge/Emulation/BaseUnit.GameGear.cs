@@ -4,8 +4,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-using MasterFudge.Emulation.Cartridges;
-
 namespace MasterFudge.Emulation
 {
     public partial class BaseUnit
@@ -35,25 +33,11 @@ namespace MasterFudge.Emulation
 
         private void WriteMemoryGG(ushort address, byte value)
         {
-            if (address >= 0x0000 && address <= 0xBFFF)
-            {
-                if (isBootstrapRomEnabled) bootstrap?.WriteCartridge(address, value);
-                if (isCartridgeSlotEnabled) cartridge?.WriteCartridge(address, value);
-            }
-            else if (address >= 0xC000 && address <= 0xFFFF)
-            {
-                if (isWorkRamEnabled)
-                    wram[address & 0x1FFF] = value;
+            if (isBootstrapRomEnabled) bootstrap?.WriteCartridge(address, value);
+            if (isCartridgeSlotEnabled) cartridge?.WriteCartridge(address, value);
 
-                // TODO: make just a bit smarter, in conjunction with CartridgeIdentity maybe?
-                if (address >= 0xFFFC)
-                {
-                    if (isBootstrapRomEnabled && (bootstrap != null) && (bootstrap is SegaMapperCartridge)) bootstrap.WriteMapper(address, value);
-                    if (isCartridgeSlotEnabled && (cartridge != null) && (cartridge is SegaMapperCartridge)) cartridge.WriteMapper(address, value);
-                }
-            }
-            else
-                throw new Exception(string.Format("GG: Unsupported write to address 0x{0:X4}, value 0x{1:X2}", address, value));
+            if (isWorkRamEnabled && address >= 0xC000 && address <= 0xFFFF)
+                wram[address & 0x1FFF] = value;
         }
 
         private byte ReadIOPortGG(byte port)

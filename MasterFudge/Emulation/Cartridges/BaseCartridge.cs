@@ -61,7 +61,7 @@ namespace MasterFudge.Emulation.Cartridges
                 {
                     case KnownMapper.DefaultSega: cartridge = (new SegaMapperCartridge(data) as T); break;
                     case KnownMapper.Codemasters: cartridge = (new CodemastersMapperCartridge(data) as T); break;
-                    case KnownMapper.Sega32kRAM: cartridge = (new Sega32kRAMCartridge(data) as T); break;
+                    case KnownMapper.Sega32kRAM: cartridge = (new Sega32kRamCartridge(data) as T); break;
                     default: throw new Exception(string.Format("Unhandled cartridge type {0}", cartIdent.Mapper));
                 }
 
@@ -69,9 +69,14 @@ namespace MasterFudge.Emulation.Cartridges
                 cartridge.RequestedUnitRegion = cartIdent.UnitRegion;
                 cartridge.RequestedUnitType = cartIdent.UnitType;
             }
+            else if (data.Length <= 0xC000)
+            {
+                /* Size is 48k max, assume ROM only mapper */
+                cartridge = (new RomOnlyCartridge(data) as T);
+            }
             else
             {
-                /* Just assume default Sega mapper, no special treatment */
+                /* No special treatment and bigger than 48k, assume default Sega mapper */
                 cartridge = (new SegaMapperCartridge(data) as T);
             }
 
@@ -95,7 +100,6 @@ namespace MasterFudge.Emulation.Cartridges
 
         public abstract byte ReadCartridge(ushort address);
         public abstract void WriteCartridge(ushort address, byte value);
-        public abstract void WriteMapper(ushort address, byte value);
 
         private static byte[] ReadRomData(string filename)
         {

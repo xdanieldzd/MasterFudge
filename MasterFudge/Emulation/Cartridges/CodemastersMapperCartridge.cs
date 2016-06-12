@@ -40,14 +40,7 @@ namespace MasterFudge.Emulation.Cartridges
                 case 0x0000: pagingSlots[0] = value; break;
                 case 0x4000: pagingSlots[1] = value; break;
                 case 0x8000: pagingSlots[2] = value; break;
-                default: throw new Exception(string.Format("Codemasters mapper: Cannot write to cartridge address 0x{0:X4}", address));
             }
-        }
-
-        public override void WriteMapper(ushort address, byte value)
-        {
-            /* Handled in WriteCartridge */
-            return;
         }
     }
 }
