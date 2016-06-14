@@ -128,7 +128,8 @@ namespace MasterFudge.Emulation.Sound
                 for (int i = 0; i < numChannels; i++)
                     mixed += channelOutputs[i];
 
-                samples[currentSamplePosition++] = mixed;
+                if (currentSamplePosition < samples.Length)
+                    samples[currentSamplePosition++] = mixed;
             }
         }
 

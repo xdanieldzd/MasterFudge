@@ -60,12 +60,32 @@
     <Compile Include="Controls\BindableToolStripMenuItem.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Controls\CPUStatusBox.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Controls\CPUStatusBox.Designer.cs">
+      <DependentUpon>CPUStatusBox.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\DisassemblyBox.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Controls\DisassemblyBox.Designer.cs">
+      <DependentUpon>DisassemblyBox.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\IDebuggerControl.cs" />
     <Compile Include="Controls\ToolStripRadioButtonMenuItem.cs">
       <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Debugging\DisassemblyForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Debugging\DisassemblyForm.Designer.cs">
+      <DependentUpon>DisassemblyForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Emulation\BaseUnit.GameGear.cs" />
     <Compile Include="Emulation\BaseUnit.MasterSystem.cs" />
     <Compile Include="Emulation\BaseUnit.SGSC.cs" />
+    <Compile Include="Emulation\BaseUnit.Snapshot.cs" />
     <Compile Include="Emulation\Cartridges\CartridgeIdentity.cs" />
     <Compile Include="Emulation\Cartridges\CodemastersMapperCartridge.cs" />
     <Compile Include="Emulation\Cartridges\RomOnlyCartridge.cs" />
@@ -100,6 +120,15 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TaskWrapper.cs" />
     <Compile Include="Utils.cs" />
+    <EmbeddedResource Include="Controls\CPUStatusBox.resx">
+      <DependentUpon>CPUStatusBox.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Controls\DisassemblyBox.resx">
+      <DependentUpon>DisassemblyBox.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Debugging\DisassemblyForm.resx">
+      <DependentUpon>DisassemblyForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>
     </EmbeddedResource>

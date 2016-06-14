@@ -5,13 +5,15 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Drawing;
 
+using MasterFudge.Emulation.CPU;
+
 namespace MasterFudge.Emulation
 {
     public partial class BaseUnit
     {
         // TODO: more sensible or neater placement of this stuff?
 
-        public class Debugging
+        public partial class Debugging
         {
             public enum DumpRegion
             {
@@ -20,20 +22,25 @@ namespace MasterFudge.Emulation
                 ColorRam,
             }
 
-            public static byte[] DumpMemory(BaseUnit ms, DumpRegion memoryRegion)
+            public static byte[] DumpMemory(BaseUnit emulator, DumpRegion memoryRegion)
             {
                 switch (memoryRegion)
                 {
-                    case DumpRegion.WorkRam: return ms.wram;
-                    case DumpRegion.VideoRam: return ms.vdp.DumpVideoRam();
-                    case DumpRegion.ColorRam: return ms.vdp.DumpColorRam();
+                    case DumpRegion.WorkRam: return emulator.wram;
+                    case DumpRegion.VideoRam: return emulator.vdp.DumpVideoRam();
+                    case DumpRegion.ColorRam: return emulator.vdp.DumpColorRam();
                     default: throw new Exception("Invalid memory region for dumping");
                 }
             }
 
-            public static Color GetPaletteColor(BaseUnit ms, int palette, int color)
+            public static Color GetPaletteColor(BaseUnit emulator, int palette, int color)
             {
-                return Color.FromArgb(BitConverter.ToInt32(ms.vdp.ConvertMasterSystemColor(palette, color), 0));
+                return Color.FromArgb(BitConverter.ToInt32(emulator.vdp.ConvertMasterSystemColor(palette, color), 0));
+            }
+
+            public static Z80 GetCPUInstance(BaseUnit emulator)
+            {
+                return emulator.cpu;
             }
         }
     }

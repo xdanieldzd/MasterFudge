@@ -364,39 +364,39 @@ namespace MasterFudge.Emulation.CPU
             4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
         };
 
-        private string PrintRegisters()
+        public static string PrintRegisters(Z80 cpu)
         {
-            return string.Format("AF:{0:X4} BC:{1:X4} DE:{2:X4} HL:{3:X4} IX:{4:X4} IY:{5:X4} SP:{6:X4}", af.Word, bc.Word, de.Word, hl.Word, ix.Word, iy.Word, sp);
+            return string.Format("AF:{0:X4} BC:{1:X4} DE:{2:X4} HL:{3:X4} IX:{4:X4} IY:{5:X4} SP:{6:X4}", cpu.af.Word, cpu.bc.Word, cpu.de.Word, cpu.hl.Word, cpu.ix.Word, cpu.iy.Word, cpu.sp);
         }
 
-        private string PrintFlags()
+        public static string PrintFlags(Z80 cpu)
         {
             return string.Format("[{7}{6}{5}{4}{3}{2}{1}{0}]",
-                IsFlagSet(Flags.C) ? "C" : "-",
-                IsFlagSet(Flags.N) ? "N" : "-",
-                IsFlagSet(Flags.PV) ? "P" : "-",
-                IsFlagSet(Flags.UB3) ? "3" : "-",
-                IsFlagSet(Flags.H) ? "H" : "-",
-                IsFlagSet(Flags.UB5) ? "5" : "-",
-                IsFlagSet(Flags.Z) ? "Z" : "-",
-                IsFlagSet(Flags.S) ? "S" : "-");
+                cpu.IsFlagSet(Flags.C) ? "C" : "-",
+                cpu.IsFlagSet(Flags.N) ? "N" : "-",
+                cpu.IsFlagSet(Flags.PV) ? "P" : "-",
+                cpu.IsFlagSet(Flags.UB3) ? "3" : "-",
+                cpu.IsFlagSet(Flags.H) ? "H" : "-",
+                cpu.IsFlagSet(Flags.UB5) ? "5" : "-",
+                cpu.IsFlagSet(Flags.Z) ? "Z" : "-",
+                cpu.IsFlagSet(Flags.S) ? "S" : "-");
         }
 
-        private string DisassembleOpcode(ushort address)
+        public static string DisassembleOpcode(Z80 cpu, ushort address)
         {
-            byte[] opcode = DisassembleGetOpcodeBytes(address);
-            return string.Format("{0:X4} | {1} | {2}", address, DisassembleMakeByteString(opcode).PadRight(15), DisassembleMakeMnemonicString(opcode));
+            byte[] opcode = DisassembleGetOpcodeBytes(cpu, address);
+            return string.Format("{0:X4} | {1} | {2}", address, DisassembleMakeByteString(cpu, opcode).PadRight(15), DisassembleMakeMnemonicString(cpu, opcode));
         }
 
-        private byte[] DisassembleGetOpcodeBytes(ushort address)
+        public static byte[] DisassembleGetOpcodeBytes(Z80 cpu, ushort address)
         {
             byte[] opcode = new byte[5];
             for (int i = 0; i < opcode.Length; i++)
-                opcode[i] = (address + i <= 0xFFFF ? ReadMemory8((ushort)(address + i)) : (byte)0);
+                opcode[i] = (address + i <= 0xFFFF ? cpu.ReadMemory8((ushort)(address + i)) : (byte)0);
             return opcode;
         }
 
-        private int DisassembleGetOpcodeLen(byte[] opcode)
+        public static int DisassembleGetOpcodeLen(Z80 cpu, byte[] opcode)
         {
             switch (opcode[0])
             {
@@ -414,14 +414,14 @@ namespace MasterFudge.Emulation.CPU
             }
         }
 
-        private string DisassembleMakeByteString(byte[] opcode)
+        public static string DisassembleMakeByteString(Z80 cpu, byte[] opcode)
         {
-            return string.Join(" ", opcode.Select(x => string.Format("{0:X2}", x)).Take(DisassembleGetOpcodeLen(opcode)));
+            return string.Join(" ", opcode.Select(x => string.Format("{0:X2}", x)).Take(DisassembleGetOpcodeLen(cpu, opcode)));
         }
 
-        private string DisassembleMakeMnemonicString(byte[] opcode)
+        public static string DisassembleMakeMnemonicString(Z80 cpu, byte[] opcode)
         {
-            int len = DisassembleGetOpcodeLen(opcode);
+            int len = DisassembleGetOpcodeLen(cpu, opcode);
 
             int start = 0;
             string[] mnemonics = opcodeMnemonic_Main;
@@ -474,6 +474,169 @@ namespace MasterFudge.Emulation.CPU
             else
             {
                 return string.Format(mnemonics[opcode[3]], opcode[2]);
+            }
+        }
+
+        public class CpuDebugSnapshot
+        {
+            BaseUnit.CoreDebugSnapshot parent;
+
+            public Register AF { get; private set; }
+            public Register BC { get; private set; }
+            public Register DE { get; private set; }
+            public Register HL { get; private set; }
+            public Register AFShadow { get; private set; }
+            public Register BCShadow { get; private set; }
+            public Register DEShadow { get; private set; }
+            public Register HLShadow { get; private set; }
+
+            public Register IX { get; private set; }
+            public Register IY { get; private set; }
+
+            public byte I { get; private set; }
+            public byte R { get; private set; }
+
+            public ushort SP { get; private set; }
+            public ushort PC { get; private set; }
+
+            public bool IFF1 { get; private set; }
+            public bool IFF2 { get; private set; }
+            public bool Halted { get; private set; }
+            public byte InterruptMode { get; private set; }
+
+            public CpuDebugSnapshot(BaseUnit.CoreDebugSnapshot parent, Z80 cpu)
+            {
+                this.parent = parent;
+
+                AF = new Register() { Word = cpu.af.Word };
+                BC = new Register() { Word = cpu.bc.Word };
+                DE = new Register() { Word = cpu.de.Word };
+                HL = new Register() { Word = cpu.hl.Word };
+                AFShadow = new Register() { Word = cpu.afShadow.Word };
+                BCShadow = new Register() { Word = cpu.bcShadow.Word };
+                DEShadow = new Register() { Word = cpu.deShadow.Word };
+                HLShadow = new Register() { Word = cpu.hlShadow.Word };
+
+                IX = new Register() { Word = cpu.ix.Word };
+                IY = new Register() { Word = cpu.iy.Word };
+
+                I = cpu.i;
+                R = cpu.r;
+
+                SP = cpu.sp;
+                PC = cpu.pc;
+
+                IFF1 = cpu.iff1;
+                IFF2 = cpu.iff2;
+                Halted = cpu.halted;
+                InterruptMode = cpu.interruptMode;
+            }
+
+            public bool IsFlagSet(Flags flags)
+            {
+                return (((Flags)AF.Low & flags) == flags);
+            }
+
+            public string GetFlagsString()
+            {
+                return string.Format("[{7}{6}{5}{4}{3}{2}{1}{0}]",
+                    IsFlagSet(Flags.C) ? "C" : "-",
+                    IsFlagSet(Flags.N) ? "N" : "-",
+                    IsFlagSet(Flags.PV) ? "P" : "-",
+                    IsFlagSet(Flags.UB3) ? "3" : "-",
+                    IsFlagSet(Flags.H) ? "H" : "-",
+                    IsFlagSet(Flags.UB5) ? "5" : "-",
+                    IsFlagSet(Flags.Z) ? "Z" : "-",
+                    IsFlagSet(Flags.S) ? "S" : "-");
+            }
+
+            public byte[] GetOpcodeBytes(ushort address)
+            {
+                byte[] opcodeBytes = new byte[5];
+                for (int i = 0; i < opcodeBytes.Length; i++)
+                    opcodeBytes[i] = ((address + i) < parent.MemoryMap.Length ? parent.MemoryMap[address + i] : (byte)0);
+
+                int length = GetOpcodeLength(opcodeBytes);
+                return opcodeBytes.Take(length).ToArray();
+            }
+
+            private int GetOpcodeLength(byte[] opcodeBytes)
+            {
+                switch (opcodeBytes[0])
+                {
+                    case 0xCB: return opcodeLength_CB[opcodeBytes[1]];
+                    case 0xED: return opcodeLength_ED[opcodeBytes[1]];
+
+                    case 0xDD:
+                    case 0xFD:
+                        if (opcodeBytes[1] == 0xCB)
+                            return opcodeLength_DDFDCB[opcodeBytes[3]];
+                        else
+                            return opcodeLength_DDFD[opcodeBytes[1]];
+
+                    default: return opcodeLength_Main[opcodeBytes[0]];
+                }
+            }
+
+            public string GetOpcodeBytesString(byte[] opcodeBytes)
+            {
+                return string.Join(" ", opcodeBytes.Select(x => string.Format("{0:X2}", x)));
+            }
+
+            public string GetOpcodesMnemonicString(byte[] opcodeBytes)
+            {
+                int start = 0;
+                string[] mnemonics = opcodeMnemonic_Main;
+                bool isDDFDCB = false;
+
+                switch (opcodeBytes[0])
+                {
+                    case 0xCB: start = 1; mnemonics = opcodeMnemonic_CB; break;
+                    case 0xED: start = 1; mnemonics = opcodeMnemonic_ED; break;
+
+                    case 0xDD:
+                        if (opcodeBytes[1] == 0xCB)
+                        {
+                            mnemonics = opcodeMnemonic_DDCB;
+                            isDDFDCB = true;
+                        }
+                        else
+                        {
+                            start = 1;
+                            mnemonics = opcodeMnemonic_DD;
+                        }
+                        break;
+
+                    case 0xFD:
+                        if (opcodeBytes[1] == 0xCB)
+                        {
+                            mnemonics = opcodeMnemonic_FDCB;
+                            isDDFDCB = true;
+                        }
+                        else
+                        {
+                            start = 1;
+                            mnemonics = opcodeMnemonic_FD;
+                        }
+                        break;
+                }
+
+                if (mnemonics == null) return "(unimplemented)";
+
+                if (!isDDFDCB)
+                {
+                    switch (opcodeBytes.Length - start)
+                    {
+                        case 1: return mnemonics[opcodeBytes[start]];
+                        case 2: return string.Format(mnemonics[opcodeBytes[start]], opcodeBytes[start + 1]);
+                        case 3: return string.Format(mnemonics[opcodeBytes[start]], (opcodeBytes[start + 2] << 8 | opcodeBytes[start + 1]));
+                        default: return string.Empty;
+                    }
+                }
+                else
+                {
+                    return string.Format(mnemonics[opcodeBytes[3]], opcodeBytes[2]);
+                }
             }
         }
     }

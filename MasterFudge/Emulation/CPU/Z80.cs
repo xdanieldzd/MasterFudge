@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 namespace MasterFudge.Emulation.CPU
 {
     [StructLayout(LayoutKind.Explicit)]
-    struct Register
+    public struct Register
     {
         [FieldOffset(0)]
         public byte Low;
@@ -43,7 +43,7 @@ namespace MasterFudge.Emulation.CPU
         // http://www.retrogames.com/cgi-bin/wwwthreads/showpost.pl?Board=retroemuprog&Number=3997&page=&view=&mode=flat&sb=
 
         [Flags]
-        enum Flags : byte
+        public enum Flags : byte
         {
             C = (1 << 0),   /* Carry */
             N = (1 << 1),   /* Subtract */
@@ -149,12 +149,12 @@ namespace MasterFudge.Emulation.CPU
             return (ushort)((high << 8) | low);
         }
 
-        public void WriteMemory8(ushort address, byte value)
+        private void WriteMemory8(ushort address, byte value)
         {
             memoryWriteDelegate(address, value);
         }
 
-        public void WriteMemory16(ushort address, ushort value)
+        private void WriteMemory16(ushort address, ushort value)
         {
             WriteMemory8(address, (byte)(value & 0xFF));
             WriteMemory8((ushort)(address + 1), (byte)(value >> 8));
@@ -167,7 +167,7 @@ namespace MasterFudge.Emulation.CPU
             if (!halted)
             {
                 if (DebugLogOpcodes)
-                    Program.Log.WriteEvent(string.Format("{0} | {1} | {2}", DisassembleOpcode(pc).PadRight(48), PrintRegisters(), PrintFlags()));
+                    Program.Log.WriteEvent(string.Format("{0} | {1} | {2}", DisassembleOpcode(this, pc).PadRight(48), PrintRegisters(this), PrintFlags(this)));
 
                 byte op = ReadMemory8(pc++);
                 switch (op)
@@ -250,8 +250,8 @@ namespace MasterFudge.Emulation.CPU
 
         private string MakeUnimplementedOpcodeString(string prefix, ushort address)
         {
-            byte[] opcode = DisassembleGetOpcodeBytes(address);
-            return string.Format("Unimplemented {0}opcode {1} ({2})", (prefix != string.Empty ? prefix + " " : prefix), DisassembleMakeByteString(opcode), DisassembleMakeMnemonicString(opcode));
+            byte[] opcode = DisassembleGetOpcodeBytes(this, address);
+            return string.Format("Unimplemented {0}opcode {1} ({2})", (prefix != string.Empty ? prefix + " " : prefix), DisassembleMakeByteString(this, opcode), DisassembleMakeMnemonicString(this, opcode));
         }
 
         private void SetFlag(Flags flags)
