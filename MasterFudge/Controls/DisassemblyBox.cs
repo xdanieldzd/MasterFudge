@@ -47,7 +47,7 @@ namespace MasterFudge.Controls
 
         public void SetDisassemblyAddress(ushort address)
         {
-            memoryAddress = address;
+            vsbAddress.Value = memoryAddress = address;
         }
 
         protected override void OnResize(EventArgs e)
