@@ -95,12 +95,12 @@ namespace MasterFudge.Emulation.CPU
 
         public static int GetCPUClockCyclesPerFrame(bool isNtsc)
         {
-            return (int)(BaseUnit.GetMasterClockCyclesPerFrame(isNtsc) / ClockDivider);
+            return (int)(BaseUnitOld.GetMasterClockCyclesPerFrame(isNtsc) / ClockDivider);
         }
 
         public static int GetCPUClockCyclesPerScanline(bool isNtsc)
         {
-            return (int)(BaseUnit.GetMasterClockCyclesPerScanline(isNtsc) / ClockDivider);
+            return (int)(BaseUnitOld.GetMasterClockCyclesPerScanline(isNtsc) / ClockDivider);
         }
 
         public void Reset()

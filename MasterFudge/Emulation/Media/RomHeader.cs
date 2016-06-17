@@ -4,10 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MasterFudge.Emulation.Cartridges
+namespace MasterFudge.Emulation.Media
 {
     public class RomHeader
     {
+        public const string ExpectedTMRSEGAString = "TMR SEGA";
+
         public static readonly Dictionary<byte, string> RegionNames = new Dictionary<byte, string>()
         {
             { 0x03, "SMS (Japan)" },
@@ -56,6 +58,7 @@ namespace MasterFudge.Emulation.Cartridges
         public ushort ChecksumCalculated { get; private set; }
 
         public bool IsGameGear { get { return (Region == 0x05 || Region == 0x06 || Region == 0x07); } }
+        public bool IsExport { get { return (Region == 0x04 || Region == 0x06 || Region == 0x07); } }
 
         public RomHeader(byte[] romData)
         {

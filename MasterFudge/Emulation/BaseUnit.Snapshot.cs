@@ -8,13 +8,13 @@ using MasterFudge.Emulation.CPU;
 
 namespace MasterFudge.Emulation
 {
-    public partial class BaseUnit
+    public partial class BaseUnitOld
     {
         // TODO: expand into savestate functionality?
 
         public partial class Debugging
         {
-            public static CoreDebugSnapshot GetCoreDebugSnapshot(BaseUnit emulator)
+            public static CoreDebugSnapshot GetCoreDebugSnapshot(BaseUnitOld emulator)
             {
                 return new CoreDebugSnapshot(emulator);
             }
@@ -25,7 +25,7 @@ namespace MasterFudge.Emulation
             public byte[] MemoryMap { get; private set; }
             public Z80.CpuDebugSnapshot CPU { get; private set; }
 
-            public CoreDebugSnapshot(BaseUnit emulator)
+            public CoreDebugSnapshot(BaseUnitOld emulator)
             {
                 emulator.IsPaused = true;
 

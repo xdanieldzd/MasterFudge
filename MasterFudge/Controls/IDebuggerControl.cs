@@ -10,6 +10,6 @@ namespace MasterFudge.Controls
 {
     interface IDebuggerControl
     {
-        void UpdateControl(BaseUnit.CoreDebugSnapshot snapshot);
+        void UpdateControl(BaseUnitOld.CoreDebugSnapshot snapshot);
     }
 }

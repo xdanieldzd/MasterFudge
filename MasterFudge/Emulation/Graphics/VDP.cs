@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 using MasterFudge.Emulation.CPU;
+using MasterFudge.Emulation.Units;
 
 namespace MasterFudge.Emulation.Graphics
 {
@@ -188,7 +189,7 @@ namespace MasterFudge.Emulation.Graphics
 
         public VDP()
         {
-            SetTvSystem(BaseUnit.DefaultBaseUnitRegion);
+            SetTvSystem(BaseUnitOld.DefaultBaseUnitRegion);
 
             registers = new byte[0x10];
             vram = new byte[0x4000];
@@ -204,12 +205,12 @@ namespace MasterFudge.Emulation.Graphics
 
         public static int GetVDPClockCyclesPerFrame(bool isNtsc)
         {
-            return (int)(BaseUnit.GetMasterClockCyclesPerFrame(isNtsc) / ClockDivider);
+            return (int)(BaseUnitOld.GetMasterClockCyclesPerFrame(isNtsc) / ClockDivider);
         }
 
         public static int GetVDPClockCyclesPerScanline(bool isNtsc)
         {
-            return (int)(BaseUnit.GetMasterClockCyclesPerScanline(isNtsc) / ClockDivider);
+            return (int)(BaseUnitOld.GetMasterClockCyclesPerScanline(isNtsc) / ClockDivider);
         }
 
         public void Reset()

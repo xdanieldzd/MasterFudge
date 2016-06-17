@@ -4,19 +4,21 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MasterFudge.Emulation.Cartridges
+using MasterFudge.Emulation.Units;
+
+namespace MasterFudge.Emulation.Media
 {
-    public class CartridgeIdentity
+    public class MediaIdentity
     {
         public KnownMapper Mapper { get; set; }
         public BaseUnitRegion UnitRegion { get; set; }
         public BaseUnitType UnitType { get; set; }
 
-        public CartridgeIdentity()
+        public MediaIdentity()
         {
             Mapper = KnownMapper.DefaultSega;
-            UnitRegion = BaseUnitRegion.Default;
-            UnitType = BaseUnitType.Default;
+            UnitRegion = BaseUnitRegion.Invalid;
+            UnitType = BaseUnitType.Invalid;
         }
     }
 }

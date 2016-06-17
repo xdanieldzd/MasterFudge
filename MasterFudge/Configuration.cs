@@ -10,7 +10,7 @@ using System.Xml;
 
 using Nini.Config;
 
-using MasterFudge.Emulation;
+using MasterFudge.Emulation.Units;
 
 namespace MasterFudge
 {

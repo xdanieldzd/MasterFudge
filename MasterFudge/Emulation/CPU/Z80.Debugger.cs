@@ -479,7 +479,7 @@ namespace MasterFudge.Emulation.CPU
 
         public class CpuDebugSnapshot
         {
-            BaseUnit.CoreDebugSnapshot parent;
+            BaseUnitOld.CoreDebugSnapshot parent;
 
             public Register AF { get; private set; }
             public Register BC { get; private set; }
@@ -504,7 +504,7 @@ namespace MasterFudge.Emulation.CPU
             public bool Halted { get; private set; }
             public byte InterruptMode { get; private set; }
 
-            public CpuDebugSnapshot(BaseUnit.CoreDebugSnapshot parent, Z80 cpu)
+            public CpuDebugSnapshot(BaseUnitOld.CoreDebugSnapshot parent, Z80 cpu)
             {
                 this.parent = parent;
 

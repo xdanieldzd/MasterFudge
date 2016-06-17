@@ -4,16 +4,16 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MasterFudge.Emulation.Cartridges
+namespace MasterFudge.Emulation.Media
 {
-    public class CodemastersMapperCartridge : BaseCartridge
+    public class CodemastersMapperCartridge : BaseMedia
     {
         // TODO: Ernie Els Golf cartridge RAM?
 
         byte[] pagingSlots;
         byte bankMask;
 
-        public CodemastersMapperCartridge(byte[] romData) : base(romData)
+        public CodemastersMapperCartridge(string filename, byte[] romData) : base(filename, romData)
         {
             pagingSlots = new byte[3];
             pagingSlots[0] = 0x00;

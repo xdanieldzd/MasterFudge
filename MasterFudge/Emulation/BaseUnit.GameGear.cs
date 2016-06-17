@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace MasterFudge.Emulation
 {
-    public partial class BaseUnit
+    public partial class BaseUnitOld
     {
         private byte ReadMemoryGG(ushort address)
         {

@@ -4,11 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MasterFudge.Emulation.Cartridges
+namespace MasterFudge.Emulation.Media
 {
-    public class RomOnlyCartridge : BaseCartridge
+    public class RomOnlyCartridge : BaseMedia
     {
-        public RomOnlyCartridge(byte[] romData) : base(romData) { }
+        public RomOnlyCartridge(string filename, byte[] romData) : base(filename, romData) { }
 
         public override byte ReadCartridge(ushort address)
         {

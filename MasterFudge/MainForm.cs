@@ -12,7 +12,8 @@ using System.Linq;
 using NAudio.Wave;
 
 using MasterFudge.Emulation;
-using MasterFudge.Emulation.Cartridges;
+using MasterFudge.Emulation.Units;
+using MasterFudge.Emulation.Media;
 using MasterFudge.Emulation.Graphics;
 using MasterFudge.Emulation.IO;
 
@@ -49,6 +50,7 @@ namespace MasterFudge
             { Keys.OemSemicolon, KeyboardKeys.At }, { Keys.Oemplus, KeyboardKeys.BracketOpen }, { Keys.Oem2, KeyboardKeys.BracketClose }, { Keys.Oem3, KeyboardKeys.Semicolon }, { Keys.Oem7, KeyboardKeys.Colon },
         };
 
+        //BaseUnitOld emulator;
         BaseUnit emulator;
         TaskWrapper taskWrapper;
         Bitmap screenBitmap;
@@ -77,19 +79,11 @@ namespace MasterFudge
         {
             InitializeComponent();
 
-            /* Create emulator instance & task wrapper */
-            emulator = new BaseUnit();
-            emulator.OnRenderScreen += Emulator_OnRenderScreen;
-            emulator.SetRegion(Configuration.BaseUnitRegion);
-            emulator.LimitFPS = Configuration.LimitFPS;
-            taskWrapper = new TaskWrapper();
-            taskWrapper.Start(emulator);
-
             /* Create output instances */
             screenBitmap = new Bitmap(VDP.NumPixelsPerLine, VDP.NumVisibleLinesHigh, PixelFormat.Format32bppArgb);
             waveOut = new WaveOut();
-            waveOut.Init(emulator.GetPSGWaveProvider());
-            waveOut.Play();
+            //waveOut.Init(emulator.GetPSGWaveProvider());
+            //waveOut.Play();
             soundEnabled = Configuration.SoundEnabled;
 
             /* Misc variables */
@@ -116,12 +110,15 @@ namespace MasterFudge
             noiseTimer.Start();
 
             /* Misc UI stuff */
-            nTSCToolStripMenuItem.DataBindings.Add("Checked", emulator, "IsNtscSystem");
-            pALToolStripMenuItem.DataBindings.Add("Checked", emulator, "IsPalSystem");
-            exportToolStripMenuItem.DataBindings.Add("Checked", emulator, "IsExportSystem");
-            japaneseToolStripMenuItem.DataBindings.Add("Checked", emulator, "IsJapaneseSystem");
-            limitFPSToolStripMenuItem.DataBindings.Add("Checked", emulator, "LimitFPS");
-            enableSoundToolStripMenuItem.DataBindings.Add("Checked", this, "soundEnabled");
+            if (emulator != null)
+            {
+                nTSCToolStripMenuItem.DataBindings.Add("Checked", emulator, "IsNtscSystem");
+                pALToolStripMenuItem.DataBindings.Add("Checked", emulator, "IsPalSystem");
+                exportToolStripMenuItem.DataBindings.Add("Checked", emulator, "IsExportSystem");
+                japaneseToolStripMenuItem.DataBindings.Add("Checked", emulator, "IsJapaneseSystem");
+                limitFPSToolStripMenuItem.DataBindings.Add("Checked", emulator, "LimitFPS");
+                enableSoundToolStripMenuItem.DataBindings.Add("Checked", this, "soundEnabled");
+            }
 
             /* Default settings stuff */
             if (Configuration.RecentFiles == null)
@@ -172,10 +169,10 @@ namespace MasterFudge
             builder.AppendFormat("{0} v{1}.{2}", Application.ProductName, programVersion.Major, programVersion.Minor);
             if (programVersion.Build != 0) builder.AppendFormat(".{0}", programVersion.Build);
 
-            if (!emulator.IsStopped)
+            if (emulator != null && !emulator.IsStopped)
             {
-                if (emulator.CartridgeLoaded)
-                    builder.AppendFormat(" - [{0}]", Path.GetFileName(emulator.CartridgeFilename));
+                if (emulator.IsMediaInserted)
+                    builder.AppendFormat(" - [{0}]", Path.GetFileName(emulator.MediaFilename));
                 else
                     builder.Append(" - [No Cartridge]");
 
@@ -241,11 +238,11 @@ namespace MasterFudge
 
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
-            emulator.OnRenderScreen -= Emulator_OnRenderScreen;
+            emulator.RenderScreen -= Emulator_RenderScreen;
 
             PowerOffEmulation();
 
-            taskWrapper.Stop();
+            taskWrapper?.Stop();
 
             logWriter?.Close();
 
@@ -254,9 +251,9 @@ namespace MasterFudge
             {
                 try
                 {
-                    File.WriteAllBytes(@"E:\temp\sms\wram.bin", BaseUnit.Debugging.DumpMemory(emulator, BaseUnit.Debugging.DumpRegion.WorkRam));
-                    File.WriteAllBytes(@"E:\temp\sms\vram.sms", BaseUnit.Debugging.DumpMemory(emulator, BaseUnit.Debugging.DumpRegion.VideoRam));
-                    File.WriteAllBytes(@"E:\temp\sms\cram.bin", BaseUnit.Debugging.DumpMemory(emulator, BaseUnit.Debugging.DumpRegion.ColorRam));
+                    /*File.WriteAllBytes(@"E:\temp\sms\wram.bin", BaseUnitOld.Debugging.DumpMemory(emulator, BaseUnitOld.Debugging.DumpRegion.WorkRam));
+                    File.WriteAllBytes(@"E:\temp\sms\vram.sms", BaseUnitOld.Debugging.DumpMemory(emulator, BaseUnitOld.Debugging.DumpRegion.VideoRam));
+                    File.WriteAllBytes(@"E:\temp\sms\cram.bin", BaseUnitOld.Debugging.DumpMemory(emulator, BaseUnitOld.Debugging.DumpRegion.ColorRam));*/
                 }
                 catch (IOException) { /* just ignore this one, happens if I have any of these open in ex. a hexeditor */ }
             }
@@ -275,7 +272,7 @@ namespace MasterFudge
             else
                 regionToSet = BaseUnitRegion.JapanNTSC;
 
-            emulator.SetRegion(regionToSet);
+            emulator?.SetRegion(regionToSet);
             Configuration.BaseUnitRegion = regionToSet;
         }
 
@@ -284,14 +281,12 @@ namespace MasterFudge
             Program.Log.WriteEvent("--- STARTING EMULATION ---");
 
             noiseTimer.Stop();
-            emulator.PowerOn();
+            emulator?.PowerOn();
         }
 
         private void PowerOffEmulation()
         {
-            emulator.PowerOff();
-            if (emulator.CartridgeLoaded)
-                emulator.SaveCartridgeRam(GetSaveFilePath(emulator.CartridgeFilename));
+            emulator?.PowerOff();
             Program.Log.ClearEvents();
 
             noiseTimer.Start();
@@ -302,9 +297,17 @@ namespace MasterFudge
         {
             PowerOffEmulation();
 
-            emulator.LoadCartridge(filename);
-            emulator.LoadCartridgeRam(GetSaveFilePath(filename));
-            LogCartridgeInformation(emulator, filename);
+            BaseMedia media = BaseMedia.LoadMedia(filename);
+            switch (media.RequestedUnitType)
+            {
+                case BaseUnitType.MasterSystem: emulator = new MasterSystem(); break;
+                case BaseUnitType.GameGear: throw new NotImplementedException();
+                case BaseUnitType.SC3000: throw new NotImplementedException();
+            }
+
+            emulator.SetRegion(media.RequestedUnitRegion != BaseUnitRegion.Invalid ? media.RequestedUnitRegion : Configuration.BaseUnitRegion);
+
+            //LogCartridgeInformation(emulator, filename);
 
             SetFormTitle();
             tsslStatus.Text = string.Format("Cartridge '{0}' loaded", Path.GetFileName(filename));
@@ -313,6 +316,12 @@ namespace MasterFudge
             UpdateRecentFilesMenu();
 
             Configuration.LastCartridgePath = Path.GetDirectoryName(filename);
+
+            emulator.InsertMedia(MediaType.Cartridge, media);
+            emulator.RenderScreen += Emulator_RenderScreen;
+            emulator.LimitFPS = Configuration.LimitFPS;
+            taskWrapper = new TaskWrapper();
+            taskWrapper.Start(emulator);
 
             PowerOnEmulation();
         }
@@ -350,7 +359,7 @@ namespace MasterFudge
             //Configuration.GameGearBootstrapPath = @"D:\ROMs\GG\majbios.gg";
 
             string romFile = @"D:\ROMs\SMS\Hang-On_(UE)_[!].sms";
-            //romFile = @"D:\ROMs\SMS\Sonic_the_Hedgehog_(UE)_[!].sms";
+            romFile = @"D:\ROMs\SMS\Sonic_the_Hedgehog_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\Y's_-_The_Vanished_Omen_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\VDPTEST.sms";
             //romFile = @"D:\ROMs\SMS\[BIOS] Sega Master System (USA, Europe) (v1.3).sms";
@@ -364,7 +373,7 @@ namespace MasterFudge
             //romFile = @"D:\ROMs\GG\Sonic_the_Hedgehog_(JUE).gg";
             //romFile = @"D:\ROMs\GG\Gunstar_Heroes_(J).gg";
 
-            romFile = @"D:\ROMs\SMS\Girl's_Garden_(SC-3000).sg";
+            //romFile = @"D:\ROMs\SMS\Girl's_Garden_(SC-3000).sg";
             //romFile = @"D:\ROMs\SMS\Sega_BASIC_Level_2_(SC-3000).sc";
             //romFile = @"D:\ROMs\SMS\Sega_BASIC_Level_3_V1_(SC-3000).sc";
 
@@ -374,11 +383,11 @@ namespace MasterFudge
 
             LoadCartridge(romFile);
 
-            Debugging.DisassemblyForm disasm = new Debugging.DisassemblyForm(emulator);
-            disasm.Show();
+            //Debugging.DisassemblyForm disasm = new Debugging.DisassemblyForm(emulator);
+            //disasm.Show();
         }
 
-        private void LogCartridgeInformation(BaseUnit ms, string romFile)
+        private void LogCartridgeInformation(BaseUnitOld ms, string romFile)
         {
             Program.Log.WriteEvent("--- ROM INFORMATION ---");
 
@@ -388,7 +397,7 @@ namespace MasterFudge
 
         private string[] GetCartridgeInformation()
         {
-            RomHeader header = emulator.GetCartridgeHeader();
+            /*RomHeader header = emulator.GetCartridgeHeader();
 
             List<string> lines = new List<string>();
             lines.Add(string.Format("Filename: {0}", Path.GetFileName(emulator.CartridgeFilename)));
@@ -399,10 +408,11 @@ namespace MasterFudge
             lines.Add(string.Format("Version: {0}", header.Version));
             lines.Add(string.Format("Region: {0}", header.GetRegionName()));
             lines.Add(string.Format("ROM size: {0} (file is {1} KB, {2})", header.GetRomSizeName(), (header.RomSizeCalculated / 1024), (header.IsRomSizeCorrect ? "matches header" : "mismatch")));
-            return lines.ToArray();
+            return lines.ToArray();*/
+            return new string[] { string.Empty };
         }
 
-        private void Emulator_OnRenderScreen(object sender, RenderEventArgs e)
+        private void Emulator_RenderScreen(object sender, RenderEventArgs e)
         {
             try
             {
@@ -470,26 +480,26 @@ namespace MasterFudge
 
         private void MainForm_KeyDown(object sender, KeyEventArgs e)
         {
-            if (emulator?.GetUnitType() == BaseUnitType.SC3000)
+            /*if (emulator?.GetUnitType() == BaseUnitType.SC3000)
                 emulator?.SetKeyboardData(CheckKeyboardInput(e.KeyCode), true);
             else
-                emulator?.SetButtonData(CheckJoypadInput(e.KeyCode), 0, true);
+                emulator?.SetButtonData(CheckJoypadInput(e.KeyCode), 0, true);*/
         }
 
         private void MainForm_KeyUp(object sender, KeyEventArgs e)
         {
-            if (emulator?.GetUnitType() == BaseUnitType.SC3000)
+            /*if (emulator?.GetUnitType() == BaseUnitType.SC3000)
                 emulator?.SetKeyboardData(CheckKeyboardInput(e.KeyCode), false);
             else
-                emulator?.SetButtonData(CheckJoypadInput(e.KeyCode), 0, false);
+                emulator?.SetButtonData(CheckJoypadInput(e.KeyCode), 0, false);*/
         }
 
         #region Menu Event Handlers
 
         private void openCartridgeToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            ofdOpenCartridge.InitialDirectory = Path.GetDirectoryName(emulator.CartridgeFilename);
-            ofdOpenCartridge.FileName = Path.GetFileName(emulator.CartridgeFilename);
+            ofdOpenCartridge.InitialDirectory = Path.GetDirectoryName(emulator.MediaFilename);
+            ofdOpenCartridge.FileName = Path.GetFileName(emulator.MediaFilename);
 
             if (ofdOpenCartridge.ShowDialog() == DialogResult.OK)
             {
@@ -508,7 +518,7 @@ namespace MasterFudge
         private void screenshotToolStripMenuItem_Click(object sender, EventArgs e)
         {
             string directory = Path.Combine(Configuration.UserDataPath, screenshotDirectory);
-            string fileName = string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0} ({1}).png", Path.GetFileNameWithoutExtension(emulator.CartridgeFilename), DateTime.Now);
+            string fileName = string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0} ({1}).png", Path.GetFileNameWithoutExtension(emulator.MediaFilename), DateTime.Now);
             fileName = Path.GetInvalidFileNameChars().Aggregate(fileName, (current, c) => current.Replace(c.ToString(), "-"));
 
             string filePath = Path.Combine(Configuration.UserDataPath, screenshotDirectory, fileName);
@@ -546,7 +556,9 @@ namespace MasterFudge
 
         private void pauseToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            emulator.TogglePause();
+            if (!emulator.IsPaused) emulator.Pause();
+            else emulator.Unpause();
+
             (sender as ToolStripMenuItem).Checked = emulator.IsPaused;
             SetFormTitle();
         }
@@ -640,7 +652,7 @@ namespace MasterFudge
 
         private void logOpcodesToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            emulator.DebugLogOpcodes = (sender as ToolStripMenuItem).Checked;
+            //emulator.DebugLogOpcodes = (sender as ToolStripMenuItem).Checked;
         }
 
         private void aboutToolStripMenuItem_Click(object sender, EventArgs e)

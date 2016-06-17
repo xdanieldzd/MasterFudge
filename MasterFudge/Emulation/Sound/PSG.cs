@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 
 using NAudio.Wave;
 
+using MasterFudge.Emulation.Units;
+
 namespace MasterFudge.Emulation.Sound
 {
     public class PSG : WaveProvider16
@@ -44,7 +46,7 @@ namespace MasterFudge.Emulation.Sound
             /* For NAudio WaveProvider16 */
             SetWaveFormat(44100, 2);
 
-            SetTvSystem(BaseUnit.DefaultBaseUnitRegion);
+            SetTvSystem(BaseUnitOld.DefaultBaseUnitRegion);
 
             volumeRegisters = new ushort[numChannels];
             toneRegisters = new ushort[numChannels];

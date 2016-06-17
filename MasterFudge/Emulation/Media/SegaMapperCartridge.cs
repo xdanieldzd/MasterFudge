@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MasterFudge.Emulation.Cartridges
+namespace MasterFudge.Emulation.Media
 {
-    public class SegaMapperCartridge : BaseCartridge
+    public class SegaMapperCartridge : BaseMedia
     {
         // TODO: the other FFFC/reg0 stuff? http://www.smspower.org/Development/Mappers?from=Development.Mapper
 
@@ -22,7 +22,7 @@ namespace MasterFudge.Emulation.Cartridges
         int romBank1 { get { return pagingRegisters[2]; } }
         int romBank2 { get { return pagingRegisters[3]; } }
 
-        public SegaMapperCartridge(byte[] romData) : base(romData)
+        public SegaMapperCartridge(string filename, byte[] romData) : base(filename, romData)
         {
             pagingRegisters = new byte[0x04];
             pagingRegisters[0] = 0x00;  /* Mapper control */
@@ -35,7 +35,7 @@ namespace MasterFudge.Emulation.Cartridges
             bankMask = (byte)((romData.Length >> 14) - 1);
         }
 
-        public override bool HasCartridgeRam()
+        public override bool HasOnBoardRam()
         {
             return hasCartRam;
         }

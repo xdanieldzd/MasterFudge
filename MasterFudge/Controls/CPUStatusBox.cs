@@ -21,7 +21,7 @@ namespace MasterFudge.Controls
 
     public partial class CPUStatusBox : UserControl, IDebuggerControl
     {
-        BaseUnit.CoreDebugSnapshot snapshot;
+        BaseUnitOld.CoreDebugSnapshot snapshot;
 
         int visibleValues, lineHeight;
 
@@ -37,7 +37,7 @@ namespace MasterFudge.Controls
             lineHeight = (Font.Height + 1);
         }
 
-        public void UpdateControl(BaseUnit.CoreDebugSnapshot snapshot)
+        public void UpdateControl(BaseUnitOld.CoreDebugSnapshot snapshot)
         {
             this.snapshot = snapshot;
         }

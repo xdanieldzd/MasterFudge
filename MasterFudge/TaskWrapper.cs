@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 
-using MasterFudge.Emulation;
+using MasterFudge.Emulation.Units;
 
 namespace MasterFudge
 {

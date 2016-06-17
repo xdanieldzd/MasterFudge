@@ -4,13 +4,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MasterFudge.Emulation.Cartridges
+namespace MasterFudge.Emulation.Media
 {
-    public class Sega32kRamCartridge : BaseCartridge
+    public class Sega32kRamCartridge : BaseMedia
     {
         byte[] ramData;
 
-        public Sega32kRamCartridge(byte[] romData) : base(romData)
+        public Sega32kRamCartridge(string filename, byte[] romData) : base(filename, romData)
         {
             ramData = new byte[0x8000];
         }

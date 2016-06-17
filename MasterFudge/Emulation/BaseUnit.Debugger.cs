@@ -9,7 +9,7 @@ using MasterFudge.Emulation.CPU;
 
 namespace MasterFudge.Emulation
 {
-    public partial class BaseUnit
+    public partial class BaseUnitOld
     {
         // TODO: more sensible or neater placement of this stuff?
 
@@ -22,7 +22,7 @@ namespace MasterFudge.Emulation
                 ColorRam,
             }
 
-            public static byte[] DumpMemory(BaseUnit emulator, DumpRegion memoryRegion)
+            public static byte[] DumpMemory(BaseUnitOld emulator, DumpRegion memoryRegion)
             {
                 switch (memoryRegion)
                 {
@@ -33,12 +33,12 @@ namespace MasterFudge.Emulation
                 }
             }
 
-            public static Color GetPaletteColor(BaseUnit emulator, int palette, int color)
+            public static Color GetPaletteColor(BaseUnitOld emulator, int palette, int color)
             {
                 return Color.FromArgb(BitConverter.ToInt32(emulator.vdp.ConvertMasterSystemColor(palette, color), 0));
             }
 
-            public static Z80 GetCPUInstance(BaseUnit emulator)
+            public static Z80 GetCPUInstance(BaseUnitOld emulator)
             {
                 return emulator.cpu;
             }

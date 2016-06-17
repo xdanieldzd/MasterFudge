@@ -15,15 +15,15 @@ namespace MasterFudge.Debugging
 {
     public partial class DisassemblyForm : Form
     {
-        BaseUnit emulator;
-        BaseUnit.CoreDebugSnapshot lastSnapshot;
+        BaseUnitOld emulator;
+        BaseUnitOld.CoreDebugSnapshot lastSnapshot;
 
-        public DisassemblyForm(BaseUnit emulator)
+        public DisassemblyForm(BaseUnitOld emulator)
         {
             InitializeComponent();
 
             this.emulator = emulator;
-            lastSnapshot = BaseUnit.Debugging.GetCoreDebugSnapshot(emulator);
+            lastSnapshot = BaseUnitOld.Debugging.GetCoreDebugSnapshot(emulator);
 
             disassemblyBox.UpdateControl(lastSnapshot);
             disassemblyBox.SetDisassemblyAddress(0x0000);
@@ -38,7 +38,7 @@ namespace MasterFudge.Debugging
             {
                 //TODO: make less performance-sucking, snapshot stuff is demanding
 
-                lastSnapshot = BaseUnit.Debugging.GetCoreDebugSnapshot(emulator);
+                lastSnapshot = BaseUnitOld.Debugging.GetCoreDebugSnapshot(emulator);
                 disassemblyBox.UpdateControl(lastSnapshot);
                 disassemblyBox.SetDisassemblyAddress(lastSnapshot.CPU.PC);
                 csbRegisters.UpdateControl(lastSnapshot);

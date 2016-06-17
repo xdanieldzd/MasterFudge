@@ -8,10 +8,11 @@ using System.Diagnostics;
 using System.IO;
 
 using MasterFudge.Emulation.CPU;
-using MasterFudge.Emulation.Cartridges;
+using MasterFudge.Emulation.Media;
 using MasterFudge.Emulation.Graphics;
 using MasterFudge.Emulation.Sound;
 using MasterFudge.Emulation.IO;
+using MasterFudge.Emulation.Units;
 
 using NAudio.Wave;
 
@@ -27,22 +28,6 @@ namespace MasterFudge.Emulation
         {
             FrameData = data;
         }
-    }
-
-    public enum BaseUnitType
-    {
-        Default,
-        MasterSystem,
-        GameGear,
-        SC3000
-    }
-
-    public enum BaseUnitRegion
-    {
-        Default,
-        JapanNTSC,
-        ExportNTSC,
-        ExportPAL
     }
 
     [Flags]
@@ -87,7 +72,7 @@ namespace MasterFudge.Emulation
         Start = (1 << 7)
     }
 
-    public partial class BaseUnit
+    public partial class BaseUnitOld
     {
         public const double MasterClockPAL = 53203424;
         public const double MasterClockNTSC = 53693175;
@@ -103,7 +88,7 @@ namespace MasterFudge.Emulation
         byte[] wram;
         VDP vdp;
         PSG psg;
-        BaseCartridge cartridge, card, bootstrap;
+        BaseMedia cartridge, card, bootstrap;
 
         byte portMemoryControl, portIoControl, portIoAB, portIoBMisc;
         byte lastHCounter;
@@ -147,7 +132,7 @@ namespace MasterFudge.Emulation
         public bool CartridgeLoaded { get { return (cartridge != null); } }
         public string CartridgeFilename { get; private set; }
 
-        public BaseUnit()
+        public BaseUnitOld()
         {
             cpu = new Z80(ReadMemory, WriteMemory, ReadIOPort, WriteIOPort);
             wram = new byte[0x2000];
@@ -213,9 +198,9 @@ namespace MasterFudge.Emulation
 
         public void LoadCartridge(string filename)
         {
-            CartridgeFilename = filename;
+            /*CartridgeFilename = filename;
 
-            cartridge = BaseCartridge.LoadCartridge<BaseCartridge>(filename);
+            cartridge = BaseMedia.LoadMedia(filename);
 
             if (cartridge.RequestedUnitRegion != BaseUnitRegion.Default)
                 SetRegion(cartridge.RequestedUnitRegion);
@@ -225,7 +210,7 @@ namespace MasterFudge.Emulation
             else if (cartridge.Header.IsGameGear)
                 SetUnitType(BaseUnitType.GameGear);
             else
-                SetUnitType(BaseUnitType.MasterSystem);
+                SetUnitType(BaseUnitType.MasterSystem);*/
         }
 
         public void LoadCartridgeRam(string filename)
@@ -242,7 +227,7 @@ namespace MasterFudge.Emulation
 
         public void SaveCartridgeRam(string filename)
         {
-            if (cartridge.HasCartridgeRam())
+            if (cartridge.HasOnBoardRam())
             {
                 byte[] cartRam = cartridge.GetRamData();
                 using (FileStream file = new FileStream(filename, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite))
@@ -254,7 +239,8 @@ namespace MasterFudge.Emulation
 
         public RomHeader GetCartridgeHeader()
         {
-            return cartridge.Header;
+            //return cartridge.Header;
+            return null;
         }
 
         public IWaveProvider GetPSGWaveProvider()
@@ -327,9 +313,9 @@ namespace MasterFudge.Emulation
             if (Configuration.BootstrapEnabled)
             {
                 if (baseUnitType == BaseUnitType.MasterSystem)
-                    bootstrap = BaseCartridge.LoadCartridge<BaseCartridge>(Configuration.MasterSystemBootstrapPath);
+                    bootstrap = BaseMedia.LoadMedia(Configuration.MasterSystemBootstrapPath);
                 else if (baseUnitType == BaseUnitType.GameGear)
-                    bootstrap = BaseCartridge.LoadCartridge<BaseCartridge>(Configuration.GameGearBootstrapPath);
+                    bootstrap = BaseMedia.LoadMedia(Configuration.GameGearBootstrapPath);
             }
 
             portMemoryControl = (byte)(bootstrap != null ? (baseUnitType == BaseUnitType.GameGear ? 0xA3 : 0xE3) : 0x00);

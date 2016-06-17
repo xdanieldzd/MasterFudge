@@ -17,7 +17,7 @@ namespace MasterFudge.Controls
     {
         static readonly StringFormat stringFormatSpaces = new StringFormat() { FormatFlags = StringFormatFlags.MeasureTrailingSpaces };
 
-        BaseUnit.CoreDebugSnapshot snapshot;
+        BaseUnitOld.CoreDebugSnapshot snapshot;
         ushort memoryAddress, endAddress, topOpcodeLength;
 
         int visibleOps, lineHeight;
@@ -40,7 +40,7 @@ namespace MasterFudge.Controls
             xPositions = null;
         }
 
-        public void UpdateControl(BaseUnit.CoreDebugSnapshot snapshot)
+        public void UpdateControl(BaseUnitOld.CoreDebugSnapshot snapshot)
         {
             this.snapshot = snapshot;
         }
