@@ -9,12 +9,16 @@ using System.Reflection;
 using System.IO;
 using System.Linq;
 
+using OpenTK;
+using OpenTK.Graphics.OpenGL;
+
 using NAudio.Wave;
 
 using MasterFudge.Emulation;
 using MasterFudge.Emulation.Cartridges;
 using MasterFudge.Emulation.Graphics;
 using MasterFudge.Emulation.IO;
+using MasterFudge.Controls;
 
 namespace MasterFudge
 {
@@ -22,6 +26,60 @@ namespace MasterFudge
     {
         static readonly string saveDirectory = "Saves";
         static readonly string screenshotDirectory = "Screenshots";
+
+        static readonly string vertexShader =
+            "#version 330\n" +
+            "\n" +
+            "layout(location = 0) in vec2 in_position;\n" +
+            "layout(location = 1) in vec2 in_texCoord;\n" +
+            "\n" +
+            "out vec3 frag_position;\n" +
+            "out vec2 frag_texCoord;\n" +
+            "\n" +
+            "void main(void)\n" +
+            "{\n" +
+            "    frag_position = vec3(in_position, 0.0);\n" +
+            "    frag_texCoord = in_texCoord;\n" +
+            "    gl_Position = vec4(in_position, 0.0, 1.0);\n" +
+            "}\n";
+
+        static readonly string fragmentShader =
+            "#version 330\n" +
+            "\n" +
+            "precision highp float;\n" +
+            "\n" +
+            "uniform sampler2D material_texture;\n" +
+            "uniform bool enable_noise;\n" +
+            "uniform int time;\n" +
+            "\n" +
+            "in vec3 frag_position;\n" +
+            "in vec2 frag_texCoord;\n" +
+            "\n" +
+            "out vec4 out_finalColor;\n" +
+            "\n" +
+            "float random(vec2 co)\n" +
+            "{\n" +
+            "    return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);\n" +
+            "}\n" +
+            "\n" +
+            "void main(void)\n" +
+            "{\n" +
+            "    if (enable_noise)\n" +
+            "    {\n" +
+            "        float value = random(vec2(frag_position.x * cos(time), frag_position.y * sin(time)));\n" +
+            "        out_finalColor = vec4(value, value, value, 1.0);\n" +
+            "    }\n" +
+            "    else\n" +
+            "        out_finalColor = texture2D(material_texture, frag_texCoord);\n" +
+            "}\n";
+
+        static readonly Utils.OpenGL.Vertex2D[] vertices = new Utils.OpenGL.Vertex2D[]
+        {
+            new Utils.OpenGL.Vertex2D() { Position = new Vector2(-1.0f, -1.0f), TexCoord = new Vector2(0.0f, 1.0f) },
+            new Utils.OpenGL.Vertex2D() { Position = new Vector2( 1.0f, -1.0f), TexCoord = new Vector2(1.0f, 1.0f) },
+            new Utils.OpenGL.Vertex2D() { Position = new Vector2( 1.0f,  1.0f), TexCoord = new Vector2(1.0f, 0.0f) },
+            new Utils.OpenGL.Vertex2D() { Position = new Vector2(-1.0f,  1.0f), TexCoord = new Vector2(0.0f, 0.0f) },
+        };
 
         // TODO: key mapping should be finished for now; eventually make user-configurable?
 
@@ -51,15 +109,12 @@ namespace MasterFudge
 
         BaseUnit emulator;
         TaskWrapper taskWrapper;
-        Bitmap screenBitmap;
         WaveOut waveOut;
 
         Version programVersion;
 
-        Random random;
-        byte[][] noiseEffectData;
-        int noiseIndex;
-        Timer noiseTimer;
+        int vaoId, vboId, textureId, pboId, vShaderId, fShaderId, shaderProgId;
+        byte[] pixelData;
 
         bool logEnabled;
         TextWriter logWriter;
@@ -86,7 +141,6 @@ namespace MasterFudge
             taskWrapper.Start(emulator);
 
             /* Create output instances */
-            screenBitmap = new Bitmap(VDP.NumPixelsPerLine, VDP.NumVisibleLinesHigh, PixelFormat.Format32bppArgb);
             waveOut = new WaveOut();
             waveOut.Init(emulator.GetPSGWaveProvider());
             waveOut.Play();
@@ -94,26 +148,6 @@ namespace MasterFudge
 
             /* Misc variables */
             programVersion = new Version(Application.ProductVersion);
-
-            random = new Random();
-            noiseEffectData = new byte[16][];
-            for (int i = 0; i < noiseEffectData.Length; i++)
-            {
-                noiseEffectData[i] = new byte[VDP.NumPixelsPerLine * VDP.NumVisibleLinesHigh * 4];
-
-                for (int j = 0; j < noiseEffectData[i].Length; j += 4)
-                {
-                    noiseEffectData[i][j] = 0xFF;
-                    noiseEffectData[i][j + 1] = 0xFF;
-                    noiseEffectData[i][j + 2] = 0xFF;
-                    noiseEffectData[i][j + 3] = (byte)(random.Next() / 1.5);
-                }
-            }
-            noiseIndex = 0;
-            noiseTimer = new Timer();
-            noiseTimer.Interval = 25;
-            noiseTimer.Tick += NoiseTimer_Tick;
-            noiseTimer.Start();
 
             /* Misc UI stuff */
             nTSCToolStripMenuItem.DataBindings.Add("Checked", emulator, "IsNtscSystem");
@@ -156,14 +190,7 @@ namespace MasterFudge
             Program.Log.OnLogCleared += new EventHandler((s, ev) => { logWriter?.Flush(); });
 
             /* Autostart ROM when debugging thingy */
-            DebugLoadRomShim();
-        }
-
-        private void NoiseTimer_Tick(object sender, EventArgs e)
-        {
-            noiseIndex++;
-            noiseIndex %= noiseEffectData.Length;
-            RenderScreen(noiseEffectData[noiseIndex]);
+            //DebugLoadRomShim();
         }
 
         private void SetFormTitle()
@@ -231,7 +258,7 @@ namespace MasterFudge
 
         private void ResizeWindowByOutput()
         {
-            ClientSize = new Size(pbRenderOutput.Width * 2, (pbRenderOutput.Height * 2) + menuStrip.Height);
+            ClientSize = new Size(renderControl.Width * 2, (renderControl.Height * 2) + menuStrip.Height);
         }
 
         private string GetSaveFilePath(string cartFile)
@@ -260,6 +287,35 @@ namespace MasterFudge
                 }
                 catch (IOException) { /* just ignore this one, happens if I have any of these open in ex. a hexeditor */ }
             }
+
+            if (GL.IsVertexArray(vaoId))
+                GL.DeleteVertexArray(vaoId);
+
+            if (GL.IsBuffer(vboId))
+                GL.DeleteBuffer(vboId);
+
+            if (GL.IsTexture(textureId))
+                GL.DeleteTexture(textureId);
+
+            if (GL.IsBuffer(pboId))
+                GL.DeleteBuffer(pboId);
+
+            if (GL.IsProgram(shaderProgId))
+            {
+                if (GL.IsShader(vShaderId))
+                {
+                    GL.DetachShader(shaderProgId, vShaderId);
+                    GL.DeleteShader(vShaderId);
+                }
+
+                if (GL.IsShader(fShaderId))
+                {
+                    GL.DetachShader(shaderProgId, fShaderId);
+                    GL.DeleteShader(fShaderId);
+                }
+
+                GL.DeleteProgram(shaderProgId);
+            }
         }
 
         private void SetRegion(bool isNtsc, bool isExport)
@@ -283,7 +339,6 @@ namespace MasterFudge
         {
             Program.Log.WriteEvent("--- STARTING EMULATION ---");
 
-            noiseTimer.Stop();
             emulator.PowerOn();
         }
 
@@ -294,7 +349,6 @@ namespace MasterFudge
                 emulator.SaveCartridgeRam(GetSaveFilePath(emulator.CartridgeFilename));
             Program.Log.ClearEvents();
 
-            noiseTimer.Start();
             tsslFps.Text = string.Empty;
         }
 
@@ -351,7 +405,7 @@ namespace MasterFudge
 
             string romFile = @"D:\ROMs\SMS\Hang-On_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\Sonic_the_Hedgehog_(UE)_[!].sms";
-            //romFile = @"D:\ROMs\SMS\Y's_-_The_Vanished_Omen_(UE)_[!].sms";
+            romFile = @"D:\ROMs\SMS\Y's_-_The_Vanished_Omen_(UE)_[!].sms";
             //romFile = @"D:\ROMs\SMS\VDPTEST.sms";
             //romFile = @"D:\ROMs\SMS\[BIOS] Sega Master System (USA, Europe) (v1.3).sms";
             //romFile = @"D:\ROMs\SMS\Teddy_Boy_(UE)_[!].sms";
@@ -364,7 +418,7 @@ namespace MasterFudge
             //romFile = @"D:\ROMs\GG\Sonic_the_Hedgehog_(JUE).gg";
             //romFile = @"D:\ROMs\GG\Gunstar_Heroes_(J).gg";
 
-            romFile = @"D:\ROMs\SMS\Girl's_Garden_(SC-3000).sg";
+            //romFile = @"D:\ROMs\SMS\Girl's_Garden_(SC-3000).sg";
             //romFile = @"D:\ROMs\SMS\Sega_BASIC_Level_2_(SC-3000).sc";
             //romFile = @"D:\ROMs\SMS\Sega_BASIC_Level_3_V1_(SC-3000).sc";
 
@@ -427,16 +481,7 @@ namespace MasterFudge
 
         private void RenderScreen(byte[] frameData)
         {
-            BitmapData bmpData = screenBitmap.LockBits(new Rectangle(0, 0, screenBitmap.Width, screenBitmap.Height), ImageLockMode.WriteOnly, screenBitmap.PixelFormat);
-
-            byte[] pixelData = new byte[bmpData.Stride * bmpData.Height];
-            Buffer.BlockCopy(frameData, 0, pixelData, 0, pixelData.Length);
-
-            Marshal.Copy(pixelData, 0, bmpData.Scan0, pixelData.Length);
-
-            screenBitmap.UnlockBits(bmpData);
-
-            pbRenderOutput.Invalidate();
+            Buffer.BlockCopy(frameData, 0, pixelData, 0, frameData.Length);
         }
 
         private Buttons CheckJoypadInput(Keys key)
@@ -458,14 +503,103 @@ namespace MasterFudge
             else return KeyboardKeys.None;
         }
 
-        private void pbRenderOutput_Paint(object sender, PaintEventArgs e)
+        private void CompileShader(ShaderType shaderType, string shaderString, out int handle)
         {
-            if (screenBitmap != null)
+            handle = GL.CreateShader(shaderType);
+            GL.ShaderSource(handle, shaderString);
+            GL.CompileShader(handle);
+
+            int statusCode;
+            string infoLog;
+            GL.GetShaderInfoLog(handle, out infoLog);
+            GL.GetShader(handle, ShaderParameter.CompileStatus, out statusCode);
+            if (statusCode != 1) throw new Exception(infoLog);
+        }
+
+        private void renderControl_Load(object sender, EventArgs e)
+        {
+            GL.PixelStore(PixelStoreParameter.UnpackAlignment, 4);
+
+            /* VAO/VBO */
+            vaoId = GL.GenVertexArray();
+            GL.BindVertexArray(vaoId);
+            vboId = Utils.OpenGL.GenerateVertexBuffer(vertices);
+            GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+            GL.BindVertexArray(0);
+
+            /* Texture */
+            pixelData = new byte[(VDP.OutputFramebufferWidth * VDP.OutputFramebufferHeight) * VDP.OutputFramebufferNumChannels];
+
+            textureId = GL.GenTexture();
+            GL.BindTexture(TextureTarget.Texture2D, textureId);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.Clamp);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.Clamp);
+            GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba8, VDP.OutputFramebufferWidth, VDP.OutputFramebufferHeight, 0, OpenTK.Graphics.OpenGL.PixelFormat.Bgra, PixelType.UnsignedByte, pixelData);
+            GL.BindTexture(TextureTarget.Texture2D, 0);
+
+            /* PBO */
+            pboId = GL.GenBuffer();
+            GL.BindBuffer(BufferTarget.PixelUnpackBuffer, pboId);
+            GL.BufferData(BufferTarget.PixelUnpackBuffer, pixelData.Length, IntPtr.Zero, BufferUsageHint.StreamDraw);
+            GL.BindBuffer(BufferTarget.PixelUnpackBuffer, 0);
+
+            /* Shader */
+            CompileShader(ShaderType.VertexShader, vertexShader, out vShaderId);
+            CompileShader(ShaderType.FragmentShader, fragmentShader, out fShaderId);
+
+            shaderProgId = GL.CreateProgram();
+            GL.AttachShader(shaderProgId, vShaderId);
+            GL.AttachShader(shaderProgId, fShaderId);
+            GL.LinkProgram(shaderProgId);
+            GL.UseProgram(0);
+        }
+
+        private void renderControl_Render(object sender, EventArgs e)
+        {
+            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
+
+            if (true)
             {
-                e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
-                e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
-                e.Graphics.DrawImage(screenBitmap, (sender as PictureBox).ClientRectangle, new Rectangle(0, 0, screenBitmap.Width, screenBitmap.Height), GraphicsUnit.Pixel);
+                GL.BindTexture(TextureTarget.Texture2D, textureId);
+                GL.BindBuffer(BufferTarget.PixelUnpackBuffer, pboId);
+                GL.TexSubImage2D(TextureTarget.Texture2D, 0, 0, 0, VDP.OutputFramebufferWidth, VDP.OutputFramebufferHeight, OpenTK.Graphics.OpenGL.PixelFormat.Bgra, PixelType.UnsignedByte, IntPtr.Zero);
+
+                GL.BindBuffer(BufferTarget.PixelUnpackBuffer, pboId);
+                GL.BufferData(BufferTarget.PixelUnpackBuffer, pixelData.Length, IntPtr.Zero, BufferUsageHint.StreamDraw);
+                IntPtr ptr = GL.MapBuffer(BufferTarget.PixelUnpackBuffer, BufferAccess.WriteOnly);
+                if (ptr != IntPtr.Zero)
+                {
+                    Marshal.Copy(pixelData, 0, ptr, pixelData.Length);
+                    GL.UnmapBuffer(BufferTarget.PixelUnpackBuffer);
+                }
+                GL.BindBuffer(BufferTarget.PixelUnpackBuffer, 0);
             }
+            else
+            {
+                GL.BindTexture(TextureTarget.Texture2D, textureId);
+                GL.TexSubImage2D(TextureTarget.Texture2D, 0, 0, 0, VDP.OutputFramebufferWidth, VDP.OutputFramebufferHeight, OpenTK.Graphics.OpenGL.PixelFormat.Bgra, PixelType.UnsignedByte, pixelData);
+            }
+
+            GL.UseProgram(shaderProgId);
+            GL.Uniform1(GL.GetUniformLocation(shaderProgId, "material_texture"), 0);
+            GL.Uniform1(GL.GetUniformLocation(shaderProgId, "enable_noise"), emulator.CartridgeLoaded ? 0 : 1);
+            GL.Uniform1(GL.GetUniformLocation(shaderProgId, "time"), DateTime.UtcNow.Millisecond);
+
+            GL.BindVertexArray(vaoId);
+            GL.DrawArrays(PrimitiveType.Quads, 0, vertices.Length);
+            GL.BindVertexArray(0);
+
+            GL.UseProgram(0);
+            GL.BindTexture(TextureTarget.Texture2D, 0);
+        }
+
+        private void renderControl_Resize(object sender, EventArgs e)
+        {
+            RenderControl renderControl = (sender as RenderControl);
+
+            GL.Viewport(0, 0, renderControl.Width, renderControl.Height);
         }
 
         private void MainForm_KeyDown(object sender, KeyEventArgs e)
@@ -513,7 +647,9 @@ namespace MasterFudge
 
             string filePath = Path.Combine(Configuration.UserDataPath, screenshotDirectory, fileName);
             if (!Directory.Exists(directory)) Directory.CreateDirectory(directory);
-            screenBitmap?.Save(filePath);
+
+            // TODO: fixme
+            //screenBitmap?.Save(filePath);
 
             tsslStatus.Text = string.Format("Saved screenshot '{0}'", fileName);
         }

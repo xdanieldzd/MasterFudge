@@ -26,6 +26,8 @@ namespace MasterFudge.Emulation.Graphics
 
         public const double ClockDivider = 5.0;
 
+        public const int OutputFramebufferWidth = 256, OutputFramebufferHeight = 256, OutputFramebufferNumChannels = 4;
+
         BaseUnitType baseUnitType;
         BaseUnitRegion baseUnitRegion;
 
@@ -197,7 +199,7 @@ namespace MasterFudge.Emulation.Graphics
 
             screenPixelUsage = new ScreenPixelUsage[NumPixelsPerLine * NumVisibleLinesHigh];
 
-            OutputFramebuffer = new byte[(NumPixelsPerLine * NumVisibleLinesHigh) * 4];
+            OutputFramebuffer = new byte[(OutputFramebufferWidth * OutputFramebufferHeight) * OutputFramebufferNumChannels];
 
             Reset();
         }
@@ -308,8 +310,8 @@ namespace MasterFudge.Emulation.Graphics
                         // TODO: make this not shitty
                         byte[] maskColor = new byte[] { 0x00, 0x00, 0x00, 0xFF };
 
-                        for (int i = 0; i < outputFramebufferStartAddress; i += 4)
-                            Buffer.BlockCopy(maskColor, 0, OutputFramebuffer, i, 4);
+                        for (int i = 0; i < outputFramebufferStartAddress; i += OutputFramebufferNumChannels)
+                            Buffer.BlockCopy(maskColor, 0, OutputFramebuffer, i, OutputFramebufferNumChannels);
 
                         for (int y = 0; y < screenHeight; y++)
                         {
@@ -320,12 +322,12 @@ namespace MasterFudge.Emulation.Graphics
                                 int outputY = (y * NumPixelsPerLine);
                                 int outputX = (x % NumPixelsPerLine);
 
-                                Buffer.BlockCopy(maskColor, 0, OutputFramebuffer, outputFramebufferStartAddress + ((outputY + outputX) * 4), 4);
+                                Buffer.BlockCopy(maskColor, 0, OutputFramebuffer, outputFramebufferStartAddress + ((outputY + outputX) * OutputFramebufferNumChannels), OutputFramebufferNumChannels);
                             }
                         }
 
-                        for (int i = outputFramebufferStartAddress + ((screenHeight * NumPixelsPerLine) * 4); i < OutputFramebuffer.Length; i += 4)
-                            Buffer.BlockCopy(maskColor, 0, OutputFramebuffer, i, 4);
+                        for (int i = outputFramebufferStartAddress + ((screenHeight * NumPixelsPerLine) * OutputFramebufferNumChannels); i < OutputFramebuffer.Length; i += OutputFramebufferNumChannels)
+                            Buffer.BlockCopy(maskColor, 0, OutputFramebuffer, i, OutputFramebufferNumChannels);
                     }
 
                     currentScanline = 0;
@@ -423,7 +425,7 @@ namespace MasterFudge.Emulation.Graphics
                 {
                     int startPixel = (line * NumPixelsPerLine);
                     for (int i = startPixel; i < (startPixel + 8); i++)
-                        Buffer.BlockCopy(overscanBgColorArgb, 0, OutputFramebuffer, i * 4, 4);
+                        Buffer.BlockCopy(overscanBgColorArgb, 0, OutputFramebuffer, i * OutputFramebufferNumChannels, OutputFramebufferNumChannels);
                 }
             }
         }
@@ -433,8 +435,8 @@ namespace MasterFudge.Emulation.Graphics
             for (int i = 0; i < screenPixelUsage.Length; i++)
                 screenPixelUsage[i] = ScreenPixelUsage.Empty;
 
-            for (int i = 0; i < OutputFramebuffer.Length; i += 4)
-                Buffer.BlockCopy(overscanBgColorArgb, 0, OutputFramebuffer, i, 4);
+            for (int i = 0; i < OutputFramebuffer.Length; i += OutputFramebufferNumChannels)
+                Buffer.BlockCopy(overscanBgColorArgb, 0, OutputFramebuffer, i, OutputFramebufferNumChannels);
         }
 
         private void RenderBackgroundMode4(int line)
@@ -483,10 +485,10 @@ namespace MasterFudge.Emulation.Graphics
                         if (screenPixelUsage[outputY + outputX] == ScreenPixelUsage.Empty)
                         {
                             screenPixelUsage[outputY + outputX] |= ((c != 0 && priority) ? ScreenPixelUsage.HasBackgroundHighPriority : ScreenPixelUsage.HasBackgroundLowPriority);
-                            int outputAddress = outputFramebufferStartAddress + ((outputY + outputX) * 4);
+                            int outputAddress = outputFramebufferStartAddress + ((outputY + outputX) * OutputFramebufferNumChannels);
 
                             byte[] colorData = (baseUnitType == BaseUnitType.GameGear ? ConvertGameGearColor(palette, c) : ConvertMasterSystemColor(palette, c));
-                            Buffer.BlockCopy(colorData, 0, OutputFramebuffer, outputAddress, 4);
+                            Buffer.BlockCopy(colorData, 0, OutputFramebuffer, outputAddress, OutputFramebufferNumChannels);
                         }
                     }
                 }
@@ -564,10 +566,10 @@ namespace MasterFudge.Emulation.Graphics
                         else if ((screenPixelUsage[outputY + outputX] & ScreenPixelUsage.HasBackgroundHighPriority) != ScreenPixelUsage.HasBackgroundHighPriority)
                         {
                             /* Draw if pixel isn't occupied by high-priority BG */
-                            int outputAddress = outputFramebufferStartAddress + ((outputY + outputX) * 4);
+                            int outputAddress = outputFramebufferStartAddress + ((outputY + outputX) * OutputFramebufferNumChannels);
 
                             byte[] colorData = (baseUnitType == BaseUnitType.GameGear ? ConvertGameGearColor(1, c) : ConvertMasterSystemColor(1, c));
-                            Buffer.BlockCopy(colorData, 0, OutputFramebuffer, outputAddress, 4);
+                            Buffer.BlockCopy(colorData, 0, OutputFramebuffer, outputAddress, OutputFramebufferNumChannels);
                         }
 
                         /* Note that there is a sprite here regardless */
@@ -618,8 +620,8 @@ namespace MasterFudge.Emulation.Graphics
                         int outputY = ((line % screenHeight) * NumPixelsPerLine);
                         int outputX = (((tile * 8) + pixel) % NumPixelsPerLine);
 
-                        int outputAddress = outputFramebufferStartAddress + ((outputY + outputX) * 4);
-                        Buffer.BlockCopy(legacyColorData[c & 0x0F], 0, OutputFramebuffer, outputAddress, 4);
+                        int outputAddress = outputFramebufferStartAddress + ((outputY + outputX) * OutputFramebufferNumChannels);
+                        Buffer.BlockCopy(legacyColorData[c & 0x0F], 0, OutputFramebuffer, outputAddress, OutputFramebufferNumChannels);
                     }
                 }
             }
@@ -721,8 +723,8 @@ namespace MasterFudge.Emulation.Graphics
                 else
                 {
                     /* Get BGRA values from legacy color table, write to framebuffer */
-                    int outputAddress = outputFramebufferStartAddress + ((outputY + outputX) * 4);
-                    Buffer.BlockCopy(outputColorData, 0, OutputFramebuffer, outputAddress, 4);
+                    int outputAddress = outputFramebufferStartAddress + ((outputY + outputX) * OutputFramebufferNumChannels);
+                    Buffer.BlockCopy(outputColorData, 0, OutputFramebuffer, outputAddress, OutputFramebufferNumChannels);
                 }
 
                 /* Note that there is a sprite here regardless */
@@ -763,8 +765,8 @@ namespace MasterFudge.Emulation.Graphics
                         int outputY = ((line % screenHeight) * NumPixelsPerLine);
                         int outputX = ((8 + (tile * tileWidth) + pixel) % NumPixelsPerLine);
 
-                        int outputAddress = outputFramebufferStartAddress + ((outputY + outputX) * 4);
-                        Buffer.BlockCopy(legacyColorData[c & 0x0F], 0, OutputFramebuffer, outputAddress, 4);
+                        int outputAddress = outputFramebufferStartAddress + ((outputY + outputX) * OutputFramebufferNumChannels);
+                        Buffer.BlockCopy(legacyColorData[c & 0x0F], 0, OutputFramebuffer, outputAddress, OutputFramebufferNumChannels);
                     }
                 }
             }
